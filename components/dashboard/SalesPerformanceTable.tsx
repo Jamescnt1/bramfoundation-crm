@@ -1,0 +1,5 @@
+import type { SalesPerformanceRow } from "@/lib/services/company-dashboard";
+
+export default function SalesPerformanceTable({ rows }: { rows: SalesPerformanceRow[] }) {
+  return <div className="overflow-x-auto"><table className="w-full min-w-[600px] text-sm"><thead className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500"><tr><th className="pb-3 font-semibold">Employee</th><th className="pb-3 text-right font-semibold">New Leads</th><th className="pb-3 text-right font-semibold">Estimates Sent</th><th className="pb-3 text-right font-semibold">Approved</th><th className="pb-3 text-right font-semibold">Completed</th></tr></thead><tbody className="divide-y divide-gray-100">{rows.map((row) => <tr key={row.employee.id}><td className="py-3 font-medium text-gray-950">{row.employee.name}</td><td className="py-3 text-right">{row.newLeads}</td><td className="py-3 text-right">{row.estimatesSent}</td><td className="py-3 text-right">{row.approvedJobs}</td><td className="py-3 text-right">{row.completedJobs}</td></tr>)}</tbody></table></div>;
+}
