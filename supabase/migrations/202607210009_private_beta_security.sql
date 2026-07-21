@@ -14,10 +14,19 @@ drop policy if exists "Allow public automation rule reads" on public.automation_
 drop policy if exists "Allow public automation rule inserts" on public.automation_rules;
 drop policy if exists "Allow public automation rule updates" on public.automation_rules;
 drop policy if exists "Allow public automation rule deletes" on public.automation_rules;
-drop policy if exists "Allow public automation rule reads" on public.task_automation_rules;
-drop policy if exists "Allow public automation rule inserts" on public.task_automation_rules;
-drop policy if exists "Allow public automation rule updates" on public.task_automation_rules;
-drop policy if exists "Allow public automation rule deletes" on public.task_automation_rules;
+-- Some beta databases were created after the legacy task_automation_rules table
+-- was retired. PostgreSQL's DROP POLICY IF EXISTS still errors when the table
+-- itself is absent, so guard this cleanup with to_regclass.
+do $$
+begin
+  if to_regclass('public.task_automation_rules') is not null then
+    execute 'drop policy if exists "Allow public automation rule reads" on public.task_automation_rules';
+    execute 'drop policy if exists "Allow public automation rule inserts" on public.task_automation_rules';
+    execute 'drop policy if exists "Allow public automation rule updates" on public.task_automation_rules';
+    execute 'drop policy if exists "Allow public automation rule deletes" on public.task_automation_rules';
+  end if;
+end;
+$$;
 drop policy if exists "Pipeline configuration is readable" on public.pipeline_stages;
 drop policy if exists "Pipeline aliases are readable" on public.pipeline_stage_aliases;
 
