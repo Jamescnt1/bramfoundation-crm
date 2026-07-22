@@ -14,6 +14,12 @@ export default function LoginForm() {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
+    const recoveryCode = searchParams.get("code");
+    if (recoveryCode) {
+      router.replace(`/reset-password?code=${encodeURIComponent(recoveryCode)}`);
+      return;
+    }
+
     const supabase = createClient();
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") router.replace("/reset-password");
@@ -26,7 +32,7 @@ export default function LoginForm() {
     }
 
     return () => listener.subscription.unsubscribe();
-  }, [router]);
+  }, [router, searchParams]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

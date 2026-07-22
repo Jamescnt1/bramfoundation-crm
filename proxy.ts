@@ -25,8 +25,10 @@ export async function proxy(request: NextRequest) {
   const isChangePassword = request.nextUrl.pathname === "/change-password";
   const isForgotPassword = request.nextUrl.pathname === "/forgot-password";
   const isResetPassword = request.nextUrl.pathname === "/reset-password";
+  const isAuthConfirm = request.nextUrl.pathname === "/auth/confirm";
   const isLoginApi = request.nextUrl.pathname === "/api/auth/login";
-  const isPublicAuthRoute = isLogin || isForgotPassword || isResetPassword || isLoginApi;
+  const isPublicAuthRoute =
+    isLogin || isForgotPassword || isResetPassword || isAuthConfirm || isLoginApi;
 
   if (!user && !isPublicAuthRoute) {
     const url = request.nextUrl.clone();
