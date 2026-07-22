@@ -23,9 +23,12 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const isLogin = request.nextUrl.pathname === "/login";
   const isChangePassword = request.nextUrl.pathname === "/change-password";
+  const isForgotPassword = request.nextUrl.pathname === "/forgot-password";
+  const isResetPassword = request.nextUrl.pathname === "/reset-password";
   const isLoginApi = request.nextUrl.pathname === "/api/auth/login";
+  const isPublicAuthRoute = isLogin || isForgotPassword || isResetPassword || isLoginApi;
 
-  if (!user && !isLogin && !isLoginApi) {
+  if (!user && !isPublicAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", request.nextUrl.pathname);
@@ -45,7 +48,11 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  if (user?.user_metadata?.must_change_password === true && !isChangePassword) {
+  if (
+    user?.user_metadata?.must_change_password === true &&
+    !isChangePassword &&
+    !isResetPassword
+  ) {
     return NextResponse.redirect(new URL("/change-password", request.url));
   }
 

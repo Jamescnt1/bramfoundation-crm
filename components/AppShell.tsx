@@ -22,7 +22,12 @@ export default function AppShell({ children, employee }: { children: React.React
     return () => document.removeEventListener("keydown", handleEscape);
   }, []);
 
-  if (pathname === "/login" || pathname === "/change-password") return <>{children}</>;
+  if (
+    pathname === "/login" ||
+    pathname === "/change-password" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password"
+  ) return <>{children}</>;
 
   return (
     <div className="flex min-h-screen">

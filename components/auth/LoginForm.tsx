@@ -1,7 +1,9 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import Link from "next/link";
+import { type FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/browser";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -10,6 +12,21 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    const supabase = createClient();
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") router.replace("/reset-password");
+    });
+
+    if (window.location.hash.includes("type=recovery")) {
+      void supabase.auth.getSession().then(({ data }) => {
+        if (data.session) router.replace("/reset-password");
+      });
+    }
+
+    return () => listener.subscription.unsubscribe();
+  }, [router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,6 +59,11 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+      {searchParams.get("reset") === "success" ? (
+        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+          Your password was updated. Sign in with your new password.
+        </div>
+      ) : null}
       {errorMessage ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {errorMessage}
@@ -59,6 +81,12 @@ export default function LoginForm() {
           onChange={(event) => setLogin(event.target.value)}
           className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
         />
+      </div>
+
+      <div className="text-right">
+        <Link href="/forgot-password" className="text-sm font-medium text-gray-700 underline-offset-4 hover:underline">
+          Forgot password?
+        </Link>
       </div>
 
       <div>
