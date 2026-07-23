@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const PIPELINE_COLOR_KEYS = [
   "blue", "amber", "violet", "orange", "emerald",
@@ -33,7 +34,7 @@ export type PipelineStageValues = Omit<
 const stageColumns = "id, slug, label, color_key, sort_order, active, terminal, lead_queue, qf_number_required, system_required, behavior";
 
 export async function getPipelineStages(options?: { includeArchived?: boolean }): Promise<PipelineStageConfig[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   let query = supabase.from("pipeline_stages").select(stageColumns).order("sort_order").order("label");
   if (!options?.includeArchived) query = query.eq("active", true);
   const { data, error } = await query;
@@ -45,7 +46,7 @@ export async function getPipelineStages(options?: { includeArchived?: boolean })
 }
 
 export async function getPipelineStageAliases(): Promise<Record<string, string>> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase.from("pipeline_stage_aliases").select("alias, stage_slug");
   if (error) throw new Error(error.message);
   return Object.fromEntries((data ?? []).map((item) => [item.alias, item.stage_slug]));

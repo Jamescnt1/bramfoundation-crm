@@ -45,6 +45,15 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages }: 
     return groups;
   }, [jobs, stages]);
 
+  if (stages.length === 0) {
+    return (
+      <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+        Pipeline stages could not be loaded. Ask an administrator to verify the
+        pipeline configuration and employee access policies.
+      </div>
+    );
+  }
+
   async function moveJob(jobId: string, newStatus: PipelineStage) {
     if (!canChangeStatus) {
       setErrorMessage("You do not have permission to change pipeline status.");
