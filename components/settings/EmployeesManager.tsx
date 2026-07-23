@@ -32,6 +32,7 @@ export default function EmployeesManager({
   const [employeeDialogOpen, setEmployeeDialogOpen] = useState(false);
   const [passwordEmployee, setPasswordEmployee] = useState<Employee | null>(null);
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
+  const [successMessage, setSuccessMessage] = useState("");
 
   function openNewEmployee() {
     setEditingEmployee(null);
@@ -44,15 +45,32 @@ export default function EmployeesManager({
   }
 
   async function saveEmployee(input: EmployeeActionInput, temporaryPassword: string) {
+    const isEditing = Boolean(editingEmployee);
     const saved = editingEmployee
       ? await updateEmployeeAction(editingEmployee.id, input)
-      : await createEmployeeAction(input, temporaryPassword);
+      : await createEmployee(input, temporaryPassword);
 
     setEmployees((current) =>
-      editingEmployee
+      isEditing
         ? current.map((employee) => employee.id === saved.id ? saved : employee)
         : [...current, saved].sort((a, b) => a.name.localeCompare(b.name)),
     );
+    setSuccessMessage(
+      isEditing
+        ? `${saved.name}'s employee profile was updated.`
+        : `${saved.name} was created. They can now sign in with the temporary password.`,
+    );
+  }
+
+  async function createEmployee(
+    input: EmployeeActionInput,
+    temporaryPassword: string,
+  ) {
+    const result = await createEmployeeAction(input, temporaryPassword);
+    if (!result.ok) {
+      throw new Error(`${result.message} Error reference: ${result.reference}.`);
+    }
+    return result.employee;
   }
 
   async function resetPassword(password: string) {
@@ -82,6 +100,15 @@ export default function EmployeesManager({
           </div>
           <Button type="button" size="lg" onClick={openNewEmployee}><Plus /> Add employee</Button>
         </div>
+
+        {successMessage ? (
+          <div
+            role="status"
+            className="border-b border-green-200 bg-green-50 px-5 py-3 text-sm text-green-800"
+          >
+            {successMessage}
+          </div>
+        ) : null}
 
         {employees.length === 0 ? (
           <div className="p-10 text-center text-sm text-gray-500">No employees have been added yet.</div>

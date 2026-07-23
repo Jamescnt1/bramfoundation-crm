@@ -89,7 +89,22 @@ export default function EmployeeDialog({
                 <Input id="employee-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
               </Field>
               <Field label="Username (optional)" id="employee-username">
-                <Input id="employee-username" value={username} onChange={(event) => setUsername(event.target.value)} placeholder="firstname.lastname" />
+                <Input
+                  id="employee-username"
+                  value={username}
+                  onChange={(event) =>
+                    setUsername(
+                      event.target.value
+                        .toLowerCase()
+                        .replace(/\s+/g, ".")
+                        .replace(/[^a-z0-9._-]/g, ""),
+                    )
+                  }
+                  placeholder="firstname.lastname"
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  Lowercase letters, numbers, dots, dashes, or underscores. Spaces become dots.
+                </p>
               </Field>
             </div>
 

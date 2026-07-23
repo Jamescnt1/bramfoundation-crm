@@ -1,18 +1,17 @@
 import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
+import {
+  getSupabaseAdminConfiguration,
+  SupabaseAdminConfigurationError,
+} from "@/lib/supabase/admin-config";
+
+export { SupabaseAdminConfigurationError };
 
 export function createAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const { url, secretKey } = getSupabaseAdminConfiguration();
 
-  if (!url || !serviceRoleKey) {
-    throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY and NEXT_PUBLIC_SUPABASE_URL are required for employee administration.",
-    );
-  }
-
-  return createClient(url, serviceRoleKey, {
+  return createClient(url, secretKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
