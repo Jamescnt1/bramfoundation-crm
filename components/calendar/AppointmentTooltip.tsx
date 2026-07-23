@@ -43,6 +43,25 @@ function formatTime(value: string) {
   }).format(new Date(value));
 }
 
+function formatDateRange(appointment: CalendarAppointment) {
+  const start = new Date(appointment.starts_at);
+  const end = new Date(appointment.ends_at ?? appointment.starts_at);
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const sameDate =
+    start.getFullYear() === end.getFullYear() &&
+    start.getMonth() === end.getMonth() &&
+    start.getDate() === end.getDate();
+
+  return sameDate
+    ? formatter.format(start)
+    : `${formatter.format(start)} – ${formatter.format(end)}`;
+}
+
 export default function AppointmentTooltip({
   appointment,
   children,
@@ -169,6 +188,26 @@ export default function AppointmentTooltip({
               </p>
 
               <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-xs">
+                <dt className="font-medium text-gray-500">Customer</dt>
+                <dd className="break-words text-gray-900">
+                  {appointment.job?.customer?.full_name || "Not linked"}
+                </dd>
+
+                <dt className="font-medium text-gray-500">Job</dt>
+                <dd className="break-words text-gray-900">
+                  {appointment.job?.customer_name || "Not linked"}
+                </dd>
+
+                <dt className="font-medium text-gray-500">QF#</dt>
+                <dd className="text-gray-900">
+                  {appointment.job?.qfloors_job_number || "Not assigned"}
+                </dd>
+
+                <dt className="font-medium text-gray-500">Dates</dt>
+                <dd className="text-gray-900">
+                  {formatDateRange(appointment)}
+                </dd>
+
                 <dt className="font-medium text-gray-500">Time</dt>
                 <dd className="text-gray-900">
                   {formatTime(appointment.starts_at)}

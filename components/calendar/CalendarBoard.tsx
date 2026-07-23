@@ -9,6 +9,7 @@ import CalendarListView from "@/components/calendar/CalendarListView";
 import CalendarScheduleView from "@/components/calendar/CalendarScheduleView";
 import CalendarToolbar from "@/components/calendar/CalendarToolbar";
 import DeleteAppointmentDialog from "@/components/calendar/DeleteAppointmentDialog";
+import InstallationScheduleBand from "@/components/calendar/InstallationScheduleBand";
 import {
   addDays,
   addMonths,
@@ -95,6 +96,13 @@ export default function CalendarBoard({
     return true;
   }), [initialAppointments, filters]);
 
+  const timedAppointments = useMemo(
+    () => filteredAppointments.filter(
+      (appointment) => appointment.appointment_type !== "installation",
+    ),
+    [filteredAppointments],
+  );
+
   const month = useMemo(() => startOfMonth(anchorDate), [anchorDate]);
   const calendarDays = useMemo(() => getCalendarDays(month), [month]);
   const scheduleDays = useMemo(() => {
@@ -104,7 +112,7 @@ export default function CalendarBoard({
   }, [anchorDate, view]);
 
   const appointmentsByDate = useMemo(() => {
-    return filteredAppointments.reduce<Record<string, CalendarAppointment[]>>(
+    return timedAppointments.reduce<Record<string, CalendarAppointment[]>>(
       (result, appointment) => {
         const dateKey = formatDateKey(new Date(appointment.starts_at));
         result[dateKey] = [...(result[dateKey] ?? []), appointment].sort(
@@ -114,7 +122,7 @@ export default function CalendarBoard({
       },
       {},
     );
-  }, [filteredAppointments]);
+  }, [timedAppointments]);
 
   function move(direction: -1 | 1) {
     setAnchorDate((date) => {
@@ -194,6 +202,15 @@ export default function CalendarBoard({
           />
 
           <CalendarFilters value={filters} employees={employees} jobs={jobs} onChange={setFilters} />
+
+          {view !== "list" ? (
+            <InstallationScheduleBand
+              days={view === "month" ? calendarDays : scheduleDays}
+              appointments={filteredAppointments}
+              selectedAppointmentId={selectedAppointment?.id ?? null}
+              onSelectAppointment={handleSelectAppointment}
+            />
+          ) : null}
 
           {view === "month" ? (
             <CalendarGrid
