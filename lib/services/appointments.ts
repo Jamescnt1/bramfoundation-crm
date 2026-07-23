@@ -152,3 +152,14 @@ export async function updateAppointment(
 
   return data as CalendarAppointment;
 }
+
+export async function deleteAppointment(appointmentId: string) {
+  const { error } = await supabase
+    .from("appointments")
+    .delete()
+    .eq("id", appointmentId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
