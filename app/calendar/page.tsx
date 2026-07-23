@@ -4,6 +4,7 @@ import { getActiveEmployees } from "@/lib/services/employees";
 import type { CalendarAppointment } from "@/components/calendar/types";
 import type { Employee } from "@/lib/services/employees";
 import { getJobs, type Job } from "@/lib/services/jobs";
+import { getActiveInstallerCrews, type InstallerCrew } from "@/lib/services/installer-crews";
 
 export const dynamic = "force-dynamic";
 
@@ -14,13 +15,15 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   let appointments: CalendarAppointment[] = [];
   let employees: Employee[] = [];
   let jobs: Job[] = [];
+  let installerCrews: InstallerCrew[] = [];
   let errorMessage = "";
 
   try {
-    [appointments, employees, jobs] = await Promise.all([
+    [appointments, employees, jobs, installerCrews] = await Promise.all([
       getAppointments(),
       getActiveEmployees(),
       getJobs(),
+      getActiveInstallerCrews(),
     ]);
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Unable to load calendar.";
@@ -33,7 +36,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         {errorMessage ? (
           <div className="mt-6 rounded-lg bg-red-100 p-4 text-red-700">{errorMessage}</div>
         ) : (
-          <CalendarBoard initialAppointments={appointments} employees={employees} jobs={jobs} initialAppointmentId={initialAppointmentId} initialDate={initialDate} />
+          <CalendarBoard initialAppointments={appointments} employees={employees} installerCrews={installerCrews} jobs={jobs} initialAppointmentId={initialAppointmentId} initialDate={initialDate} />
         )}
       </div>
     </main>

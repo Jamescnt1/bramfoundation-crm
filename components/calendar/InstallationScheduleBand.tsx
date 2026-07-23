@@ -31,7 +31,7 @@ function getInstallEnd(appointment: CalendarAppointment) {
 }
 
 function formatInstallLabel(appointment: CalendarAppointment) {
-  const installer = appointment.assigned_employee?.name?.trim() || "Unassigned";
+  const installer = appointment.installer_crew?.name?.trim() || "Unassigned crew";
   const qfNumber = appointment.job?.qfloors_job_number?.trim();
   const qf = qfNumber ? `QF# ${qfNumber}` : "QF# —";
   const customer = appointment.job?.customer?.full_name?.trim() || "Customer unavailable";

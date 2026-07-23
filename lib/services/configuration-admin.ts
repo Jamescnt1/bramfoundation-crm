@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import type { LeadSource } from "@/lib/services/lead-sources";
 import type { TaskType } from "@/components/tasks/types";
+import type { InstallerCrew } from "@/lib/services/installer-crews";
+
+type ConfigurationTable = "lead_sources" | "task_types" | "installer_crews";
 
 export async function getAllLeadSources(): Promise<LeadSource[]> {
   const supabase = await createClient();
@@ -24,7 +27,18 @@ export async function getAllTaskTypes(): Promise<TaskType[]> {
   return (data ?? []) as TaskType[];
 }
 
-export async function createConfigurationItem(table: "lead_sources" | "task_types", name: string) {
+export async function getAllInstallerCrews(): Promise<InstallerCrew[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("installer_crews")
+    .select("id, name, active, sort_order")
+    .order("sort_order")
+    .order("name");
+  if (error) throw new Error(error.message);
+  return (data ?? []) as InstallerCrew[];
+}
+
+export async function createConfigurationItem(table: ConfigurationTable, name: string) {
   const supabase = await createClient();
   const normalized = validateName(name);
   const { data: last, error: orderError } = await supabase
@@ -42,7 +56,7 @@ export async function createConfigurationItem(table: "lead_sources" | "task_type
 }
 
 export async function updateConfigurationItem(
-  table: "lead_sources" | "task_types",
+  table: ConfigurationTable,
   id: string,
   values: { name: string; active: boolean; sort_order: number },
 ) {
@@ -52,6 +66,25 @@ export async function updateConfigurationItem(
     .update({ ...values, name: validateName(values.name) })
     .eq("id", id);
   if (error) throwFriendly(error, table);
+}
+
+export async function removeInstallerCrew(id: string): Promise<"deleted" | "retired"> {
+  const supabase = await createClient();
+  const { count, error: countError } = await supabase
+    .from("appointments")
+    .select("id", { count: "exact", head: true })
+    .eq("installer_crew_id", id);
+  if (countError) throw new Error(countError.message);
+
+  if ((count ?? 0) > 0) {
+    const { error } = await supabase.from("installer_crews").update({ active: false }).eq("id", id);
+    if (error) throw new Error(error.message);
+    return "retired";
+  }
+
+  const { error } = await supabase.from("installer_crews").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  return "deleted";
 }
 
 export async function removeLeadSource(id: string): Promise<"deleted" | "retired"> {
@@ -107,10 +140,11 @@ function validateName(name: string) {
 
 function throwFriendly(
   error: { code?: string; message: string },
-  table: "lead_sources" | "task_types",
+  table: ConfigurationTable,
 ): never {
   if (error.code === "23505") {
-    throw new Error(`That ${table === "lead_sources" ? "lead source" : "task type"} already exists.`);
+    const label = table === "lead_sources" ? "lead source" : table === "task_types" ? "task type" : "install crew";
+    throw new Error(`That ${label} already exists.`);
   }
   throw new Error(error.message);
 }

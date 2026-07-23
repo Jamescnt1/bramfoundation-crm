@@ -7,6 +7,7 @@ export type CalendarAppointment = {
   id: string;
   job_id: string | null;
   assigned_employee_id: string | null;
+  installer_crew_id: string | null;
 
   title: string | null;
 
@@ -24,6 +25,11 @@ export type CalendarAppointment = {
   updated_at?: string | null;
 
   assigned_employee?: {
+    id: string;
+    name: string;
+  } | null;
+
+  installer_crew?: {
     id: string;
     name: string;
   } | null;

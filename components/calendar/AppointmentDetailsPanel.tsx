@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { isQfNumberRequired } from "@/components/pipeline/constants";
 import type { CalendarAppointment } from "@/components/calendar/types";
 import type { Employee } from "@/lib/services/employees";
+import type { InstallerCrew } from "@/lib/services/installer-crews";
 import { formatJobDisplayName } from "@/lib/job-display";
 
 type AppointmentDetailsPanelProps = {
   appointment: CalendarAppointment | null;
   selectedDate: Date | null;
   employees: Employee[];
+  installerCrews: InstallerCrew[];
   isCompleting: boolean;
   actionError?: string;
   onEditAppointment?: (appointment: CalendarAppointment) => void;
@@ -41,6 +43,7 @@ export default function AppointmentDetailsPanel({
   appointment,
   selectedDate,
   employees,
+  installerCrews,
   isCompleting,
   actionError,
   onEditAppointment,
@@ -48,6 +51,7 @@ export default function AppointmentDetailsPanel({
   onDeleteAppointment,
 }: AppointmentDetailsPanelProps) {
   const employee = employees.find((item) => item.id === appointment?.assigned_employee_id);
+  const installerCrew = installerCrews.find((item) => item.id === appointment?.installer_crew_id);
 
   return (
     <aside className="rounded-xl border border-gray-200 bg-white shadow-sm xl:sticky xl:top-6">
@@ -73,8 +77,8 @@ export default function AppointmentDetailsPanel({
           </div>
 
           <div className="space-y-5 p-5 text-sm">
-            <div className="flex gap-3"><CalendarDays className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="font-medium text-gray-900">{formatDate(appointment.starts_at)}</p><p className="mt-1 text-gray-500">{formatTime(appointment.starts_at)}{appointment.ends_at ? ` – ${formatTime(appointment.ends_at)}` : ""}</p></div></div>
-            <div className="flex gap-3"><UserRound className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="text-gray-500">Assigned employee</p><p className="mt-1 font-medium text-gray-900">{employee?.name ?? "Unassigned"}</p></div></div>
+            <div className="flex gap-3"><CalendarDays className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="font-medium text-gray-900">{formatDate(appointment.starts_at)}{appointment.appointment_type === "installation" && appointment.ends_at ? ` – ${formatDate(appointment.ends_at)}` : ""}</p><p className="mt-1 text-gray-500">{formatTime(appointment.starts_at)}{appointment.ends_at ? ` – ${formatTime(appointment.ends_at)}` : ""}</p></div></div>
+            <div className="flex gap-3"><UserRound className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="text-gray-500">{appointment.appointment_type === "installation" ? "Install crew" : "Assigned employee"}</p><p className="mt-1 font-medium text-gray-900">{appointment.appointment_type === "installation" ? installerCrew?.name ?? appointment.installer_crew?.name ?? "Unassigned crew" : employee?.name ?? "Unassigned"}</p></div></div>
             <div className="flex gap-3"><MapPin className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="text-gray-500">Location</p><p className="mt-1 whitespace-pre-wrap font-medium text-gray-900">{appointment.location || "No location provided"}</p></div></div>
 
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">

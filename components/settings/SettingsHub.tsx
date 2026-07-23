@@ -7,6 +7,7 @@ import {
   Clock3,
   Columns3,
   ListTodo,
+  HardHat,
   Mail,
   Palmtree,
   Plug,
@@ -106,6 +107,14 @@ const settingsGroups: SettingsGroup[] = [
     title: "Scheduling",
     description: "Set the rules and availability used by company scheduling.",
     items: [
+      {
+        title: "Install Crews",
+        description: "Manage the crews available for installation scheduling.",
+        href: "/settings/install-crews",
+        icon: HardHat,
+        restricted: true,
+        available: true,
+      },
       {
         title: "Calendar",
         description: "Configure calendar defaults, appointment types, and display options.",

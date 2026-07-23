@@ -4,12 +4,13 @@ import { revalidatePath } from "next/cache";
 import { requireAdministrator } from "@/lib/services/employees";
 import {
   createConfigurationItem,
+  removeInstallerCrew,
   removeLeadSource,
   removeTaskType,
   updateConfigurationItem,
 } from "@/lib/services/configuration-admin";
 
-type ConfigurationKind = "lead_sources" | "task_types";
+type ConfigurationKind = "lead_sources" | "task_types" | "installer_crews";
 type Item = { id: string; name: string; active: boolean; sort_order: number };
 
 export async function createConfigurationItemAction(kind: ConfigurationKind, name: string) {
@@ -36,13 +37,23 @@ export async function reorderConfigurationItemsAction(kind: ConfigurationKind, i
 
 export async function removeConfigurationItemAction(kind: ConfigurationKind, id: string) {
   await requireAdministrator();
-  const result = kind === "lead_sources" ? await removeLeadSource(id) : await removeTaskType(id);
+  const result = kind === "lead_sources"
+    ? await removeLeadSource(id)
+    : kind === "task_types"
+      ? await removeTaskType(id)
+      : await removeInstallerCrew(id);
   revalidate(kind);
   return result;
 }
 
 function revalidate(kind: ConfigurationKind) {
-  revalidatePath(kind === "lead_sources" ? "/settings/lead-sources" : "/settings/task-types");
+  const path = kind === "lead_sources"
+    ? "/settings/lead-sources"
+    : kind === "task_types"
+      ? "/settings/task-types"
+      : "/settings/install-crews";
+  revalidatePath(path);
   revalidatePath("/leads/new");
   revalidatePath("/tasks");
+  revalidatePath("/calendar");
 }

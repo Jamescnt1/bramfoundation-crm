@@ -3,9 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  APPOINTMENT_STATUSES,
   APPOINTMENT_TYPES,
-  type AppointmentStatus,
   type AppointmentType,
 } from "@/components/calendar/constants";
 import type { CalendarAppointment } from "@/components/calendar/types";
@@ -25,6 +23,7 @@ import {
 } from "@/lib/services/appointments";
 import type { Employee } from "@/lib/services/employees";
 import type { Job } from "@/lib/services/jobs";
+import type { InstallerCrew } from "@/lib/services/installer-crews";
 import { formatJobDisplayName } from "@/lib/job-display";
 
 type AppointmentDialogProps = {
@@ -33,6 +32,7 @@ type AppointmentDialogProps = {
   defaultDate?: Date | null;
   appointment?: CalendarAppointment | null;
   employees: Employee[];
+  installerCrews: InstallerCrew[];
   jobs?: Job[];
   defaultJobId?: string | null;
   defaultAppointmentType?: AppointmentType;
@@ -77,6 +77,7 @@ export default function AppointmentDialog({
   defaultDate,
   appointment,
   employees,
+  installerCrews,
   jobs = [],
   defaultJobId = null,
   defaultAppointmentType = "measure",
@@ -88,13 +89,13 @@ export default function AppointmentDialog({
   const [appointmentType, setAppointmentType] =
     useState<AppointmentType>("measure");
   const [date, setDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
-  const [status, setStatus] =
-    useState<AppointmentStatus>("scheduled");
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
   const [assignedEmployeeId, setAssignedEmployeeId] = useState("");
+  const [installerCrewId, setInstallerCrewId] = useState("");
   const [jobId, setJobId] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
@@ -120,23 +121,25 @@ export default function AppointmentDialog({
         appointment.appointment_type ?? "measure",
       );
       setDate(formatDateInput(startsAt));
+      setEndDate(formatDateInput(endsAt));
       setStartTime(formatTimeInput(startsAt));
       setEndTime(formatTimeInput(endsAt));
-      setStatus(appointment.status ?? "scheduled");
       setLocation(appointment.location ?? "");
       setNotes(appointment.notes ?? "");
       setAssignedEmployeeId(appointment.assigned_employee_id ?? "");
+      setInstallerCrewId(appointment.installer_crew_id ?? "");
       setJobId(appointment.job_id ?? "");
     } else {
       setTitle("");
       setAppointmentType(defaultAppointmentType);
       setDate(formatDateInput(defaultDate ?? new Date()));
+      setEndDate(formatDateInput(defaultDate ?? new Date()));
       setStartTime("09:00");
       setEndTime("10:00");
-      setStatus("scheduled");
       setLocation("");
       setNotes("");
       setAssignedEmployeeId("");
+      setInstallerCrewId("");
       setJobId(defaultJobId ?? "");
     }
 
@@ -165,7 +168,7 @@ export default function AppointmentDialog({
       return;
     }
 
-    if (!date || !startTime || !endTime) {
+    if (!date || !startTime || !endTime || (appointmentType === "installation" && !endDate)) {
       setErrorMessage(
         "Please select the appointment date and times.",
       );
@@ -173,7 +176,10 @@ export default function AppointmentDialog({
     }
 
     const startsAt = createAppointmentDate(date, startTime);
-    const endsAt = createAppointmentDate(date, endTime);
+    const endsAt = createAppointmentDate(
+      appointmentType === "installation" ? endDate : date,
+      endTime,
+    );
 
     if (
       Number.isNaN(startsAt.getTime()) ||
@@ -195,10 +201,11 @@ export default function AppointmentDialog({
       appointment_type: appointmentType,
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
-      status,
+      status: appointment?.status ?? "scheduled",
       location: location.trim() || null,
       notes: notes.trim() || null,
-      assigned_employee_id: assignedEmployeeId || null,
+      assigned_employee_id: appointmentType === "installation" ? null : assignedEmployeeId || null,
+      installer_crew_id: appointmentType === "installation" ? installerCrewId || null : null,
     };
 
     setIsSaving(true);
@@ -319,7 +326,7 @@ export default function AppointmentDialog({
                   htmlFor="appointment-date"
                   className="text-sm font-medium text-gray-900"
                 >
-                  Date
+                  {appointmentType === "installation" ? "Start date" : "Date"}
                 </label>
 
                 <Input
@@ -335,37 +342,42 @@ export default function AppointmentDialog({
 
               <div className="grid gap-2">
                 <label
-                  htmlFor="appointment-status"
+                  htmlFor={appointmentType === "installation" ? "appointment-installer-crew" : "appointment-date"}
                   className="text-sm font-medium text-gray-900"
                 >
-                  Status
+                  {appointmentType === "installation" ? "Install crew" : ""}
                 </label>
-
-                <select
-                  id="appointment-status"
-                  value={status}
-                  onChange={(event) =>
-                    setStatus(
-                      event.target.value as AppointmentStatus,
-                    )
-                  }
-                  className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
-                >
-                  {APPOINTMENT_STATUSES.map(
-                    (appointmentStatus) => (
-                      <option
-                        key={appointmentStatus}
-                        value={appointmentStatus}
-                      >
-                        {formatOptionLabel(
-                          appointmentStatus,
-                        )}
-                      </option>
-                    ),
-                  )}
-                </select>
+                {appointmentType === "installation" ? (
+                  <select
+                    id="appointment-installer-crew"
+                    value={installerCrewId}
+                    onChange={(event) => setInstallerCrewId(event.target.value)}
+                    className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
+                  >
+                    <option value="">Unassigned crew</option>
+                    {installerCrews.map((crew) => (
+                      <option key={crew.id} value={crew.id}>{crew.name}</option>
+                    ))}
+                  </select>
+                ) : null}
               </div>
             </div>
+
+            {appointmentType === "installation" ? (
+              <div className="grid gap-2">
+                <label htmlFor="appointment-end-date" className="text-sm font-medium text-gray-900">
+                  End date
+                </label>
+                <Input
+                  id="appointment-end-date"
+                  type="date"
+                  value={endDate}
+                  min={date}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  required
+                />
+              </div>
+            ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
@@ -407,7 +419,7 @@ export default function AppointmentDialog({
               </div>
             </div>
 
-            <div className="grid gap-2">
+            {appointmentType !== "installation" ? <div className="grid gap-2">
               <label
                 htmlFor="appointment-employee"
                 className="text-sm font-medium text-gray-900"
@@ -426,7 +438,7 @@ export default function AppointmentDialog({
                   <option key={employee.id} value={employee.id}>{employee.name}</option>
                 ))}
               </select>
-            </div>
+            </div> : null}
 
             <div className="grid gap-2">
               <label

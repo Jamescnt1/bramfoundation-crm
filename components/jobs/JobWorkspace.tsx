@@ -17,6 +17,7 @@ import type { CalendarAppointment } from "@/components/calendar/types";
 import type { Customer } from "@/components/customers/types";
 import type { Employee } from "@/lib/services/employees";
 import type { Job, JobActivity } from "@/lib/services/jobs";
+import type { InstallerCrew } from "@/lib/services/installer-crews";
 import type { TaskType, UniversalTask } from "@/components/tasks/types";
 import { formatJobDisplayName } from "@/lib/job-display";
 import InternalMessagePanel from "@/components/messaging/InternalMessagePanel";
@@ -31,6 +32,7 @@ type Props = {
   customer: Customer | null;
   assignedEmployee: Employee | null;
   employees: Employee[];
+  installerCrews: InstallerCrew[];
   activities: JobActivity[];
   tasks: UniversalTask[];
   taskTypes: TaskType[];
@@ -57,7 +59,7 @@ const nav = [
   ["communications", "Communications"], ["customer", "Related Customer"],
 ] as const;
 
-export default function JobWorkspace({ job, customer, assignedEmployee, employees, activities, tasks, taskTypes, appointments, activityError, taskError, canChangeStatus, stages, attachments, attachmentError, canManageAttachments, canArchiveAttachments, conversation, currentEmployee, customerEmails, emailTemplates, customerEmailError, canSendCustomerEmail }: Props) {
+export default function JobWorkspace({ job, customer, assignedEmployee, employees, installerCrews, activities, tasks, taskTypes, appointments, activityError, taskError, canChangeStatus, stages, attachments, attachmentError, canManageAttachments, canArchiveAttachments, conversation, currentEmployee, customerEmails, emailTemplates, customerEmailError, canSendCustomerEmail }: Props) {
   const router = useRouter();
   const [appointmentOpen, setAppointmentOpen] = useState(false);
   const [appointmentType, setAppointmentType] = useState<"measure" | "installation">("measure");
@@ -206,7 +208,7 @@ export default function JobWorkspace({ job, customer, assignedEmployee, employee
         </WorkspaceCard></section>
       </div>
 
-      <AppointmentDialog open={appointmentOpen} onOpenChange={setAppointmentOpen} defaultDate={new Date()} defaultJobId={job.id} defaultAppointmentType={appointmentType} employees={employees} jobs={[job]} />
+      <AppointmentDialog open={appointmentOpen} onOpenChange={setAppointmentOpen} defaultDate={new Date()} defaultJobId={job.id} defaultAppointmentType={appointmentType} employees={employees} installerCrews={installerCrews} jobs={[job]} />
       {pendingStatus ? (
         <QfNumberDialog
           open

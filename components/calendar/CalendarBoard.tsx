@@ -26,11 +26,13 @@ import type { CalendarAppointment, CalendarView } from "@/components/calendar/ty
 import { completeAppointment } from "@/lib/services/appointments";
 import type { Employee } from "@/lib/services/employees";
 import type { Job } from "@/lib/services/jobs";
+import type { InstallerCrew } from "@/lib/services/installer-crews";
 import CalendarFilters, { type CalendarFilterValues } from "@/components/calendar/CalendarFilters";
 
 type CalendarBoardProps = {
   initialAppointments?: CalendarAppointment[];
   employees: Employee[];
+  installerCrews: InstallerCrew[];
   jobs: Job[];
   initialAppointmentId?: string;
   initialDate?: string;
@@ -59,6 +61,7 @@ function getHeading(view: CalendarView, date: Date) {
 export default function CalendarBoard({
   initialAppointments = [],
   employees,
+  installerCrews,
   jobs,
   initialAppointmentId,
   initialDate,
@@ -243,6 +246,7 @@ export default function CalendarBoard({
           appointment={selectedAppointment}
           selectedDate={selectedDate}
           employees={employees}
+          installerCrews={installerCrews}
           isCompleting={isCompleting}
           actionError={actionError}
           onEditAppointment={(appointment) => {
@@ -266,6 +270,7 @@ export default function CalendarBoard({
         defaultDate={selectedDate}
         appointment={appointmentBeingEdited}
         employees={employees}
+        installerCrews={installerCrews}
         jobs={jobs}
         defaultAppointmentType={defaultAppointmentType}
       />

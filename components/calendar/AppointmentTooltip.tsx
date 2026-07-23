@@ -218,7 +218,9 @@ export default function AppointmentTooltip({
 
                 <dt className="font-medium text-gray-500">Assigned</dt>
                 <dd className="text-gray-900">
-                  {appointment.assigned_employee?.name || "Unassigned"}
+                  {appointment.appointment_type === "installation"
+                    ? appointment.installer_crew?.name || "Unassigned crew"
+                    : appointment.assigned_employee?.name || "Unassigned"}
                 </dd>
 
                 {appointment.location ? (

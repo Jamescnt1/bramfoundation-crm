@@ -10,6 +10,7 @@ import { getPipelineStages } from "@/lib/services/pipeline-stages";
 import { getJobAttachments } from "@/lib/services/job-attachments";
 import { getJobConversation } from "@/lib/services/internal-messaging";
 import { getActiveEmailTemplates, getJobCustomerEmails } from "@/lib/services/customer-email";
+import { getActiveInstallerCrews } from "@/lib/services/installer-crews";
 
 type Props = { params: Promise<{ id: string }> };
 export const dynamic = "force-dynamic";
@@ -20,8 +21,9 @@ export default async function JobWorkspacePage({ params }: Props) {
   try { job = await getJobById(id); } catch (error) { return <PageError message={message(error)} />; }
   if (!job) notFound();
 
-  const [activitiesResult, tasksResult, taskTypesResult, appointmentsResult, employeesResult, customerResult, statusPermissionResult, stagesResult, attachmentsResult, manageAttachmentsResult, archiveAttachmentsResult, conversationResult, currentEmployeeResult, emailsResult, templatesResult, emailSendPermissionResult] = await Promise.allSettled([
+  const [activitiesResult, tasksResult, taskTypesResult, appointmentsResult, employeesResult, installerCrewsResult, customerResult, statusPermissionResult, stagesResult, attachmentsResult, manageAttachmentsResult, archiveAttachmentsResult, conversationResult, currentEmployeeResult, emailsResult, templatesResult, emailSendPermissionResult] = await Promise.allSettled([
     getJobActivities(job.id), getTasks({ jobId: job.id }), getTaskTypes(), getAppointmentsByJobId(job.id), getActiveEmployees(),
+    getActiveInstallerCrews(),
     job.customer_id ? getCustomerById(job.customer_id) : Promise.resolve(null),
     hasPermission("pipeline.manage"),
     getPipelineStages(),
@@ -46,6 +48,7 @@ export default async function JobWorkspacePage({ params }: Props) {
             customer={customerResult.status === "fulfilled" ? customerResult.value : null}
             assignedEmployee={employees.find((employee) => employee.id === job.assigned_employee_id) ?? null}
             employees={employees}
+            installerCrews={installerCrewsResult.status === "fulfilled" ? installerCrewsResult.value : []}
             activities={activitiesResult.status === "fulfilled" ? activitiesResult.value : []}
             tasks={tasksResult.status === "fulfilled" ? tasksResult.value : []}
             taskTypes={taskTypesResult.status === "fulfilled" ? taskTypesResult.value : []}

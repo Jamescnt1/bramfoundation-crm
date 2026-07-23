@@ -14,6 +14,7 @@ export type AppointmentValues = {
   location: string | null;
   notes: string | null;
   assigned_employee_id: string | null;
+  installer_crew_id: string | null;
 };
 
 export type CreateAppointmentValues = AppointmentValues & {
@@ -26,6 +27,10 @@ export async function getAppointments() {
     .select(`
       *,
       assigned_employee:employees!appointments_assigned_employee_id_fkey (
+        id,
+        name
+      ),
+      installer_crew:installer_crews!appointments_installer_crew_id_fkey (
         id,
         name
       ),
@@ -56,6 +61,10 @@ export async function getAppointmentsByJobId(jobId: string) {
         id,
         name
       ),
+      installer_crew:installer_crews!appointments_installer_crew_id_fkey (
+        id,
+        name
+      ),
       job:jobs!appointments_job_id_fkey (
         id,
         customer_id,
@@ -82,6 +91,10 @@ export async function completeAppointment(
     .select(`
       *,
       assigned_employee:employees!appointments_assigned_employee_id_fkey (
+        id,
+        name
+      ),
+      installer_crew:installer_crews!appointments_installer_crew_id_fkey (
         id,
         name
       ),
@@ -138,17 +151,4 @@ export async function updateAppointment(
   }
 
   return data as CalendarAppointment;
-}
-
-export async function deleteAppointment(
-  appointmentId: string,
-) {
-  const { error } = await supabase
-    .from("appointments")
-    .delete()
-    .eq("id", appointmentId);
-
-  if (error) {
-    throw new Error(error.message);
-  }
 }
