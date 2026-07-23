@@ -1,7 +1,6 @@
 import AppointmentTooltip from "@/components/calendar/AppointmentTooltip";
 import { formatDateKey } from "@/components/calendar/calendar-utils";
 import type { CalendarAppointment } from "@/components/calendar/types";
-import { formatAppointmentDisplayName } from "@/lib/appointment-display";
 
 type InstallationScheduleBandProps = {
   days: Date[];
@@ -32,11 +31,13 @@ function getInstallEnd(appointment: CalendarAppointment) {
 }
 
 function formatInstallLabel(appointment: CalendarAppointment) {
-  return formatAppointmentDisplayName({
-    appointmentType: appointment.appointment_type,
-    customerName: appointment.job?.customer?.full_name,
-    jobName: appointment.job?.customer_name,
-  });
+  const installer = appointment.installer_crew?.name?.trim() || "Unassigned crew";
+  const qfNumber = appointment.job?.qfloors_job_number?.trim();
+  const qf = qfNumber ? `QF# ${qfNumber}` : "QF# —";
+  const customer = appointment.job?.customer?.full_name?.trim() || "Customer unavailable";
+  const job = appointment.job?.customer_name?.trim() || "Job unavailable";
+
+  return `${installer} - ${qf} - ${customer} - ${job}`;
 }
 
 function buildSegments(
@@ -163,7 +164,10 @@ export default function InstallationScheduleBand({
                         }}
                         className="min-w-0 px-0.5"
                       >
-                        <AppointmentTooltip appointment={segment.appointment}>
+                        <AppointmentTooltip
+                          appointment={segment.appointment}
+                          displayName={formatInstallLabel(segment.appointment)}
+                        >
                           <button
                             type="button"
                             onClick={() => onSelectAppointment(segment.appointment)}

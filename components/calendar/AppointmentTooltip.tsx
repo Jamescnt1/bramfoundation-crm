@@ -18,6 +18,7 @@ import {
 type AppointmentTooltipProps = {
   appointment: CalendarAppointment;
   children: ReactNode;
+  displayName?: string;
 };
 
 type TooltipPosition = {
@@ -68,6 +69,7 @@ function formatDateRange(appointment: CalendarAppointment) {
 export default function AppointmentTooltip({
   appointment,
   children,
+  displayName: displayNameOverride,
 }: AppointmentTooltipProps) {
   const tooltipId = useId();
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -155,11 +157,13 @@ export default function AppointmentTooltip({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open]);
 
-  const displayName = formatAppointmentDisplayName({
-    appointmentType: appointment.appointment_type,
-    customerName: appointment.job?.customer?.full_name,
-    jobName: appointment.job?.customer_name,
-  });
+  const displayName =
+    displayNameOverride ??
+    formatAppointmentDisplayName({
+      appointmentType: appointment.appointment_type,
+      customerName: appointment.job?.customer?.full_name,
+      jobName: appointment.job?.customer_name,
+    });
 
   return (
     <span

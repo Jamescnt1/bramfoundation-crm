@@ -53,8 +53,8 @@ export default function AppointmentCard({
           appointment.appointment_type,
         )} ${
           compact
-            ? "px-2 py-1.5 text-xs"
-            : "px-3 py-2 text-sm"
+            ? "px-2 py-1.5 text-[11px]"
+            : "px-3 py-2 text-[11px]"
         } ${
           selected
             ? "ring-2 ring-black ring-offset-1"
@@ -67,7 +67,7 @@ export default function AppointmentCard({
           </p>
 
           {!compact ? (
-            <p className="truncate text-[10px] font-semibold uppercase tracking-wide opacity-75">
+            <p className="truncate text-[11px] font-semibold uppercase tracking-wide opacity-75">
               {formatAppointmentType(
                 appointment.appointment_type,
               )}
