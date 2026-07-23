@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Employee } from "@/lib/services/employees";
+import type { AppointmentType } from "@/components/calendar/constants";
 
 export type WorkspaceTask = {
   id: string;
@@ -17,10 +18,9 @@ export type WorkspaceTask = {
 
 export type WorkspaceAppointment = {
   id: string;
-  title: string;
   starts_at: string;
   ends_at: string | null;
-  appointment_type: string;
+  appointment_type: AppointmentType;
   status: string;
   location: string | null;
   job: {
@@ -64,7 +64,7 @@ export async function getEmployeeWorkspace(
       .order("due_date", { ascending: true, nullsFirst: false }),
     supabase
       .from("appointments")
-      .select("id, title, starts_at, ends_at, appointment_type, status, location, job:jobs!appointments_job_id_fkey(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name))")
+      .select("id, starts_at, ends_at, appointment_type, status, location, job:jobs!appointments_job_id_fkey(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name))")
       .eq("assigned_employee_id", employee.id)
       .gte("starts_at", now.toISOString())
       .lte("starts_at", appointmentWindowEnd.toISOString())

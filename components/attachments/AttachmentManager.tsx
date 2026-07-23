@@ -2,8 +2,8 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, Download, Eye, FileIcon, ImageIcon, Pencil, Upload } from "lucide-react";
-import { archiveAttachment, editJobAttachment } from "@/app/actions/job-attachments";
+import { Download, Eye, FileIcon, ImageIcon, Pencil, Trash2, Upload } from "lucide-react";
+import { deleteAttachment, editJobAttachment } from "@/app/actions/job-attachments";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -42,7 +42,7 @@ export default function AttachmentManager({ jobId, kind, initialAttachments, can
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState<JobAttachment | null>(null);
   const [editing, setEditing] = useState<JobAttachment | null>(null);
-  const [archiving, setArchiving] = useState<JobAttachment | null>(null);
+  const [deleting, setDeleting] = useState<JobAttachment | null>(null);
   const categories = kind === "photo" ? PHOTO_CATEGORIES : FILE_CATEGORIES;
   const attachments = useMemo(
     () => initialAttachments.filter((attachment) => attachment.attachment_kind === kind),
@@ -139,14 +139,14 @@ export default function AttachmentManager({ jobId, kind, initialAttachments, can
       {!attachments.length ? (
         <div className={`${compact ? "mt-3 px-3 py-2 text-left" : "mt-5 p-8 text-center"} rounded-lg border border-dashed border-gray-300`}><p className="text-sm font-medium text-gray-900">No {kind === "photo" ? "photos" : "files"} yet. <span className="font-normal text-gray-500">{canManage ? `Use the upload controls above to add the first ${kind}.` : "You do not have permission to upload attachments."}</span></p></div>
       ) : kind === "photo" ? (
-        <div className={`${compact ? "mt-3 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" : "mt-5 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"} grid`}>{attachments.map((attachment) => <PhotoTile key={attachment.id} attachment={attachment} compact={compact} onPreview={setPreview} onEdit={canManage ? setEditing : undefined} onArchive={canArchive ? setArchiving : undefined} />)}</div>
+        <div className={`${compact ? "mt-3 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" : "mt-5 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"} grid`}>{attachments.map((attachment) => <PhotoTile key={attachment.id} attachment={attachment} compact={compact} onPreview={setPreview} onEdit={canManage ? setEditing : undefined} onArchive={canArchive ? setDeleting : undefined} />)}</div>
       ) : (
-        <div className={`${compact ? "mt-3" : "mt-5"} overflow-x-auto rounded-lg border border-gray-200`}><table className="w-full min-w-[760px] text-left text-sm"><thead className="border-b bg-gray-50 text-gray-600"><tr><th className="px-3 py-2">File</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Uploaded by</th><th className="px-3 py-2">Date</th><th className="px-3 py-2">Size</th><th className="px-3 py-2 text-right">Actions</th></tr></thead><tbody className="divide-y divide-gray-100">{attachments.map((attachment) => <FileRow key={attachment.id} attachment={attachment} onPreview={setPreview} onEdit={canManage ? setEditing : undefined} onArchive={canArchive ? setArchiving : undefined} />)}</tbody></table></div>
+        <div className={`${compact ? "mt-3" : "mt-5"} overflow-x-auto rounded-lg border border-gray-200`}><table className="w-full min-w-[760px] text-left text-sm"><thead className="border-b bg-gray-50 text-gray-600"><tr><th className="px-3 py-2">File</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Uploaded by</th><th className="px-3 py-2">Date</th><th className="px-3 py-2">Size</th><th className="px-3 py-2 text-right">Actions</th></tr></thead><tbody className="divide-y divide-gray-100">{attachments.map((attachment) => <FileRow key={attachment.id} attachment={attachment} onPreview={setPreview} onEdit={canManage ? setEditing : undefined} onArchive={canArchive ? setDeleting : undefined} />)}</tbody></table></div>
       )}
 
       <PreviewDialog attachment={preview} onClose={() => setPreview(null)} />
       <EditDialog attachment={editing} categories={categories} onClose={() => setEditing(null)} onSave={async (values) => { await editJobAttachment({ jobId, attachmentId: editing!.id, ...values }); setEditing(null); router.refresh(); }} />
-      <ArchiveDialog attachment={archiving} onClose={() => setArchiving(null)} onConfirm={async () => { await archiveAttachment({ jobId, attachmentId: archiving!.id }); setArchiving(null); router.refresh(); }} />
+      <DeleteDialog attachment={deleting} onClose={() => setDeleting(null)} onConfirm={async () => { await deleteAttachment({ jobId, attachmentId: deleting!.id }); setDeleting(null); router.refresh(); }} />
     </div>
   );
 }
@@ -161,7 +161,7 @@ function FileRow({ attachment, onPreview, onEdit, onArchive }: { attachment: Job
 }
 
 function Actions({ attachment, onPreview, onEdit, onArchive, compact = false }: { attachment: JobAttachment; onPreview: (value: JobAttachment) => void; onEdit?: (value: JobAttachment) => void; onArchive?: (value: JobAttachment) => void; compact?: boolean }) {
-  return <div className={`flex flex-wrap gap-1 ${compact ? "justify-end" : "mt-3"}`}><IconButton label="Preview" onClick={() => onPreview(attachment)}><Eye /></IconButton><a href={attachment.signed_url} download={attachment.file_name} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100" aria-label="Download"><Download className="h-4 w-4" /></a>{onEdit ? <IconButton label="Edit details" onClick={() => onEdit(attachment)}><Pencil /></IconButton> : null}{onArchive ? <IconButton label="Archive" onClick={() => onArchive(attachment)} danger><Archive /></IconButton> : null}</div>;
+  return <div className={`flex flex-wrap gap-1 ${compact ? "justify-end" : "mt-3"}`}><IconButton label="Preview" onClick={() => onPreview(attachment)}><Eye /></IconButton><a href={attachment.signed_url} download={attachment.file_name} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100" aria-label="Download"><Download className="h-4 w-4" /></a>{onEdit ? <IconButton label="Edit details" onClick={() => onEdit(attachment)}><Pencil /></IconButton> : null}{onArchive ? <IconButton label="Delete permanently" onClick={() => onArchive(attachment)} danger><Trash2 /></IconButton> : null}</div>;
 }
 
 function IconButton({ label, onClick, children, danger = false }: { label: string; onClick: () => void; children: React.ReactNode; danger?: boolean }) { return <button type="button" onClick={onClick} className={`inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-gray-100 [&_svg]:h-4 [&_svg]:w-4 ${danger ? "text-red-600" : "text-gray-500"}`} aria-label={label} title={label}>{children}</button>; }
@@ -175,9 +175,9 @@ function EditDialog({ attachment, categories, onClose, onSave }: { attachment: J
   return <Dialog open={Boolean(attachment)} onOpenChange={(open) => { if (!open && !saving) onClose(); }}><DialogContent><DialogHeader><DialogTitle>Edit attachment details</DialogTitle><DialogDescription>The stored object remains private; this changes its displayed name and metadata.</DialogDescription></DialogHeader>{attachment ? <form key={attachment.id} className="space-y-4" onSubmit={async (event) => { event.preventDefault(); setSaving(true); setError(""); const data = new FormData(event.currentTarget); try { await onSave({ fileName: String(data.get("fileName") || ""), category: String(data.get("category") || ""), description: String(data.get("description") || "").trim() || null }); } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to save changes."); setSaving(false); } }}><label className="grid gap-1 text-sm font-medium">File name<Input name="fileName" defaultValue={attachment.file_name} required maxLength={255} /></label><label className="grid gap-1 text-sm font-medium">Category<select name="category" defaultValue={attachment.category} className="h-10 rounded-lg border border-gray-300 bg-white px-3">{categories.map((value) => <option key={value}>{value}</option>)}</select></label><label className="grid gap-1 text-sm font-medium">Description<textarea name="description" defaultValue={attachment.description ?? ""} rows={4} className="rounded-lg border border-gray-300 p-3" /></label>{error ? <p className="text-sm text-red-600">{error}</p> : null}<DialogFooter><Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save changes"}</Button></DialogFooter></form> : null}</DialogContent></Dialog>;
 }
 
-function ArchiveDialog({ attachment, onClose, onConfirm }: { attachment: JobAttachment | null; onClose: () => void; onConfirm: () => Promise<void> }) {
+function DeleteDialog({ attachment, onClose, onConfirm }: { attachment: JobAttachment | null; onClose: () => void; onConfirm: () => Promise<void> }) {
   const [saving, setSaving] = useState(false); const [error, setError] = useState("");
-  return <Dialog open={Boolean(attachment)} onOpenChange={(open) => { if (!open && !saving) onClose(); }}><DialogContent><DialogHeader><DialogTitle>Archive attachment?</DialogTitle><DialogDescription>{attachment?.file_name} will be hidden from the Job Workspace while its audit history is preserved.</DialogDescription></DialogHeader>{error ? <p className="text-sm text-red-600">{error}</p> : null}<DialogFooter><Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button><Button type="button" className="bg-red-600 hover:bg-red-700" disabled={saving} onClick={async () => { setSaving(true); setError(""); try { await onConfirm(); } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to archive attachment."); setSaving(false); } }}>{saving ? "Archiving..." : "Archive"}</Button></DialogFooter></DialogContent></Dialog>;
+  return <Dialog open={Boolean(attachment)} onOpenChange={(open) => { if (!open && !saving) onClose(); }}><DialogContent><DialogHeader><DialogTitle>Permanently delete attachment?</DialogTitle><DialogDescription>{attachment?.file_name} and its private stored object will be permanently deleted. This cannot be undone.</DialogDescription></DialogHeader>{error ? <p className="text-sm text-red-600">{error}</p> : null}<DialogFooter><Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button><Button type="button" className="bg-red-600 hover:bg-red-700" disabled={saving} onClick={async () => { setSaving(true); setError(""); try { await onConfirm(); } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to delete attachment."); setSaving(false); } }}>{saving ? "Deleting..." : "Permanently delete"}</Button></DialogFooter></DialogContent></Dialog>;
 }
 
 function isBrowserImage(mime: string) { return ["image/jpeg", "image/png", "image/webp"].includes(mime); }

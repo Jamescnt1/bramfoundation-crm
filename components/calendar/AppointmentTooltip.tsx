@@ -10,7 +10,10 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import type { CalendarAppointment } from "@/components/calendar/types";
-import { formatJobDisplayName } from "@/lib/job-display";
+import {
+  formatAppointmentDisplayName,
+  formatAppointmentType,
+} from "@/lib/appointment-display";
 
 type AppointmentTooltipProps = {
   appointment: CalendarAppointment;
@@ -152,13 +155,11 @@ export default function AppointmentTooltip({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open]);
 
-  const jobDisplayName = appointment.job
-    ? formatJobDisplayName({
-        customerName: appointment.job.customer?.full_name,
-        jobName: appointment.job.customer_name,
-        qfNumber: appointment.job.qfloors_job_number,
-      })
-    : "No customer or job linked";
+  const displayName = formatAppointmentDisplayName({
+    appointmentType: appointment.appointment_type,
+    customerName: appointment.job?.customer?.full_name,
+    jobName: appointment.job?.customer_name,
+  });
 
   return (
     <span
@@ -181,10 +182,7 @@ export default function AppointmentTooltip({
               className="pointer-events-none fixed z-[100] rounded-xl border border-gray-200 bg-white p-4 text-left text-sm text-gray-700 shadow-xl"
             >
               <p className="font-semibold text-gray-950">
-                {appointment.title || "Appointment"}
-              </p>
-              <p className="mt-1 text-xs font-medium text-gray-600">
-                {jobDisplayName}
+                {displayName}
               </p>
 
               <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-xs">
@@ -234,7 +232,7 @@ export default function AppointmentTooltip({
 
                 <dt className="font-medium text-gray-500">Type</dt>
                 <dd className="text-gray-900">
-                  {formatLabel(appointment.appointment_type, "Appointment")}
+                  {formatAppointmentType(appointment.appointment_type)}
                 </dd>
 
                 <dt className="font-medium text-gray-500">Status</dt>

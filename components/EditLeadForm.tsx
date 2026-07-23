@@ -8,19 +8,19 @@ import {
   updateJob,
   type Job,
 } from "@/lib/services/jobs";
-import { archiveLeadAction } from "@/app/leads/[id]/edit/actions";
+import { deleteLeadAction } from "@/app/leads/[id]/edit/actions";
 import RecordDeleteDialog from "@/components/ui/RecordDeleteDialog";
 import { formatJobDisplayName } from "@/lib/job-display";
 
 type EditLeadFormProps = {
   job: Job;
-  canArchive?: boolean;
+  canDelete?: boolean;
   stages: PipelineStageView[];
 };
 
 export default function EditLeadForm({
   job,
-  canArchive = false,
+  canDelete = false,
   stages,
 }: EditLeadFormProps) {
   const router = useRouter();
@@ -51,7 +51,7 @@ export default function EditLeadForm({
 
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -234,22 +234,22 @@ export default function EditLeadForm({
             Cancel
           </button>
         </div>
-        {canArchive ? (
-          <button type="button" disabled={isSaving} onClick={() => setArchiveDialogOpen(true)} className="rounded-lg border border-red-200 px-5 py-2.5 font-medium text-red-700 transition hover:bg-red-50">
-            Archive Lead
+        {canDelete ? (
+          <button type="button" disabled={isSaving} onClick={() => setDeleteDialogOpen(true)} className="rounded-lg border border-red-200 px-5 py-2.5 font-medium text-red-700 transition hover:bg-red-50">
+            Delete Lead / Job
           </button>
         ) : null}
       </div>
 
       <RecordDeleteDialog
-        open={archiveDialogOpen}
-        title="Archive lead?"
+        open={deleteDialogOpen}
+        title="Permanently delete lead / job?"
         recordName={formatJobDisplayName({ customerName: job.customer?.full_name, jobName: job.customer_name, qfNumber: job.qfloors_job_number })}
-        description="This lead will leave active lead and pipeline views. The linked customer, tasks, appointments, and activity history will be preserved."
-        confirmLabel="Archive lead"
-        onOpenChange={setArchiveDialogOpen}
+        description="Permanent beta cleanup: this deletes the job plus its tasks, appointments, activities, internal job conversations, email records, files, and photos. The customer record remains. This cannot be undone."
+        confirmLabel="Permanently delete"
+        onOpenChange={setDeleteDialogOpen}
         onConfirm={async () => {
-          await archiveLeadAction(job.id);
+          await deleteLeadAction(job.id);
           router.push("/leads");
           router.refresh();
         }}

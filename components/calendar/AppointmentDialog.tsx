@@ -85,7 +85,6 @@ export default function AppointmentDialog({
   const router = useRouter();
   const isEditing = Boolean(appointment);
 
-  const [title, setTitle] = useState("");
   const [appointmentType, setAppointmentType] =
     useState<AppointmentType>("measure");
   const [date, setDate] = useState("");
@@ -116,7 +115,6 @@ export default function AppointmentDialog({
         ? new Date(appointment.ends_at)
         : new Date(startsAt.getTime() + 60 * 60 * 1000);
 
-      setTitle(appointment.title ?? "");
       setAppointmentType(
         appointment.appointment_type ?? "measure",
       );
@@ -130,7 +128,6 @@ export default function AppointmentDialog({
       setInstallerCrewId(appointment.installer_crew_id ?? "");
       setJobId(appointment.job_id ?? "");
     } else {
-      setTitle("");
       setAppointmentType(defaultAppointmentType);
       setDate(formatDateInput(defaultDate ?? new Date()));
       setEndDate(formatDateInput(defaultDate ?? new Date()));
@@ -161,13 +158,6 @@ export default function AppointmentDialog({
     event.preventDefault();
     setErrorMessage(null);
 
-    const trimmedTitle = title.trim();
-
-    if (!trimmedTitle) {
-      setErrorMessage("Please enter an appointment title.");
-      return;
-    }
-
     if (!date || !startTime || !endTime || (appointmentType === "installation" && !endDate)) {
       setErrorMessage(
         "Please select the appointment date and times.",
@@ -197,7 +187,6 @@ export default function AppointmentDialog({
     }
 
     const appointmentValues = {
-      title: trimmedTitle,
       appointment_type: appointmentType,
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
@@ -206,6 +195,7 @@ export default function AppointmentDialog({
       notes: notes.trim() || null,
       assigned_employee_id: appointmentType === "installation" ? null : assignedEmployeeId || null,
       installer_crew_id: appointmentType === "installation" ? installerCrewId || null : null,
+      job_id: jobId || null,
     };
 
     setIsSaving(true);
@@ -219,7 +209,6 @@ export default function AppointmentDialog({
       } else {
         await createAppointment({
           ...appointmentValues,
-          job_id: jobId || null,
         });
       }
 
@@ -275,25 +264,6 @@ export default function AppointmentDialog({
                 </select>
               </div>
             ) : null}
-            <div className="grid gap-2">
-              <label
-                htmlFor="appointment-title"
-                className="text-sm font-medium text-gray-900"
-              >
-                Title
-              </label>
-
-              <Input
-                id="appointment-title"
-                value={title}
-                onChange={(event) =>
-                  setTitle(event.target.value)
-                }
-                placeholder="Floor measurement"
-                required
-              />
-            </div>
-
             <div className="grid gap-2">
               <label
                 htmlFor="appointment-type"

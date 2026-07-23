@@ -1,6 +1,7 @@
 import AppointmentTooltip from "@/components/calendar/AppointmentTooltip";
 import { formatDateKey } from "@/components/calendar/calendar-utils";
 import type { CalendarAppointment } from "@/components/calendar/types";
+import { formatAppointmentDisplayName } from "@/lib/appointment-display";
 
 type InstallationScheduleBandProps = {
   days: Date[];
@@ -31,16 +32,11 @@ function getInstallEnd(appointment: CalendarAppointment) {
 }
 
 function formatInstallLabel(appointment: CalendarAppointment) {
-  const installer = appointment.installer_crew?.name?.trim() || "Unassigned crew";
-  const qfNumber = appointment.job?.qfloors_job_number?.trim();
-  const qf = qfNumber ? `QF# ${qfNumber}` : "QF# —";
-  const customer = appointment.job?.customer?.full_name?.trim() || "Customer unavailable";
-  const jobName =
-    appointment.job?.customer_name?.trim() ||
-    appointment.title?.trim() ||
-    "Untitled job";
-
-  return `${installer} - ${qf} - ${customer} - ${jobName}`;
+  return formatAppointmentDisplayName({
+    appointmentType: appointment.appointment_type,
+    customerName: appointment.job?.customer?.full_name,
+    jobName: appointment.job?.customer_name,
+  });
 }
 
 function buildSegments(

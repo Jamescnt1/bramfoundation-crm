@@ -9,7 +9,7 @@ import {
   updateManagedEmployee,
   type EmployeeAdminValues,
 } from "@/lib/services/employee-admin";
-import { deactivateEmployee } from "@/lib/services/record-lifecycle";
+import { deleteEmployeePermanently } from "@/lib/services/record-lifecycle";
 
 export type EmployeeActionInput = {
   name: string;
@@ -56,9 +56,9 @@ export async function resetEmployeePasswordAction(
   await resetManagedEmployeePassword(employeeId, temporaryPassword);
 }
 
-export async function deactivateEmployeeAction(employeeId: string) {
+export async function deleteEmployeeAction(employeeId: string) {
   if (!employeeId) throw new Error("Employee ID is required.");
-  await deactivateEmployee(employeeId);
+  await deleteEmployeePermanently(employeeId);
   revalidatePath("/settings/employees");
   revalidatePath("/my-dashboard");
   revalidatePath("/calendar");

@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { CalendarAppointment } from "@/components/calendar/types";
-import { deleteAppointment } from "@/lib/services/appointments";
+import { deleteAppointmentPermanentlyAction } from "@/app/actions/beta-delete";
 
 type DeleteAppointmentDialogProps = {
   open: boolean;
@@ -52,7 +52,7 @@ export default function DeleteAppointmentDialog({
     setIsDeleting(true);
 
     try {
-      await deleteAppointment(appointment.id);
+      await deleteAppointmentPermanentlyAction(appointment.id);
 
       onOpenChange(false);
       onDeleted?.();
@@ -79,7 +79,7 @@ export default function DeleteAppointmentDialog({
             <span className="font-medium text-gray-900">
               {appointment?.title || "this appointment"}
             </span>
-            . This action cannot be undone.
+            , including its scheduling record. This permanent beta cleanup action cannot be undone.
           </DialogDescription>
         </DialogHeader>
 

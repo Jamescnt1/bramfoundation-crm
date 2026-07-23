@@ -6,7 +6,8 @@ import {
   type AttachmentKind,
   type JobAttachment,
 } from "@/components/attachments/types";
-import { requireEmployee, requirePermission } from "@/lib/services/employees";
+import { BETA_PERMANENT_DELETE_ENABLED } from "@/lib/features/beta-permanent-delete";
+import { requireAdministrator, requireEmployee, requirePermission } from "@/lib/services/employees";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const BUCKET = "job-attachments";
@@ -152,6 +153,35 @@ export async function archiveJobAttachment(attachmentId: string) {
     `${actor.name} archived ${attachment.file_name}`,
     attachmentId,
     "archived",
+  );
+}
+
+export async function deleteJobAttachmentPermanently(attachmentId: string) {
+  if (!BETA_PERMANENT_DELETE_ENABLED) throw new Error("Permanent deletion is disabled. Archive this attachment instead.");
+  const actor = await requireAdministrator();
+  const admin = createAdminClient();
+  const attachment = await getAttachment(admin, attachmentId);
+  await requireActiveJob(admin, attachment.job_id);
+
+  const { error: linkError } = await admin
+    .from("customer_email_attachments")
+    .delete()
+    .eq("attachment_id", attachmentId);
+  if (linkError) throw new Error(linkError.message);
+
+  const { error: storageError } = await admin.storage.from(BUCKET).remove([attachment.storage_path]);
+  if (storageError) throw new Error(`The stored file could not be deleted: ${storageError.message}`);
+
+  const { error } = await admin.from("job_attachments").delete().eq("id", attachmentId);
+  if (error) throw new Error(error.message);
+
+  await writeActivity(
+    admin,
+    attachment.job_id,
+    "attachment_permanently_deleted_beta",
+    `${actor.name} permanently deleted ${attachment.file_name} during beta cleanup`,
+    attachmentId,
+    "permanently deleted",
   );
 }
 

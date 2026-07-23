@@ -126,7 +126,7 @@ export default function LeadTasks({
 
   async function deleteTask(task: JobTask) {
     const shouldDelete = window.confirm(
-      `Delete the task "${task.title}"?`
+      `Permanently delete the task "${task.title}"?\n\nThis beta cleanup action cannot be undone.`
     );
 
     if (!shouldDelete) {
@@ -144,15 +144,13 @@ export default function LeadTasks({
       )
     );
 
-    const { error } = await supabase
-      .from("job_tasks")
-      .delete()
-      .eq("id", task.id);
-
-    if (error) {
+    try {
+      const { deleteTaskPermanentlyAction } = await import("@/app/actions/beta-delete");
+      await deleteTaskPermanentlyAction(task.id);
+    } catch (error) {
       setTasks(previousTasks);
       setErrorMessage(
-        `Unable to delete task: ${error.message}`
+        `Unable to delete task: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     }
 

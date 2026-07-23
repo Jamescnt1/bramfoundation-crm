@@ -51,11 +51,6 @@ export async function setTaskStatus(id: string, status: TaskStatus) {
   if (error) throw new Error(error.message);
 }
 
-export async function deleteTask(id: string) {
-  const { error } = await supabase.from("job_tasks").delete().eq("id", id);
-  if (error) throw new Error(error.message);
-}
-
 export async function createTaskType(name: string) {
   const normalized = validateTypeName(name);
   const { data: last } = await supabase.from("task_types").select("sort_order").order("sort_order", { ascending: false }).limit(1).maybeSingle();

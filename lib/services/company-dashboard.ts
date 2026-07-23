@@ -2,6 +2,8 @@ import "server-only";
 
 import { getPipelineStages, type PipelineStageConfig } from "@/lib/services/pipeline-stages";
 import { createClient } from "@/lib/supabase/server";
+import type { AppointmentType } from "@/components/calendar/constants";
+import { formatAppointmentDisplayName } from "@/lib/appointment-display";
 
 const FOLLOW_UP_THRESHOLD_DAYS = numberSetting(
   process.env.COMPANY_DASHBOARD_FOLLOW_UP_DAYS,
@@ -51,11 +53,15 @@ export type DashboardTask = {
 export type DashboardAppointment = {
   id: string;
   job_id: string | null;
-  title: string;
-  appointment_type: string;
+  appointment_type: AppointmentType;
   status: string;
   starts_at: string;
   assigned_employee_id: string | null;
+  job: {
+    id: string;
+    customer_name: string;
+    customer: { id: string; full_name: string } | null;
+  } | null;
 };
 
 export type DashboardActivity = {
@@ -155,7 +161,7 @@ export async function getCompanyDashboardData(): Promise<CompanyDashboardData> {
         .order("created_at", { ascending: false }),
       supabase
         .from("appointments")
-        .select("id, job_id, title, appointment_type, status, starts_at, assigned_employee_id")
+        .select("id, job_id, appointment_type, status, starts_at, assigned_employee_id, job:jobs!appointments_job_id_fkey(id, customer_name, customer:customers!jobs_customer_id_fkey(id, full_name))")
         .gte("starts_at", addDays(todayStart, -30).toISOString())
         .order("starts_at"),
       supabase
@@ -180,7 +186,12 @@ export async function getCompanyDashboardData(): Promise<CompanyDashboardData> {
     customer: Array.isArray(job.customer) ? job.customer[0] ?? null : job.customer,
   })) as DashboardJob[];
   const tasks = (tasksResult.data ?? []) as DashboardTask[];
-  const appointments = (appointmentsResult.data ?? []) as DashboardAppointment[];
+  const appointments = (appointmentsResult.data ?? []).map((appointment) => ({
+    ...appointment,
+    job: normalizeAppointmentJob(
+      Array.isArray(appointment.job) ? appointment.job[0] ?? null : appointment.job,
+    ),
+  })) as DashboardAppointment[];
   const activities = (activitiesResult.data ?? []) as DashboardActivity[];
 
   const stageFor = (status: string | null) => stages.find((stage) => stage.slug === status || stage.label === status) ?? stages.find((stage) => stage.slug === "new_lead");
@@ -347,10 +358,18 @@ function buildAttentionItems({
   }
 
   for (const appointment of appointments.filter((item) => new Date(item.starts_at) >= todayStart && item.status !== "cancelled" && !item.assigned_employee_id)) {
-    items.push({ id: `appointment-${appointment.id}`, kind: "unassigned_appointment", title: "Unassigned appointment", detail: appointment.title, href: `/calendar?appointment=${appointment.id}&date=${dateKey(new Date(appointment.starts_at))}`, severity: "red" });
+    items.push({ id: `appointment-${appointment.id}`, kind: "unassigned_appointment", title: "Unassigned appointment", detail: formatAppointmentDisplayName({ appointmentType: appointment.appointment_type, customerName: appointment.job?.customer?.full_name, jobName: appointment.job?.customer_name }), href: `/calendar?appointment=${appointment.id}&date=${dateKey(new Date(appointment.starts_at))}`, severity: "red" });
   }
 
   return items.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "red" ? -1 : 1)).slice(0, 30);
+}
+
+function normalizeAppointmentJob<T extends { customer?: unknown }>(job: T | null) {
+  if (!job) return null;
+  return {
+    ...job,
+    customer: Array.isArray(job.customer) ? job.customer[0] ?? null : job.customer ?? null,
+  };
 }
 
 function belongsToEmployee(task: DashboardTask, employee: DashboardEmployee) {

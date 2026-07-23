@@ -1,11 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { archiveCustomer } from "@/lib/services/record-lifecycle";
+import { deleteCustomerPermanently } from "@/lib/services/record-lifecycle";
 
-export async function archiveCustomerAction(customerId: string) {
+export async function deleteCustomerAction(customerId: string) {
   if (!customerId) throw new Error("Customer ID is required.");
-  const result = await archiveCustomer(customerId);
+  const result = await deleteCustomerPermanently(customerId);
   revalidatePath("/customers");
   revalidatePath(`/customers/${customerId}`);
   return result;

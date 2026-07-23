@@ -1,5 +1,9 @@
 import type { CalendarAppointment } from "@/components/calendar/types";
 import AppointmentTooltip from "@/components/calendar/AppointmentTooltip";
+import {
+  formatAppointmentDisplayName,
+  formatAppointmentType,
+} from "@/lib/appointment-display";
 
 type AppointmentCardProps = {
   appointment: CalendarAppointment;
@@ -13,20 +17,6 @@ function formatAppointmentTime(startsAt: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(startsAt));
-}
-
-function formatAppointmentType(type: string | null) {
-  if (!type) {
-    return "Appointment";
-  }
-
-  return type
-    .split("_")
-    .map(
-      (word) =>
-        word.charAt(0).toUpperCase() + word.slice(1),
-    )
-    .join(" ");
 }
 
 function getAppointmentStyles(type: string | null) {
@@ -86,7 +76,11 @@ export default function AppointmentCard({
         </div>
 
         <p className="mt-1 truncate">
-          {appointment.title || "Appointment"}
+          {formatAppointmentDisplayName({
+            appointmentType: appointment.appointment_type,
+            customerName: appointment.job?.customer?.full_name,
+            jobName: appointment.job?.customer_name,
+          })}
         </p>
       </button>
     </AppointmentTooltip>

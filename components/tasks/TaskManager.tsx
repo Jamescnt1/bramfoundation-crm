@@ -6,7 +6,8 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import type { Customer } from "@/components/customers/types";
 import type { Employee } from "@/lib/services/employees";
 import type { Job } from "@/lib/services/jobs";
-import { deleteTask, setTaskStatus } from "@/lib/services/tasks";
+import { setTaskStatus } from "@/lib/services/tasks";
+import { deleteTaskPermanentlyAction } from "@/app/actions/beta-delete";
 import TaskDialog from "./TaskDialog";
 import type { TaskType, UniversalTask } from "./types";
 import { formatJobDisplayName } from "@/lib/job-display";
@@ -28,7 +29,7 @@ export default function TaskManager({ initialTasks, customers, jobs, employees, 
   }).sort(sortTasks), [tasks, view, currentEmployeeId, fixedCustomerId, fixedJobId]);
 
   async function toggle(task: UniversalTask) { const status = task.status === "completed" ? "open" : "completed"; const previous = tasks; setTasks((list) => list.map((item) => item.id === task.id ? { ...item, status, completed: status === "completed" } : item)); try { await setTaskStatus(task.id, status); } catch (caught) { setTasks(previous); setError(message(caught)); } }
-  async function remove(task: UniversalTask) { if (!window.confirm(`Delete "${task.title}"?`)) return; const previous = tasks; setTasks((list) => list.filter((item) => item.id !== task.id)); try { await deleteTask(task.id); } catch (caught) { setTasks(previous); setError(message(caught)); } }
+  async function remove(task: UniversalTask) { if (!window.confirm(`Permanently delete the task "${task.title}"?\n\nThis beta cleanup action cannot be undone.`)) return; const previous = tasks; setTasks((list) => list.filter((item) => item.id !== task.id)); try { await deleteTaskPermanentlyAction(task.id); } catch (caught) { setTasks(previous); setError(message(caught)); } }
   function saved(task: UniversalTask) { setTasks((list) => list.some((item) => item.id === task.id) ? list.map((item) => item.id === task.id ? task : item) : [task, ...list]); setEditing(null); }
 
   return <section className={compact ? "" : "mt-8"}>

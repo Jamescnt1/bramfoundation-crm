@@ -6,7 +6,7 @@ import {
   type Job,
 } from "@/lib/services/jobs";
 import { formatJobDisplayName } from "@/lib/job-display";
-import { hasPermission } from "@/lib/services/employees";
+import { getCurrentEmployee } from "@/lib/services/employees";
 import { getPipelineStages, type PipelineStageConfig } from "@/lib/services/pipeline-stages";
 
 type EditLeadPageProps = {
@@ -24,15 +24,18 @@ export default async function EditLeadPage({
 
   let job: Job | null = null;
   let errorMessage = "";
-  let canArchiveLead = false;
+  let canDeleteLead = false;
   let stages: PipelineStageConfig[] = [];
 
   try {
-    [job, canArchiveLead, stages] = await Promise.all([
+    const [loadedJob, currentEmployee, loadedStages] = await Promise.all([
       getJobById(id),
-      hasPermission("delete_leads"),
+      getCurrentEmployee(),
       getPipelineStages(),
     ]);
+    job = loadedJob;
+    stages = loadedStages;
+    canDeleteLead = currentEmployee?.role === "administrator";
   } catch (error) {
     errorMessage =
       error instanceof Error
@@ -88,7 +91,7 @@ export default async function EditLeadPage({
         </header>
 
         <section className="mt-8 rounded-xl bg-white p-6 shadow-sm md:p-8">
-          <EditLeadForm job={job} canArchive={canArchiveLead} stages={stages} />
+          <EditLeadForm job={job} canDelete={canDeleteLead} stages={stages} />
         </section>
       </div>
     </main>

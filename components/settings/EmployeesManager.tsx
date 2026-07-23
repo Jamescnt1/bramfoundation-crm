@@ -7,7 +7,7 @@ import {
   createEmployeeAction,
   resetEmployeePasswordAction,
   updateEmployeeAction,
-  deactivateEmployeeAction,
+  deleteEmployeeAction,
   type EmployeeActionInput,
 } from "@/app/settings/employees/actions";
 import EmployeeDialog from "@/components/settings/EmployeeDialog";
@@ -21,17 +21,17 @@ import RecordDeleteDialog from "@/components/ui/RecordDeleteDialog";
 export default function EmployeesManager({
   initialEmployees,
   roles,
-  canDeactivateEmployees,
+  canDeleteEmployees,
 }: {
   initialEmployees: Employee[];
   roles: RoleDefinition[];
-  canDeactivateEmployees: boolean;
+  canDeleteEmployees: boolean;
 }) {
   const [employees, setEmployees] = useState(initialEmployees);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [employeeDialogOpen, setEmployeeDialogOpen] = useState(false);
   const [passwordEmployee, setPasswordEmployee] = useState<Employee | null>(null);
-  const [deactivatingEmployee, setDeactivatingEmployee] = useState<Employee | null>(null);
+  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
 
   function openNewEmployee() {
     setEditingEmployee(null);
@@ -60,18 +60,16 @@ export default function EmployeesManager({
     await resetEmployeePasswordAction(passwordEmployee.id, password);
   }
 
-  function requestDeactivate(employee: Employee) {
+  function requestDelete(employee: Employee) {
     setEmployeeDialogOpen(false);
-    setDeactivatingEmployee(employee);
+    setDeletingEmployee(employee);
   }
 
-  async function deactivateSelectedEmployee() {
-    if (!deactivatingEmployee) return;
-    await deactivateEmployeeAction(deactivatingEmployee.id);
-    setEmployees((current) => current.map((employee) =>
-      employee.id === deactivatingEmployee.id ? { ...employee, active: false } : employee,
-    ));
-    setDeactivatingEmployee(null);
+  async function deleteSelectedEmployee() {
+    if (!deletingEmployee) return;
+    await deleteEmployeeAction(deletingEmployee.id);
+    setEmployees((current) => current.filter((employee) => employee.id !== deletingEmployee.id));
+    setDeletingEmployee(null);
   }
 
   return (
@@ -130,8 +128,8 @@ export default function EmployeesManager({
           onOpenChange={setEmployeeDialogOpen}
           onSave={saveEmployee}
           roles={roles}
-          canDeactivate={canDeactivateEmployees}
-          onRequestDeactivate={requestDeactivate}
+          canDelete={canDeleteEmployees}
+          onRequestDelete={requestDelete}
         />
       ) : null}
 
@@ -144,15 +142,15 @@ export default function EmployeesManager({
         />
       ) : null}
 
-      {deactivatingEmployee ? (
+      {deletingEmployee ? (
         <RecordDeleteDialog
           open
-          title="Deactivate employee?"
-          recordName={deactivatingEmployee.name}
-          description="This disables the employee’s login and removes them from active assignment lists. Existing jobs, tasks, appointments, and historical records remain assigned for auditing and reporting."
-          confirmLabel="Deactivate employee"
-          onOpenChange={(open) => !open && setDeactivatingEmployee(null)}
-          onConfirm={deactivateSelectedEmployee}
+          title="Permanently delete employee?"
+          recordName={deletingEmployee.name}
+          description="Permanent beta cleanup: this removes the employee profile and login. Existing assignments will become unassigned. Deletion is blocked if internal message history must retain the employee’s identity. This cannot be undone."
+          confirmLabel="Permanently delete"
+          onOpenChange={(open) => !open && setDeletingEmployee(null)}
+          onConfirm={deleteSelectedEmployee}
         />
       ) : null}
     </>

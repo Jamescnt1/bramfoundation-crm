@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import EditCustomerForm from "@/components/customers/EditCustomerForm";
 import type { Customer } from "@/components/customers/types";
 import { getCustomerById } from "@/lib/services/customers";
-import { hasPermission } from "@/lib/services/employees";
+import { getCurrentEmployee } from "@/lib/services/employees";
 
 export const dynamic = "force-dynamic";
 
@@ -14,14 +14,16 @@ type EditCustomerPageProps = {
 export default async function EditCustomerPage({ params }: EditCustomerPageProps) {
   const { id } = await params;
   let customer: Customer | null = null;
-  let canArchiveCustomer = false;
+  let canDeleteCustomer = false;
   let errorMessage = "";
 
   try {
-    [customer, canArchiveCustomer] = await Promise.all([
+    const [loadedCustomer, currentEmployee] = await Promise.all([
       getCustomerById(id),
-      hasPermission("delete_customers"),
+      getCurrentEmployee(),
     ]);
+    customer = loadedCustomer;
+    canDeleteCustomer = currentEmployee?.role === "administrator";
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Unable to load customer.";
   }
@@ -67,7 +69,7 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
               address: customer.address,
               notes: customer.notes,
             }}
-            canArchive={canArchiveCustomer}
+            canDelete={canDeleteCustomer}
           />
         </section>
       </div>

@@ -3,6 +3,8 @@ export const APPOINTMENT_TYPES = [
   "measure",
   "installation",
   "follow_up",
+  "job_walk",
+  "other",
 ] as const;
 
 export type AppointmentType =

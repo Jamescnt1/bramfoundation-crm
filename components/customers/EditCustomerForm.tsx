@@ -6,19 +6,19 @@ import {
   updateCustomer,
   type CustomerValues,
 } from "@/lib/services/customers";
-import { archiveCustomerAction } from "@/app/customers/[id]/edit/actions";
+import { deleteCustomerAction } from "@/app/customers/[id]/edit/actions";
 import RecordDeleteDialog from "@/components/ui/RecordDeleteDialog";
 
 type EditCustomerFormProps = {
   customerId: string;
   initialValues: CustomerValues;
-  canArchive?: boolean;
+  canDelete?: boolean;
 };
 
 export default function EditCustomerForm({
   customerId,
   initialValues,
-  canArchive = false,
+  canDelete = false,
 }: EditCustomerFormProps) {
   const router = useRouter();
 
@@ -40,7 +40,7 @@ export default function EditCustomerForm({
 
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -224,22 +224,22 @@ export default function EditCustomerForm({
             Cancel
           </button>
         </div>
-        {canArchive ? (
-          <button type="button" disabled={isSaving} onClick={() => setArchiveDialogOpen(true)} className="rounded-lg border border-red-200 px-5 py-2.5 font-medium text-red-700 transition hover:bg-red-50">
-            Archive Customer
+        {canDelete ? (
+          <button type="button" disabled={isSaving} onClick={() => setDeleteDialogOpen(true)} className="rounded-lg border border-red-200 px-5 py-2.5 font-medium text-red-700 transition hover:bg-red-50">
+            Delete Customer
           </button>
         ) : null}
       </div>
 
       <RecordDeleteDialog
-        open={archiveDialogOpen}
-        title="Archive customer?"
+        open={deleteDialogOpen}
+        title="Permanently delete customer?"
         recordName={initialValues.full_name}
-        description="This customer will be removed from active customer lists. Any linked jobs, appointments, tasks, and history will be preserved and will not be deleted."
-        confirmLabel="Archive customer"
-        onOpenChange={setArchiveDialogOpen}
+        description="Permanent beta cleanup: this deletes the customer and every linked job, task, appointment, activity, internal job conversation, email record, file, and photo. This cannot be undone."
+        confirmLabel="Permanently delete"
+        onOpenChange={setDeleteDialogOpen}
         onConfirm={async () => {
-          await archiveCustomerAction(customerId);
+          await deleteCustomerAction(customerId);
           router.push("/customers");
           router.refresh();
         }}

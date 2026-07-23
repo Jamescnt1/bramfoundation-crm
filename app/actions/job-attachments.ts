@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { archiveJobAttachment, updateJobAttachmentMetadata } from "@/lib/services/job-attachments";
+import { deleteJobAttachmentPermanently, updateJobAttachmentMetadata } from "@/lib/services/job-attachments";
 
 export async function editJobAttachment(input: {
   jobId: string;
@@ -14,7 +14,7 @@ export async function editJobAttachment(input: {
   revalidatePath(`/leads/${input.jobId}`);
 }
 
-export async function archiveAttachment(input: { jobId: string; attachmentId: string }) {
-  await archiveJobAttachment(input.attachmentId);
+export async function deleteAttachment(input: { jobId: string; attachmentId: string }) {
+  await deleteJobAttachmentPermanently(input.attachmentId);
   revalidatePath(`/leads/${input.jobId}`);
 }

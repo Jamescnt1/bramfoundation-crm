@@ -11,6 +11,7 @@ import { formatJobDisplayName } from "@/lib/job-display";
 import { getPipelineStages } from "@/lib/services/pipeline-stages";
 import InternalMessagesDashboard from "@/components/messaging/InternalMessagesDashboard";
 import { getEmployeeConversations, getMessagingEmployees } from "@/lib/services/internal-messaging";
+import { formatAppointmentDisplayName } from "@/lib/appointment-display";
 
 export const dynamic = "force-dynamic";
 
@@ -69,8 +70,8 @@ export default async function MyDashboardPage() {
                   <Link key={appointment.id} href={`/calendar?appointment=${appointment.id}&date=${localDateKey(new Date(appointment.starts_at))}`} className="block py-3 transition hover:bg-gray-50 sm:px-2">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="truncate font-medium text-gray-900">{appointment.title}</p>
-                        <p className="mt-1 text-sm text-gray-500">{appointment.job ? formatJobDisplayName({ customerName: appointment.job.customer?.full_name, jobName: appointment.job.customer_name, qfNumber: appointment.job.qfloors_job_number }) : "No customer or job linked"}</p>
+                        <p className="truncate font-medium text-gray-900">{formatAppointmentDisplayName({ appointmentType: appointment.appointment_type, customerName: appointment.job?.customer?.full_name, jobName: appointment.job?.customer_name })}</p>
+                        <p className="mt-1 text-sm text-gray-500">{appointment.job?.qfloors_job_number ? `QF# ${appointment.job.qfloors_job_number}` : ""}</p>
                       </div>
                       <time className="shrink-0 text-right text-xs font-medium text-gray-600">{formatAppointmentDate(appointment.starts_at)}</time>
                     </div>

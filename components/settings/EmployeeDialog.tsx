@@ -22,8 +22,8 @@ type EmployeeDialogProps = {
   onOpenChange: (open: boolean) => void;
   onSave: (input: EmployeeActionInput, temporaryPassword: string) => Promise<void>;
   roles: RoleDefinition[];
-  canDeactivate?: boolean;
-  onRequestDeactivate?: (employee: Employee) => void;
+  canDelete?: boolean;
+  onRequestDelete?: (employee: Employee) => void;
 };
 
 export default function EmployeeDialog({
@@ -32,8 +32,8 @@ export default function EmployeeDialog({
   onOpenChange,
   onSave,
   roles,
-  canDeactivate = false,
-  onRequestDeactivate,
+  canDelete = false,
+  onRequestDelete,
 }: EmployeeDialogProps) {
   const [name, setName] = useState(employee?.name ?? "");
   const [email, setEmail] = useState(employee?.email ?? "");
@@ -161,15 +161,15 @@ export default function EmployeeDialog({
           </div>
 
           <DialogFooter>
-            {employee && canDeactivate && employee.active ? (
+            {employee && canDelete ? (
               <Button
                 type="button"
                 variant="outline"
                 disabled={isSaving}
-                onClick={() => onRequestDeactivate?.(employee)}
+                onClick={() => onRequestDelete?.(employee)}
                 className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 sm:mr-auto"
               >
-                Deactivate employee
+                Delete employee
               </Button>
             ) : null}
             <Button type="button" variant="outline" disabled={isSaving} onClick={() => onOpenChange(false)}>Cancel</Button>
