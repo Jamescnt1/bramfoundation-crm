@@ -227,9 +227,12 @@ export default function AppointmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
+      <DialogContent className="inset-x-0 top-0 left-0 h-screen h-[100dvh] max-h-screen max-h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 gap-0 rounded-none p-0 [&>[data-slot=dialog-close]]:top-[max(0.5rem,env(safe-area-inset-top))] sm:top-1/2 sm:left-1/2 sm:h-auto sm:max-h-[min(90dvh,52rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:[&>[data-slot=dialog-close]]:top-2">
+        <form
+          onSubmit={handleSubmit}
+          className="flex h-full min-h-0 flex-col sm:max-h-[min(90dvh,52rem)]"
+        >
+          <DialogHeader className="shrink-0 border-b border-gray-200 px-4 pt-[max(1rem,env(safe-area-inset-top))] pr-12 pb-4 sm:px-4 sm:pt-4">
             <DialogTitle>
               {isEditing
                 ? "Edit appointment"
@@ -243,7 +246,11 @@ export default function AppointmentDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-5 py-6">
+          <div
+            className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-4 py-5 [-webkit-overflow-scrolling:touch]"
+            data-appointment-dialog-scroll
+          >
+            <div className="grid gap-5">
             {jobs.length ? (
               <div className="grid gap-2">
                 <label htmlFor="appointment-job" className="text-sm font-medium text-gray-900">
@@ -253,7 +260,7 @@ export default function AppointmentDialog({
                   id="appointment-job"
                   value={jobId}
                   onChange={(event) => setJobId(event.target.value)}
-                  className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
+                  className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-base text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200 sm:h-9 sm:text-sm"
                 >
                   <option value="">General appointment</option>
                   {jobs.map((job) => (
@@ -280,7 +287,7 @@ export default function AppointmentDialog({
                     event.target.value as AppointmentType,
                   )
                 }
-                className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
+                className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-base text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200 sm:h-9 sm:text-sm"
               >
                 {APPOINTMENT_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -322,7 +329,7 @@ export default function AppointmentDialog({
                     id="appointment-installer-crew"
                     value={installerCrewId}
                     onChange={(event) => setInstallerCrewId(event.target.value)}
-                    className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
+                    className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-base text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200 sm:h-9 sm:text-sm"
                   >
                     <option value="">Unassigned crew</option>
                     {installerCrews.map((crew) => (
@@ -401,7 +408,7 @@ export default function AppointmentDialog({
                 id="appointment-employee"
                 value={assignedEmployeeId}
                 onChange={(event) => setAssignedEmployeeId(event.target.value)}
-                className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
+                className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-base text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200 sm:h-9 sm:text-sm"
               >
                 <option value="">Unassigned</option>
                 {employees.map((employee) => (
@@ -444,7 +451,7 @@ export default function AppointmentDialog({
                 }
                 placeholder="Add appointment notes..."
                 rows={4}
-                className="w-full resize-none rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm outline-none transition placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
+                className="w-full resize-y rounded-md border border-gray-200 bg-white px-3 py-2 text-base text-gray-900 shadow-sm outline-none transition placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-200 sm:text-sm"
               />
             </div>
 
@@ -456,9 +463,10 @@ export default function AppointmentDialog({
                 {errorMessage}
               </div>
             ) : null}
+            </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="m-0 shrink-0 rounded-none px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:m-0 sm:rounded-b-xl sm:p-4">
             <Button
               type="button"
               variant="outline"
