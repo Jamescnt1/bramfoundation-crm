@@ -26,6 +26,8 @@ import CustomerEmailPanel from "@/components/email/CustomerEmailPanel";
 import type { CustomerEmail, EmailTemplate } from "@/components/email/types";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { WorkspaceCard, WorkspaceEmpty, WorkspaceError, WorkspaceSectionHeader } from "@/components/jobs/WorkspacePrimitives";
+import LayoutWorkspace from "@/components/layouts/LayoutWorkspace";
+import type { JobLayout } from "@/components/layouts/types";
 
 type Props = {
   activeTab: JobWorkspaceTab;
@@ -52,6 +54,11 @@ type Props = {
   emailTemplates: EmailTemplate[];
   customerEmailError?: string;
   canSendCustomerEmail: boolean;
+  layoutsEnabled: boolean;
+  layouts: JobLayout[];
+  layoutError?: string;
+  canManageLayouts: boolean;
+  canArchiveLayouts: boolean;
 };
 
 export type JobWorkspaceTab =
@@ -61,15 +68,16 @@ export type JobWorkspaceTab =
   | "calendar"
   | "files"
   | "photos"
+  | "layouts"
   | "communications";
 
-const nav = [
+const baseNav = [
   ["overview", "Overview"], ["timeline", "Timeline"], ["tasks", "Tasks"],
   ["calendar", "Calendar"], ["files", "Files"], ["photos", "Photos"],
   ["communications", "Communications"],
 ] as const;
 
-export default function JobWorkspace({ activeTab, job, customer, assignedEmployee, employees, installerCrews, activities, tasks, taskTypes, appointments, activityError, taskError, canChangeStatus, stages, attachments, attachmentError, canManageAttachments, canArchiveAttachments, conversation, currentEmployee, customerEmails, emailTemplates, customerEmailError, canSendCustomerEmail }: Props) {
+export default function JobWorkspace({ activeTab, job, customer, assignedEmployee, employees, installerCrews, activities, tasks, taskTypes, appointments, activityError, taskError, canChangeStatus, stages, attachments, attachmentError, canManageAttachments, canArchiveAttachments, conversation, currentEmployee, customerEmails, emailTemplates, customerEmailError, canSendCustomerEmail, layoutsEnabled, layouts, layoutError, canManageLayouts, canArchiveLayouts }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -92,6 +100,9 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
     jobName: job.customer_name,
     qfNumber: currentQfNumber,
   });
+  const nav: ReadonlyArray<readonly [JobWorkspaceTab, string]> = layoutsEnabled
+    ? [...baseNav.slice(0, 6), ["layouts", "Layouts"], ...baseNav.slice(6)]
+    : baseNav;
 
   async function requestStatusChange(nextStatus: PipelineStage) {
     if (resolveConfiguredStage(currentStatus, stages)?.slug === nextStatus) return;
@@ -358,6 +369,21 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
             <WorkspaceCard title="Photos" count={attachments.filter((item) => item.attachment_kind === "photo").length}>
               {attachmentError ? <WorkspaceError text={attachmentError} /> : <AttachmentManager compact jobId={job.id} kind="photo" initialAttachments={attachments} canManage={canManageAttachments} canArchive={canArchiveAttachments} />}
             </WorkspaceCard>
+          </section>
+        ) : null}
+
+        {activeTab === "layouts" && layoutsEnabled ? (
+          <section>
+            <WorkspaceSectionHeader title="Layouts" description="Editable field drawings, measurements, symbols, and job-file exports." />
+            <div className="mt-2">
+              <LayoutWorkspace
+                jobId={job.id}
+                initialLayouts={layouts}
+                canManage={canManageLayouts}
+                canArchive={canArchiveLayouts}
+                error={layoutError}
+              />
+            </div>
           </section>
         ) : null}
 

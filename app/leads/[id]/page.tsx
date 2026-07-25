@@ -5,6 +5,7 @@ import type { JobAttachment } from "@/components/attachments/types";
 import type { CalendarAppointment } from "@/components/calendar/types";
 import type { CustomerEmail, EmailTemplate } from "@/components/email/types";
 import type { InternalConversation } from "@/components/messaging/types";
+import type { JobLayout } from "@/components/layouts/types";
 import type { Customer } from "@/components/customers/types";
 import type { TaskType, UniversalTask } from "@/components/tasks/types";
 import { getAppointmentsByJobId } from "@/lib/services/appointments";
@@ -17,6 +18,8 @@ import { getJobAttachments } from "@/lib/services/job-attachments";
 import { getJobConversation } from "@/lib/services/internal-messaging";
 import { getActiveEmailTemplates, getJobCustomerEmails } from "@/lib/services/customer-email";
 import { getActiveInstallerCrews } from "@/lib/services/installer-crews";
+import { getJobLayouts } from "@/lib/services/job-layouts";
+import { LAYOUTS_BETA_ENABLED } from "@/lib/features/layouts-beta";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -30,6 +33,7 @@ const tabs: JobWorkspaceTab[] = [
   "calendar",
   "files",
   "photos",
+  "layouts",
   "communications",
 ];
 
@@ -37,7 +41,7 @@ export const dynamic = "force-dynamic";
 
 export default async function JobWorkspacePage({ params, searchParams }: Props) {
   const [{ id }, { tab }] = await Promise.all([params, searchParams]);
-  const activeTab = tabs.includes(tab as JobWorkspaceTab)
+  const activeTab = tabs.includes(tab as JobWorkspaceTab) && (tab !== "layouts" || LAYOUTS_BETA_ENABLED)
     ? (tab as JobWorkspaceTab)
     : "overview";
 
@@ -75,6 +79,9 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
   let emailsResult = emptyResult<CustomerEmail[]>([]);
   let templatesResult = emptyResult<EmailTemplate[]>([]);
   let emailSendPermissionResult = emptyResult(false);
+  let layoutsResult = emptyResult<JobLayout[]>([]);
+  let layoutManagePermissionResult = emptyResult(false);
+  let layoutArchivePermissionResult = emptyResult(false);
 
   if (activeTab === "overview") {
     [activitiesResult, tasksResult, appointmentsResult] = await Promise.all([
@@ -96,6 +103,12 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
       safe(getJobAttachments(job.id), []),
       safe(hasPermission("attachments.manage"), false),
       safe(hasPermission("attachments.archive"), false),
+    ]);
+  } else if (activeTab === "layouts") {
+    [layoutsResult, layoutManagePermissionResult, layoutArchivePermissionResult] = await Promise.all([
+      safe(getJobLayouts(job.id), []),
+      safe(hasPermission("layouts.manage"), false),
+      safe(hasPermission("layouts.archive"), false),
     ]);
   } else if (activeTab === "communications") {
     [
@@ -153,6 +166,11 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
             emailTemplates={templatesResult.value}
             customerEmailError={emailsResult.error}
             canSendCustomerEmail={emailSendPermissionResult.value}
+            layoutsEnabled={LAYOUTS_BETA_ENABLED}
+            layouts={layoutsResult.value}
+            layoutError={layoutsResult.error}
+            canManageLayouts={layoutManagePermissionResult.value}
+            canArchiveLayouts={layoutArchivePermissionResult.value}
           />
         </div>
       </div>
