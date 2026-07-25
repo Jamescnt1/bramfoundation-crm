@@ -38,7 +38,7 @@ const navigation = [
 
 export function getNavigationItems(employee: Employee | null) {
   return employee && canViewCompanyDashboard(employee.role)
-    ? [{ name: "Company Dashboard", href: "/company" }, ...navigation]
+    ? [{ name: "Company Dashboard", href: "/company" }, ...navigation, { name: "Reports", href: "/reports" }]
     : navigation;
 }
 

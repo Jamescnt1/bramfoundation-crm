@@ -21,6 +21,7 @@ export type PipelineStageConfig = {
   terminal: boolean;
   lead_queue: boolean;
   qf_number_required: boolean;
+  contract_amount_required: boolean;
   system_required: boolean;
   behavior: Record<string, unknown>;
   job_count: number;
@@ -31,7 +32,7 @@ export type PipelineStageValues = Omit<
   "id" | "job_count"
 >;
 
-const stageColumns = "id, slug, label, color_key, sort_order, active, terminal, lead_queue, qf_number_required, system_required, behavior";
+const stageColumns = "id, slug, label, color_key, sort_order, active, terminal, lead_queue, qf_number_required, contract_amount_required, system_required, behavior";
 
 export async function getPipelineStages(options?: { includeArchived?: boolean }): Promise<PipelineStageConfig[]> {
   const supabase = createAdminClient();
@@ -75,6 +76,7 @@ export async function updatePipelineStage(id: string, values: PipelineStageValue
   }
   normalized.system_required = current.system_required;
   if (normalized.slug === "estimate_sent") normalized.qf_number_required = true;
+  if (normalized.slug === "approved") normalized.contract_amount_required = true;
   if (["complete", "lost"].includes(normalized.slug)) normalized.terminal = true;
   const { error } = await supabase.from("pipeline_stages").update(normalized).eq("id", id);
   if (error) throwFriendly(error);
@@ -110,9 +112,11 @@ export async function synchronizePipelineBusinessRules() {
   const { data, error } = await supabase.from("pipeline_stages").select("id, slug, sort_order, active").order("sort_order");
   if (error) throw new Error(error.message);
   const estimateOrder = data?.find((stage) => stage.slug === "estimate_sent")?.sort_order ?? 2;
+  const approvedOrder = data?.find((stage) => stage.slug === "approved")?.sort_order ?? 4;
   for (const stage of data ?? []) {
     const updates: Record<string, boolean> = {};
     if (stage.active) updates.qf_number_required = stage.sort_order >= estimateOrder;
+    if (stage.active) updates.contract_amount_required = stage.sort_order >= approvedOrder;
     if (["complete", "lost"].includes(stage.slug)) updates.terminal = true;
     if (["new_lead", "floor_measure", "estimate_sent", "complete", "lost"].includes(stage.slug)) updates.active = true;
     if (Object.keys(updates).length) {

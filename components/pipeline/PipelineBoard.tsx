@@ -3,9 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import PipelineColumn from "@/components/pipeline/PipelineColumn";
-import QfNumberDialog from "@/components/pipeline/QfNumberDialog";
+import JobRequirementsDialog from "@/components/pipeline/JobRequirementsDialog";
 import {
   isConfiguredQfNumberRequired,
+  isConfiguredContractAmountRequired,
   resolveConfiguredStage,
   type PipelineStage,
   type PipelineStageView,
@@ -69,8 +70,8 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages }: 
     }
 
     if (
-      isConfiguredQfNumberRequired(newStatus, stages) &&
-      !currentJob.qfloors_job_number?.trim()
+      (isConfiguredQfNumberRequired(newStatus, stages) && !currentJob.qfloors_job_number?.trim()) ||
+      (isConfiguredContractAmountRequired(newStatus, stages) && !currentJob.contract_amount)
     ) {
       clearDragState();
       setPendingMove({ jobId, status: newStatus });
@@ -84,6 +85,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages }: 
     jobId: string,
     newStatus: PipelineStage,
     qfNumber?: string,
+    contractAmount?: string,
   ) {
     const currentJob = jobs.find((job) => job.id === jobId);
 
@@ -91,6 +93,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages }: 
 
     const previousStatus = currentJob.status;
     const previousQfNumber = currentJob.qfloors_job_number;
+    const previousContractAmount = currentJob.contract_amount;
 
     setErrorMessage("");
     setMovingJobId(jobId);
@@ -101,6 +104,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages }: 
               ...job,
               status: newStatus,
               qfloors_job_number: qfNumber ?? job.qfloors_job_number,
+              contract_amount: contractAmount ?? job.contract_amount,
             }
           : job,
       ),
@@ -108,7 +112,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages }: 
     clearDragState();
 
     try {
-      await changeJobPipelineStatus(jobId, newStatus, qfNumber);
+      await changeJobPipelineStatus(jobId, newStatus, qfNumber, contractAmount);
       setPendingMove(null);
       router.refresh();
     } catch (error) {
@@ -119,6 +123,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages }: 
                 ...job,
                 status: previousStatus,
                 qfloors_job_number: previousQfNumber,
+                contract_amount: previousContractAmount,
               }
             : job,
         ),
@@ -179,7 +184,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages }: 
       </div>
 
       {pendingMove ? (
-      <QfNumberDialog
+      <JobRequirementsDialog
         open
         jobName={
           (() => {
@@ -190,6 +195,10 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages }: 
           })()
         }
         targetStatus={pendingMove.status}
+        requireQfNumber={isConfiguredQfNumberRequired(pendingMove.status, stages) && !jobs.find((job) => job.id === pendingMove.jobId)?.qfloors_job_number?.trim()}
+        requireContractAmount={isConfiguredContractAmountRequired(pendingMove.status, stages) && !jobs.find((job) => job.id === pendingMove.jobId)?.contract_amount}
+        initialQfNumber={jobs.find((job) => job.id === pendingMove.jobId)?.qfloors_job_number}
+        initialContractAmount={jobs.find((job) => job.id === pendingMove.jobId)?.contract_amount}
         isSaving={Boolean(movingJobId)}
         errorMessage={errorMessage}
         onOpenChange={(open) => {
@@ -198,9 +207,9 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages }: 
             setErrorMessage("");
           }
         }}
-        onConfirm={(qfNumber) => {
+        onConfirm={({ qfNumber, contractAmount }) => {
           if (pendingMove) {
-            void completeMove(pendingMove.jobId, pendingMove.status, qfNumber);
+            void completeMove(pendingMove.jobId, pendingMove.status, qfNumber, contractAmount);
           }
         }}
       />

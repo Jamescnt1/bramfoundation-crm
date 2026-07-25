@@ -22,6 +22,7 @@ export type PipelineStageView = {
   terminal: boolean;
   lead_queue: boolean;
   qf_number_required: boolean;
+  contract_amount_required: boolean;
   system_required: boolean;
 };
 
@@ -130,6 +131,14 @@ export function resolveConfiguredStage(status: string | null, stages: PipelineSt
 
 export function isConfiguredQfNumberRequired(status: string | null, stages: PipelineStageView[]) {
   return resolveConfiguredStage(status, stages)?.qf_number_required ?? isQfNumberRequired(status);
+}
+
+export function isConfiguredContractAmountRequired(status: string | null, stages: PipelineStageView[]) {
+  const configured = resolveConfiguredStage(status, stages);
+  if (configured) return configured.contract_amount_required;
+  return ["Approved", "Materials Ordered", "Install Scheduled", "Complete", "Lost"].includes(
+    getPipelineStage(status),
+  );
 }
 
 const LEGACY_STAGE_MAP: Record<string, LegacyPipelineStage> = {

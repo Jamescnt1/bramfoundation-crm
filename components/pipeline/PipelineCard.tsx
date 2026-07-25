@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { AlertTriangle, CalendarClock, GripVertical } from "lucide-react";
-import { isQfNumberRequired } from "@/components/pipeline/constants";
 import type { PipelineJob } from "@/components/pipeline/types";
 import { formatJobDisplayName } from "@/lib/job-display";
 
@@ -23,7 +22,11 @@ export default function PipelineCard({
 }: PipelineCardProps) {
   const overdue = isOverdue(job.next_action_due);
   const missingRequiredQf =
-    isQfNumberRequired(job.status) && !job.qfloors_job_number?.trim();
+    ["estimate_sent", "waiting_approval", "approved", "materials_ordered", "install_scheduled", "complete", "lost", "Estimate Sent", "Waiting Approval", "Approved", "Materials Ordered", "Install Scheduled", "Complete", "Lost"].includes(job.status)
+    && !job.qfloors_job_number?.trim();
+  const missingRequiredContract =
+    ["approved", "materials_ordered", "install_scheduled", "complete", "lost", "Approved", "Materials Ordered", "Install Scheduled", "Complete", "Lost"].includes(job.status)
+    && !job.contract_amount;
 
   return (
     <article
@@ -71,6 +74,12 @@ export default function PipelineCard({
           >
             <AlertTriangle className="h-3 w-3" aria-hidden="true" />
             QF#
+          </span>
+        ) : null}
+        {missingRequiredContract ? (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-700" title="Contract Amount is required at this pipeline stage">
+            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+            $
           </span>
         ) : null}
       </div>

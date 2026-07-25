@@ -10,8 +10,8 @@ import AppointmentCard from "@/components/calendar/AppointmentCard";
 import AppointmentDialog from "@/components/calendar/AppointmentDialog";
 import TaskManager from "@/components/tasks/TaskManager";
 import PipelineStatusControl from "@/components/pipeline/PipelineStatusControl";
-import QfNumberDialog from "@/components/pipeline/QfNumberDialog";
-import { isConfiguredQfNumberRequired, resolveConfiguredStage, type PipelineStage, type PipelineStageView } from "@/components/pipeline/constants";
+import JobRequirementsDialog from "@/components/pipeline/JobRequirementsDialog";
+import { isConfiguredContractAmountRequired, isConfiguredQfNumberRequired, resolveConfiguredStage, type PipelineStage, type PipelineStageView } from "@/components/pipeline/constants";
 import { changeJobPipelineStatus } from "@/app/actions/job-status";
 import type { CalendarAppointment } from "@/components/calendar/types";
 import type { Customer } from "@/components/customers/types";
@@ -65,6 +65,7 @@ export default function JobWorkspace({ job, customer, assignedEmployee, employee
   const [appointmentType, setAppointmentType] = useState<"measure" | "installation">("measure");
   const [currentStatus, setCurrentStatus] = useState(job.status);
   const [currentQfNumber, setCurrentQfNumber] = useState(job.qfloors_job_number);
+  const [currentContractAmount, setCurrentContractAmount] = useState(job.contract_amount);
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusError, setStatusError] = useState("");
   const [pendingStatus, setPendingStatus] = useState<PipelineStage | null>(null);
@@ -73,6 +74,7 @@ export default function JobWorkspace({ job, customer, assignedEmployee, employee
   const upcoming = appointments.filter((appointment) => new Date(appointment.starts_at) >= new Date()).slice(0, 4);
   const employeeName = assignedEmployee?.name ?? job.salesperson ?? "Unassigned";
   const missingRequiredQfNumber = isConfiguredQfNumberRequired(currentStatus, stages) && !currentQfNumber?.trim();
+  const missingRequiredContractAmount = isConfiguredContractAmountRequired(currentStatus, stages) && !currentContractAmount;
   const jobDisplayName = formatJobDisplayName({
     customerName: customer?.full_name ?? job.customer?.full_name,
     jobName: job.customer_name,
@@ -81,30 +83,37 @@ export default function JobWorkspace({ job, customer, assignedEmployee, employee
 
   async function requestStatusChange(nextStatus: PipelineStage) {
     if (resolveConfiguredStage(currentStatus, stages)?.slug === nextStatus) return;
-    if (isConfiguredQfNumberRequired(nextStatus, stages) && !currentQfNumber?.trim()) {
+    if (
+      (isConfiguredQfNumberRequired(nextStatus, stages) && !currentQfNumber?.trim()) ||
+      (isConfiguredContractAmountRequired(nextStatus, stages) && !currentContractAmount)
+    ) {
       setPendingStatus(nextStatus);
       return;
     }
     await saveStatus(nextStatus);
   }
 
-  async function saveStatus(nextStatus: PipelineStage, qfNumber?: string) {
+  async function saveStatus(nextStatus: PipelineStage, qfNumber?: string, contractAmount?: string) {
     const previousStatus = currentStatus;
     const previousQfNumber = currentQfNumber;
+    const previousContractAmount = currentContractAmount;
     setStatusError("");
     setStatusSaving(true);
     setCurrentStatus(nextStatus);
     if (qfNumber !== undefined) setCurrentQfNumber(qfNumber);
+    if (contractAmount !== undefined) setCurrentContractAmount(contractAmount);
 
     try {
-      const updated = await changeJobPipelineStatus(job.id, nextStatus, qfNumber);
+      const updated = await changeJobPipelineStatus(job.id, nextStatus, qfNumber, contractAmount);
       setCurrentStatus(updated.status);
       setCurrentQfNumber(updated.qfloors_job_number);
+      setCurrentContractAmount(updated.contract_amount);
       setPendingStatus(null);
       router.refresh();
     } catch (error) {
       setCurrentStatus(previousStatus);
       setCurrentQfNumber(previousQfNumber);
+      setCurrentContractAmount(previousContractAmount);
       setStatusError(error instanceof Error ? error.message : "Unable to change status.");
     } finally {
       setStatusSaving(false);
@@ -130,6 +139,11 @@ export default function JobWorkspace({ job, customer, assignedEmployee, employee
               {currentQfNumber || missingRequiredQfNumber ? (
                 <span className={`rounded-md px-2 py-1 text-xs font-semibold ${missingRequiredQfNumber ? "bg-red-50 text-red-700 ring-1 ring-red-200" : "bg-gray-100 text-gray-900"}`}>
                   {currentQfNumber ? `QF# ${currentQfNumber}` : "QF# required"}
+                </span>
+              ) : null}
+              {currentContractAmount || missingRequiredContractAmount ? (
+                <span className={`rounded-md px-2 py-1 text-xs font-semibold ${missingRequiredContractAmount ? "bg-red-50 text-red-700 ring-1 ring-red-200" : "bg-emerald-50 text-emerald-800"}`}>
+                  {currentContractAmount ? formatCurrency(currentContractAmount) : "Contract Amount required"}
                 </span>
               ) : null}
               <span className="text-xs text-gray-600">Assigned to <strong className="text-gray-900">{employeeName}</strong></span>
@@ -210,10 +224,14 @@ export default function JobWorkspace({ job, customer, assignedEmployee, employee
 
       <AppointmentDialog open={appointmentOpen} onOpenChange={setAppointmentOpen} defaultDate={new Date()} defaultJobId={job.id} defaultAppointmentType={appointmentType} employees={employees} installerCrews={installerCrews} jobs={[job]} />
       {pendingStatus ? (
-        <QfNumberDialog
+        <JobRequirementsDialog
           open
           jobName={jobDisplayName}
           targetStatus={pendingStatus}
+          requireQfNumber={isConfiguredQfNumberRequired(pendingStatus, stages) && !currentQfNumber?.trim()}
+          requireContractAmount={isConfiguredContractAmountRequired(pendingStatus, stages) && !currentContractAmount}
+          initialQfNumber={currentQfNumber}
+          initialContractAmount={currentContractAmount}
           isSaving={statusSaving}
           errorMessage={statusError}
           onOpenChange={(open) => {
@@ -222,7 +240,7 @@ export default function JobWorkspace({ job, customer, assignedEmployee, employee
               setStatusError("");
             }
           }}
-          onConfirm={(qfNumber) => void saveStatus(pendingStatus, qfNumber)}
+          onConfirm={({ qfNumber, contractAmount }) => void saveStatus(pendingStatus, qfNumber, contractAmount)}
         />
       ) : null}
     </>
@@ -234,3 +252,4 @@ function Fact({ label, value }: { label: string; value: string }) { return <div 
 function Metric({ label, value, danger = false }: { label: string; value: number; danger?: boolean }) { return <div className={`rounded-md px-3 py-2 ${danger ? "bg-red-50 text-red-800" : "bg-gray-50 text-gray-900"}`}><p className="text-[11px] font-medium opacity-70">{label}</p><p className="text-lg font-bold leading-6">{value}</p></div>; }
 function formatDate(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value.length === 10 ? `${value}T00:00:00` : value)); }
 function formatDateTime(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value)); }
+function formatCurrency(value: string) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value)); }

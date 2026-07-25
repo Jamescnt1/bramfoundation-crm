@@ -9,14 +9,18 @@ export async function changeJobPipelineStatus(
   jobId: string,
   status: PipelineStage,
   qfNumber?: string,
+  contractAmount?: string,
 ) {
-  const updated = await updateJobPipelineStatus(jobId, status, qfNumber);
+  const updated = await updateJobPipelineStatus(jobId, status, qfNumber, contractAmount);
   await deliverQueuedEmailsForJob(jobId);
 
   revalidatePath(`/leads/${jobId}`);
   revalidatePath("/leads");
   revalidatePath("/pipeline");
   revalidatePath("/customers");
+  revalidatePath("/reports");
+  revalidatePath("/company");
+  revalidatePath("/my-dashboard");
   if (updated.customer_id) revalidatePath(`/customers/${updated.customer_id}`);
 
   return updated;

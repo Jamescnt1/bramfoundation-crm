@@ -3,7 +3,7 @@
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import SalespersonSelect from "@/components/SalespersonSelect";
-import { isConfiguredQfNumberRequired, resolveConfiguredStage, type PipelineStageView } from "@/components/pipeline/constants";
+import { isConfiguredContractAmountRequired, isConfiguredQfNumberRequired, resolveConfiguredStage, type PipelineStageView } from "@/components/pipeline/constants";
 import {
   updateJob,
   type Job,
@@ -48,6 +48,8 @@ export default function EditLeadForm({
   const [qfNumber, setQfNumber] = useState(
     job.qfloors_job_number ?? "",
   );
+  const [contractAmount, setContractAmount] = useState(job.contract_amount ?? "");
+  const [isBilled, setIsBilled] = useState(Boolean(job.billed_at));
 
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -66,6 +68,20 @@ export default function EditLeadForm({
       setIsSaving(false);
       return;
     }
+    const parsedContractAmount = Number(contractAmount.replace(/[$,\s]/g, ""));
+    if (
+      isConfiguredContractAmountRequired(status, stages) &&
+      (!Number.isFinite(parsedContractAmount) || parsedContractAmount <= 0)
+    ) {
+      setErrorMessage("A positive Contract Amount is required for Approved and later stages.");
+      setIsSaving(false);
+      return;
+    }
+    if (isBilled && (!Number.isFinite(parsedContractAmount) || parsedContractAmount <= 0)) {
+      setErrorMessage("Contract Amount is required before a job can be marked billed.");
+      setIsSaving(false);
+      return;
+    }
 
     try {
       await updateJob(job.id, {
@@ -75,6 +91,8 @@ export default function EditLeadForm({
         next_action_due: nextActionDue || null,
         notes: notes.trim() || null,
         qfloors_job_number: qfNumber.trim() || null,
+        contract_amount: contractAmount.trim() || null,
+        billed_at: isBilled ? job.billed_at ?? new Date().toISOString() : null,
       });
 
       router.push(`/leads/${job.id}`);
@@ -122,6 +140,24 @@ export default function EditLeadForm({
         </p>
       </div>
       ) : null}
+
+      {isConfiguredContractAmountRequired(status, stages) || contractAmount ? (
+        <div>
+          <label htmlFor="contractAmount" className="block text-sm font-medium text-gray-700">
+            Contract Amount {isConfiguredContractAmountRequired(status, stages) ? <span className="text-red-600">*</span> : null}
+          </label>
+          <div className="relative mt-2">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500">$</span>
+            <input id="contractAmount" type="number" min="0.01" step="0.01" inputMode="decimal" disabled={isSaving} value={contractAmount} onChange={(event) => setContractAmount(event.target.value)} className="w-full rounded-lg border border-gray-300 py-2 pl-7 pr-3 disabled:bg-gray-100" />
+          </div>
+          <p className="mt-2 text-sm text-gray-500">Pipeline reporting value only; estimating and accounting remain in QFloors.</p>
+        </div>
+      ) : null}
+
+      <label className="flex items-center gap-3 rounded-lg border border-gray-200 p-3 text-sm font-medium text-gray-700">
+        <input type="checkbox" checked={isBilled} onChange={(event) => setIsBilled(event.target.checked)} disabled={isSaving} className="h-4 w-4 rounded border-gray-300" />
+        Mark this job as billed
+      </label>
 
       <div>
         <label

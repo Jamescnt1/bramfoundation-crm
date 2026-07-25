@@ -32,6 +32,7 @@ const emptyStage: PipelineStageValues = {
   terminal: false,
   lead_queue: false,
   qf_number_required: true,
+  contract_amount_required: false,
   system_required: false,
   behavior: {},
 };
@@ -50,6 +51,7 @@ export default function PipelineStagesManager({ initialStages }: { initialStages
       slug: stage.slug, label: stage.label, color_key: stage.color_key,
       sort_order: stage.sort_order, active: stage.active, terminal: stage.terminal,
       lead_queue: stage.lead_queue, qf_number_required: stage.qf_number_required,
+      contract_amount_required: stage.contract_amount_required,
       system_required: stage.system_required, behavior: stage.behavior,
     };
   }
@@ -151,7 +153,7 @@ export default function PipelineStagesManager({ initialStages }: { initialStages
               <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex min-w-0 items-start gap-3">
                   <span className={`mt-1.5 h-3 w-3 shrink-0 rounded-full ${colors.find((color) => color.key === stage.color_key)?.dot}`} />
-                  <div><div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-gray-900">{stage.label}</p>{stage.system_required ? <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"><LockKeyhole className="h-3 w-3" /> Required</span> : null}{stage.terminal ? <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">Terminal</span> : null}</div><p className="mt-1 text-xs text-gray-500">{stage.job_count} job{stage.job_count === 1 ? "" : "s"} · {stage.slug}{stage.lead_queue ? " · Leads queue" : ""}{stage.qf_number_required ? " · QF# required" : ""}</p></div>
+                  <div><div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-gray-900">{stage.label}</p>{stage.system_required ? <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"><LockKeyhole className="h-3 w-3" /> Required</span> : null}{stage.terminal ? <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">Terminal</span> : null}</div><p className="mt-1 text-xs text-gray-500">{stage.job_count} job{stage.job_count === 1 ? "" : "s"} · {stage.slug}{stage.lead_queue ? " · Leads queue" : ""}{stage.qf_number_required ? " · QF# required" : ""}{stage.contract_amount_required ? " · Contract Amount required" : ""}</p></div>
                 </div>
                 <div className="flex items-center gap-1">
                   <button type="button" onClick={() => move(index, -1)} disabled={busy || index === 0} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30" aria-label={`Move ${stage.label} up`}><ArrowUp className="h-4 w-4" /></button>
@@ -174,7 +176,7 @@ function StageEditor({ draft, setDraft, onSave, onCancel, busy, isNew = false, l
   const field = "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-black";
   return <div className={`space-y-4 p-5 ${isNew ? "rounded-xl border border-gray-200 bg-white shadow-sm" : "bg-gray-50"}`}>
     <div className="grid gap-4 sm:grid-cols-3"><label className="text-sm font-medium text-gray-700">Display name<input value={draft.label} onChange={(event) => setDraft({ ...draft, label: event.target.value, slug: isNew ? event.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") : draft.slug })} className={`mt-1.5 ${field}`} /></label><label className="text-sm font-medium text-gray-700">Internal identifier<input value={draft.slug} disabled={lockedSlug} onChange={(event) => setDraft({ ...draft, slug: event.target.value })} className={`mt-1.5 ${field} disabled:bg-gray-100 disabled:text-gray-500`} /><span className="mt-1 block text-xs font-normal text-gray-500">Stable identifier used by business rules.</span></label><label className="text-sm font-medium text-gray-700">Color<select value={draft.color_key} onChange={(event) => setDraft({ ...draft, color_key: event.target.value as PipelineColorKey })} className={`mt-1.5 ${field}`}>{colors.map((color) => <option key={color.key} value={color.key}>{color.label}</option>)}</select></label></div>
-    <div className="grid gap-3 sm:grid-cols-3"><Check label="Show in Leads queue" checked={draft.lead_queue} onChange={(checked) => setDraft({ ...draft, lead_queue: checked })} /><Check label="Require QF#" checked={draft.qf_number_required} onChange={(checked) => setDraft({ ...draft, qf_number_required: checked })} /><Check label="Terminal stage" checked={draft.terminal} onChange={(checked) => setDraft({ ...draft, terminal: checked })} /></div>
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Check label="Show in Leads queue" checked={draft.lead_queue} onChange={(checked) => setDraft({ ...draft, lead_queue: checked })} /><Check label="Require QF#" checked={draft.qf_number_required} onChange={(checked) => setDraft({ ...draft, qf_number_required: checked })} /><Check label="Require Contract Amount" checked={draft.contract_amount_required} onChange={(checked) => setDraft({ ...draft, contract_amount_required: checked })} /><Check label="Terminal stage" checked={draft.terminal} onChange={(checked) => setDraft({ ...draft, terminal: checked })} /></div>
     <div className="flex justify-end gap-2"><button type="button" onClick={onCancel} disabled={busy} className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white"><X className="h-4 w-4" /> Cancel</button><button type="button" onClick={onSave} disabled={busy} className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50">{busy ? "Saving..." : "Save Stage"}</button></div>
   </div>;
 }

@@ -15,6 +15,8 @@ export type Job = {
   next_action_due: string | null;
   notes: string | null;
   qfloors_job_number: string | null;
+  contract_amount: string | null;
+  billed_at: string | null;
   created_at: string;
   updated_at: string | null;
   archived_at: string | null;
@@ -69,12 +71,15 @@ export type CreateJobValues = {
   next_action_due?: string | null;
   notes?: string | null;
   qfloors_job_number?: string | null;
+  contract_amount?: string | number | null;
+  billed_at?: string | null;
 };
 
 export type UpdateJobValues =
   Partial<CreateJobValues>;
 
 export const QF_NUMBER_REQUIRED_ERROR = "QF_NUMBER_REQUIRED";
+export const CONTRACT_AMOUNT_REQUIRED_ERROR = "CONTRACT_AMOUNT_REQUIRED";
 
 export class QfNumberRequiredError extends Error {
   code = QF_NUMBER_REQUIRED_ERROR;
@@ -92,6 +97,23 @@ export function isQfNumberRequiredError(error: unknown) {
       (error.message.includes(QF_NUMBER_REQUIRED_ERROR) ||
         error.message.includes("QF# is required")))
   );
+}
+
+export class ContractAmountRequiredError extends Error {
+  code = CONTRACT_AMOUNT_REQUIRED_ERROR;
+  constructor() {
+    super("Contract Amount is required at Approved and every later pipeline stage.");
+    this.name = "ContractAmountRequiredError";
+  }
+}
+
+export function normalizeContractAmount(value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === "") return null;
+  const amount = typeof value === "number" ? value : Number(value.replace(/[$,\s]/g, ""));
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Contract Amount must be a positive number.");
+  }
+  return amount.toFixed(2);
 }
 
 export type ActiveSalesQueueJob = Job & {
@@ -115,6 +137,8 @@ const jobColumns = `
   next_action_due,
   notes,
   qfloors_job_number,
+  contract_amount,
+  billed_at,
   created_at,
   updated_at
   ,archived_at
@@ -386,9 +410,16 @@ export async function createJob(
   values: CreateJobValues,
 ): Promise<Job> {
   const qfNumber = values.qfloors_job_number?.trim() || null;
+  const contractAmount = normalizeContractAmount(values.contract_amount);
 
   if (await databaseRequiresQfNumber(values.status ?? "New Lead") && !qfNumber) {
     throw new QfNumberRequiredError();
+  }
+  if (await databaseRequiresContractAmount(values.status ?? "New Lead") && !contractAmount) {
+    throw new ContractAmountRequiredError();
+  }
+  if (values.billed_at && !contractAmount) {
+    throw new Error("Contract Amount is required before a job can be marked billed.");
   }
 
   const { data, error } = await supabase
@@ -411,6 +442,8 @@ export async function createJob(
         values.next_action_due || null,
       notes: values.notes?.trim() || null,
       qfloors_job_number: qfNumber,
+      contract_amount: contractAmount,
+      billed_at: values.billed_at ?? null,
     })
     .select(jobColumns)
     .single();
@@ -437,9 +470,20 @@ export async function updateJob(
     values.qfloors_job_number !== undefined
       ? values.qfloors_job_number?.trim() || null
       : currentJob.qfloors_job_number?.trim() || null;
+  const resultingContractAmount =
+    values.contract_amount !== undefined
+      ? normalizeContractAmount(values.contract_amount)
+      : currentJob.contract_amount;
 
   if (await databaseRequiresQfNumber(resultingStatus) && !resultingQfNumber) {
     throw new QfNumberRequiredError();
+  }
+  if (await databaseRequiresContractAmount(resultingStatus) && !resultingContractAmount) {
+    throw new ContractAmountRequiredError();
+  }
+  const resultingBilledAt = values.billed_at !== undefined ? values.billed_at : currentJob.billed_at;
+  if (resultingBilledAt && !resultingContractAmount) {
+    throw new Error("Contract Amount is required before a job can be marked billed.");
   }
 
   const updates: Record<string, unknown> = {};
@@ -509,6 +553,12 @@ export async function updateJob(
     updates.qfloors_job_number =
       values.qfloors_job_number?.trim() || null;
   }
+  if (values.contract_amount !== undefined) {
+    updates.contract_amount = normalizeContractAmount(values.contract_amount);
+  }
+  if (values.billed_at !== undefined) {
+    updates.billed_at = values.billed_at;
+  }
 
   const { data, error } = await supabase
     .from("jobs")
@@ -557,7 +607,7 @@ async function findEmployeeIdByName(name: string | null | undefined) {
 async function getConfiguredStage(status: string) {
   const { data, error } = await supabase
     .from("pipeline_stages")
-    .select("slug, label, qf_number_required")
+    .select("slug, label, qf_number_required, contract_amount_required")
     .eq("active", true);
   if (error) {
     // Keeps older deployments usable until the pipeline migration is applied.
@@ -575,4 +625,10 @@ async function databaseRequiresQfNumber(status: string) {
   if (stage) return stage.qf_number_required;
   const legacyOrder = ["New Lead", "Floor Measure", "Estimate Sent", "Waiting Approval", "Approved", "Materials Ordered", "Install Scheduled", "Complete", "Lost"];
   return legacyOrder.indexOf(status) >= legacyOrder.indexOf("Estimate Sent");
+}
+
+async function databaseRequiresContractAmount(status: string) {
+  const stage = await getConfiguredStage(status);
+  if (stage) return stage.contract_amount_required;
+  return ["Approved", "Materials Ordered", "Install Scheduled", "Complete", "Lost"].includes(status);
 }

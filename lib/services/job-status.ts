@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { PipelineStage } from "@/components/pipeline/constants";
-import { QfNumberRequiredError } from "@/lib/services/jobs";
+import { ContractAmountRequiredError, normalizeContractAmount, QfNumberRequiredError } from "@/lib/services/jobs";
 import { requirePermission } from "@/lib/services/employees";
 import { createClient } from "@/lib/supabase/server";
 import { getPipelineStages } from "@/lib/services/pipeline-stages";
@@ -10,6 +10,7 @@ export type JobStatusUpdate = {
   id: string;
   status: PipelineStage;
   qfloors_job_number: string | null;
+  contract_amount: string | null;
   customer_id: string | null;
 };
 
@@ -17,6 +18,7 @@ export async function updateJobPipelineStatus(
   jobId: string,
   status: PipelineStage,
   qfNumber?: string,
+  contractAmount?: string,
 ): Promise<JobStatusUpdate> {
   await requirePermission("pipeline.manage");
 
@@ -29,7 +31,7 @@ export async function updateJobPipelineStatus(
   const supabase = await createClient();
   const { data: currentJob, error: loadError } = await supabase
     .from("jobs")
-    .select("id, customer_id, status, qfloors_job_number")
+    .select("id, customer_id, status, qfloors_job_number, contract_amount")
     .eq("id", jobId)
     .is("archived_at", null)
     .maybeSingle();
@@ -45,15 +47,24 @@ export async function updateJobPipelineStatus(
   if (targetStage.qf_number_required && !resultingQfNumber) {
     throw new QfNumberRequiredError();
   }
+  const resultingContractAmount =
+    contractAmount !== undefined
+      ? normalizeContractAmount(contractAmount)
+      : currentJob.contract_amount;
+  if (targetStage.contract_amount_required && !resultingContractAmount) {
+    throw new ContractAmountRequiredError();
+  }
 
   const updates: {
     status: PipelineStage;
     qfloors_job_number?: string | null;
+    contract_amount?: string | null;
   } = { status: targetStage.slug };
 
   if (qfNumber !== undefined) {
     updates.qfloors_job_number = resultingQfNumber;
   }
+  if (contractAmount !== undefined) updates.contract_amount = resultingContractAmount;
 
   // Database triggers record old/new status activity and execute enabled
   // automation rules for this transition.
@@ -61,7 +72,7 @@ export async function updateJobPipelineStatus(
     .from("jobs")
     .update(updates)
     .eq("id", jobId)
-    .select("id, customer_id, status, qfloors_job_number")
+    .select("id, customer_id, status, qfloors_job_number, contract_amount")
     .single();
 
   if (error) throw new Error(error.message);
