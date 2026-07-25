@@ -111,6 +111,17 @@ export type JobLayout = {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
+  attachment_id: string | null;
+  room_or_area: string | null;
+  notes: string | null;
+  record_kind: "legacy_drawing" | "imported_file";
+  version_number: number;
+  supersedes_layout_id: string | null;
+  is_latest: boolean;
+  file_name: string | null;
+  mime_type: string | null;
+  file_size: number | null;
+  file_url: string | null;
   created_by: { id: string; name: string } | null;
   updated_by: { id: string; name: string } | null;
 };

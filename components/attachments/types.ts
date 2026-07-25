@@ -15,6 +15,7 @@ export const FILE_CATEGORIES = [
   "Product Information",
   "Change Order",
   "Insurance",
+  "Layout",
   "Miscellaneous",
 ] as const;
 

@@ -11,6 +11,44 @@ Use this document to disable or remove the Layouts beta while preserving the cur
 
 This is the safest rollback. It changes no customer/job data and allows the feature to be re-enabled.
 
+## July 2026 Note Taker import rollback
+
+The import revision adds metadata columns to `job_layouts` and references the existing
+`job_attachments` table. It does not rewrite or delete legacy drawing JSON.
+
+Preferred rollback:
+
+1. Disable `LAYOUTS_BETA_ENABLED` and redeploy.
+2. Revert the Note Taker importer application commit.
+3. Deploy the last drawing-compatible application only if browser drawing must be restored.
+4. Leave the new columns, attachment records, and stored files in place. Older application
+   code ignores the additive columns.
+
+Imported layout files are ordinary Job Files. Do not delete them during a code rollback.
+Legacy drawing records remain compatible with the retained drawing engine.
+
+Optional schema cleanup, only after confirming no imported layout metadata is needed:
+
+```sql
+alter table public.job_layouts
+  drop constraint if exists job_layouts_attachment_id_fkey,
+  drop constraint if exists job_layouts_supersedes_layout_id_fkey,
+  drop column if exists attachment_id,
+  drop column if exists room_or_area,
+  drop column if exists notes,
+  drop column if exists record_kind,
+  drop column if exists version_number,
+  drop column if exists supersedes_layout_id,
+  drop column if exists is_latest;
+```
+
+Do not remove `job_attachments` rows or Storage objects unless the corresponding imported
+files are intentionally being permanently deleted through the existing attachment workflow.
+
+The active importer adds no npm dependency. Safe cleanup consists of removing the importer
+component/offline queue and restoring the previous `LayoutWorkspace`; there is no package
+removal step.
+
 ## July 2026 version-2 drawing-model rollback
 
 The refined editor writes `document_data.version = 2`. Version 2 adds:

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { LayoutDocument, LayoutOrientation, LayoutTemplate } from "@/components/layouts/types";
-import { archiveJobLayout, createJobLayout, saveJobLayout } from "@/lib/services/job-layouts";
+import { archiveJobLayout, createJobLayout, saveJobLayout, updateImportedLayoutMetadata } from "@/lib/services/job-layouts";
 
 export async function createLayout(input: {
   jobId: string;
@@ -27,5 +27,16 @@ export async function saveLayout(input: {
 
 export async function archiveLayout(input: { layoutId: string; jobId: string }) {
   await archiveJobLayout(input);
+  revalidatePath(`/leads/${input.jobId}`);
+}
+
+export async function updateLayoutMetadata(input: {
+  layoutId: string;
+  jobId: string;
+  name: string;
+  roomOrArea: string | null;
+  notes: string | null;
+}) {
+  await updateImportedLayoutMetadata(input);
   revalidatePath(`/leads/${input.jobId}`);
 }

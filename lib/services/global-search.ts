@@ -179,13 +179,13 @@ export async function searchFoundationCrm(rawQuery: string): Promise<GlobalSearc
           qfNumber: job.qfloors_job_number,
         })
       : null;
-    const anchor = file.attachment_kind === "photo" ? "photos" : "documents";
+    const tab = file.category === "Layout" ? "layouts" : file.attachment_kind === "photo" ? "photos" : "files";
     results.push({
       type: "file",
       id: file.id,
       title: file.file_name,
       subtitle: context ?? file.category,
-      href: job ? `/leads/${job.id}#${anchor}` : "/leads",
+      href: job ? `/leads/${job.id}?tab=${tab}` : "/leads",
       keywords: `${file.file_name} ${file.category} ${context ?? ""}`,
     });
   }

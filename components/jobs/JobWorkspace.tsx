@@ -374,10 +374,13 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
 
         {activeTab === "layouts" && layoutsEnabled ? (
           <section>
-            <WorkspaceSectionHeader title="Layouts" description="Editable field drawings, measurements, symbols, and job-file exports." />
+            <WorkspaceSectionHeader title="Layouts" description="Import, preview, version, and share layouts exported from Note Taker HD." />
             <div className="mt-2">
               <LayoutWorkspace
                 jobId={job.id}
+                customerName={customer?.full_name ?? job.customer?.full_name ?? job.customer_name}
+                jobName={job.customer_name}
+                qfNumber={currentQfNumber}
                 initialLayouts={layouts}
                 canManage={canManageLayouts}
                 canArchive={canArchiveLayouts}

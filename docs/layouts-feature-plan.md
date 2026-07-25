@@ -1,10 +1,48 @@
-# Layouts Beta Feature Plan
+# Layouts Document Import Feature Plan
 
 Status: Active guarded beta
 Feature flag: `LAYOUTS_BETA_ENABLED`  
 Stable rollback reference: the Git commit immediately before the Layouts implementation
 
-## July 2026 editor revision
+## July 2026 Note Taker import revision
+
+The active Layouts tab is now a document manager for layouts exported from Note Taker HD.
+The browser drawing editor is disabled in the user interface because Pencil latency and
+field connectivity did not meet the reliability standard for beta use.
+
+Primary field workflow:
+
+1. Export a PDF or image from Note Taker HD.
+2. Save it to iPad Files, preferably in `Foundation Imports`.
+3. Open the job's Layouts tab.
+4. Select **Import from Note Taker**.
+5. Choose the file, confirm its name/room/notes, and save.
+
+Every import is stored once in the private `job-attachments` bucket, creates one normal
+`job_attachments` record with category `Layout`, and creates a `job_layouts` metadata record
+that references the attachment. It therefore appears in Layouts and Job Files without
+duplicating the stored object.
+
+Replacement imports are immutable versions. A new attachment and layout version supersede
+the previous version; the latest version is shown by default and history remains available.
+
+Existing drawing records are not migrated or deleted. They are labeled **Legacy drawing**
+and remain read-only through their saved preview/export. The prior drawing engine files stay
+in the repository for rollback but are no longer loaded by the active Layouts tab.
+
+The import sheet is scrollable on iPhone/iPad Safari. Pending imports are stored as file
+blobs plus metadata in IndexedDB when offline or after a failed connection, and retry when
+the browser returns online. iOS may evict browser storage under pressure, so queued imports
+are a recovery aid; the original Note Taker export in Files remains the source safety copy.
+
+Supported imports: PDF, JPG/JPEG, PNG, WEBP, HEIC, and HEIF, up to 50 MB.
+
+Migration: `supabase/migrations/202607250001_layout_document_imports.sql`
+
+New metadata fields include attachment reference, room/area, notes, record kind, version,
+superseded-layout reference, and latest-version status.
+
+## Legacy July 2026 editor revision
 
 This revision keeps the existing Job Workspace integration and database table, but upgrades
 the editable drawing document from version 1 to version 2.
@@ -25,7 +63,8 @@ the editable drawing document from version 1 to version 2.
 
 ## Purpose
 
-Layouts adds an editable, job-scoped drawing and measurement workspace to the existing Job Workspace. It is intentionally guarded so the current stable workspace can be restored without changing unrelated tabs or records.
+Layouts provides a reliable, job-scoped home for imported floor plans and measurement
+documents. The earlier editable drawing workspace is retained only as a legacy fallback.
 
 ## Baseline architecture before Layouts
 
@@ -228,7 +267,7 @@ Offline field mode stores an active layout draft and queued save in IndexedDB. W
 - Dropping the table permanently deletes editable layout models.
 - Removing generated preview/export objects must be handled separately during a destructive rollback.
 
-## Known beta limitations
+## Current beta limitations
 
 - Apple Pencil pressure and palm rejection vary by iPadOS/Safari version.
 - Offline editing requires the layout to have been opened or created online at least once.
@@ -237,7 +276,9 @@ Offline field mode stores an active layout draft and queued save in IndexedDB. W
   followed by Object Delete.
 - Text entry uses a compact dialog rather than rich text.
 - PDF output is flattened and not editable.
-- Imported PDFs are not part of this beta. Photos are editable objects, not page backgrounds.
+- HEIC/HEIF files can be stored and downloaded, but inline preview depends on browser support.
+- Offline queue durability is controlled by iPadOS/Safari storage policies.
+- Native iPad share-sheet integration requires a future companion app.
 - Browser storage can be evicted by the operating system; remote autosave remains the durable source.
 - Embedded photos increase `document_data` size. The service rejects documents above its
   3.5 MB editable-document limit rather than allowing an oversized autosave. Next.js Server
