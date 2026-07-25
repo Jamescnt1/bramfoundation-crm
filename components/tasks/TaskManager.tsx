@@ -13,12 +13,12 @@ import type { TaskType, UniversalTask } from "./types";
 import { formatJobDisplayName } from "@/lib/job-display";
 
 type View = "all" | "mine" | "related" | "operations" | "completed";
-type Props = { initialTasks: UniversalTask[]; customers: Customer[]; jobs: Job[]; employees: Employee[]; taskTypes: TaskType[]; currentEmployeeId?: string | null; fixedCustomerId?: string | null; fixedJobId?: string | null; compact?: boolean; initialTaskId?: string };
+type Props = { initialTasks: UniversalTask[]; customers: Customer[]; jobs: Job[]; employees: Employee[]; taskTypes: TaskType[]; currentEmployeeId?: string | null; fixedCustomerId?: string | null; fixedJobId?: string | null; compact?: boolean; initialTaskId?: string; initialNewTask?: boolean };
 
-export default function TaskManager({ initialTasks, customers, jobs, employees, taskTypes, currentEmployeeId = null, fixedCustomerId = null, fixedJobId = null, compact = false, initialTaskId }: Props) {
+export default function TaskManager({ initialTasks, customers, jobs, employees, taskTypes, currentEmployeeId = null, fixedCustomerId = null, fixedJobId = null, compact = false, initialTaskId, initialNewTask = false }: Props) {
   const [tasks, setTasks] = useState(initialTasks); const [view, setView] = useState<View>(fixedJobId || fixedCustomerId ? "all" : "all");
   const initialTask = initialTaskId ? initialTasks.find((task) => task.id === initialTaskId) ?? null : null;
-  const [dialogOpen, setDialogOpen] = useState(Boolean(initialTask)); const [editing, setEditing] = useState<UniversalTask | null>(initialTask); const [error, setError] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(Boolean(initialTask) || initialNewTask); const [editing, setEditing] = useState<UniversalTask | null>(initialTask); const [error, setError] = useState("");
   const filtered = useMemo(() => tasks.filter((task) => {
     if (fixedJobId && task.job_id !== fixedJobId) return false; if (!fixedJobId && fixedCustomerId && task.customer_id !== fixedCustomerId) return false;
     if (view === "completed") return task.status === "completed"; if (task.status === "completed" || task.status === "cancelled") return false;

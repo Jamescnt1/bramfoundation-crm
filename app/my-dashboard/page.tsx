@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
 import { requireEmployee } from "@/lib/services/employees";
 import { getEmployeeWorkspace } from "@/lib/services/workspace";
 import {
@@ -23,23 +21,12 @@ export default async function MyDashboardPage() {
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-8">
       <div className="mx-auto max-w-7xl">
-        <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        <header>
           <div>
             <p className="text-sm font-medium text-gray-500">My Workspace</p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight">Welcome, {employee.name}</h1>
             <p className="mt-2 text-gray-600">Your assigned work, schedule, and pipeline at a glance.</p>
           </div>
-
-          <Link
-            href="/leads/new"
-            className={buttonVariants({
-              size: "lg",
-              className: "h-11 w-full gap-2 px-5 text-base shadow-sm sm:w-auto",
-            })}
-          >
-            <Plus className="size-5" aria-hidden="true" />
-            New Lead
-          </Link>
         </header>
 
         <div className="mt-8 grid gap-6 xl:grid-cols-2">

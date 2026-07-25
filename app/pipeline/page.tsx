@@ -1,4 +1,3 @@
-import Link from "next/link";
 import PipelineBoard from "@/components/pipeline/PipelineBoard";
 import { getJobs } from "@/lib/services/jobs";
 import { hasPermission } from "@/lib/services/employees";
@@ -16,7 +15,7 @@ export default async function PipelinePage() {
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-8">
       <div className="mx-auto max-w-full">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <header>
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">
               Sales Pipeline
@@ -27,12 +26,6 @@ export default async function PipelinePage() {
             </p>
           </div>
 
-          <Link
-            href="/leads/new"
-            className="inline-flex w-fit rounded-lg bg-black px-5 py-2.5 font-medium text-white transition hover:bg-gray-800"
-          >
-            + New Lead
-          </Link>
         </header>
 
         {errorMessage ? (

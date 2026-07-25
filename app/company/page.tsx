@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarDays, ChartNoAxesCombined, Plus, Rows3 } from "lucide-react";
+import { CalendarDays, ChartNoAxesCombined, Rows3 } from "lucide-react";
 import AttentionList from "@/components/dashboard/AttentionList";
 import DashboardSection from "@/components/dashboard/DashboardSection";
 import EmployeeAccountabilityTable from "@/components/dashboard/EmployeeAccountabilityTable";
@@ -9,7 +9,6 @@ import PipelineHealth from "@/components/dashboard/PipelineHealth";
 import RecentActivityFeed from "@/components/dashboard/RecentActivityFeed";
 import SalesPerformanceTable from "@/components/dashboard/SalesPerformanceTable";
 import WorkloadBalance from "@/components/dashboard/WorkloadBalance";
-import { buttonVariants } from "@/components/ui/button";
 import { canViewCompanyDashboard } from "@/lib/auth/roles";
 import { getCompanyDashboardData } from "@/lib/services/company-dashboard";
 import { requireEmployee } from "@/lib/services/employees";
@@ -28,7 +27,6 @@ export default async function CompanyDashboardPage() {
         <header className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div><p className="text-sm font-medium text-gray-500">Management Command Center</p><h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-950">Company Dashboard</h1><p className="mt-2 max-w-2xl text-gray-600">What requires management attention today across sales, scheduling, and operations.</p></div>
           <div className="flex flex-wrap gap-2">
-            <Link href="/leads/new" className={buttonVariants({ size: "lg", className: "h-11 gap-2 px-5 shadow-sm" })}><Plus className="size-5" />New Lead</Link>
             <QuickLink href="/pipeline" icon={<Rows3 className="size-4" />}>Pipeline</QuickLink>
             <QuickLink href="/calendar" icon={<CalendarDays className="size-4" />}>Calendar</QuickLink>
             <QuickLink href="/reports" icon={<ChartNoAxesCombined className="size-4" />}>Reports</QuickLink>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu, Plus, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import AppSidebar, { NavigationLinks } from "@/components/AppSidebar";
@@ -58,13 +58,22 @@ export default function AppShell({ children, employee }: { children: React.React
               </button>
             </div>
             <div className="p-4 pb-0">
-              <Link
-                href="/leads/new"
-                onClick={() => setMobileNavigationOpen(false)}
-                className="flex w-full items-center justify-center rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white"
-              >
-                + New Lead
-              </Link>
+              <div className="grid grid-cols-2 gap-2">
+                <Link
+                  href="/leads/new"
+                  onClick={() => setMobileNavigationOpen(false)}
+                  className="flex items-center justify-center rounded-lg bg-black px-3 py-3 text-sm font-semibold text-white"
+                >
+                  + New Lead
+                </Link>
+                <Link
+                  href="/tasks?new=1"
+                  onClick={() => setMobileNavigationOpen(false)}
+                  className="flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-3 text-sm font-semibold text-gray-800"
+                >
+                  + New Task
+                </Link>
+              </div>
             </div>
             <NavigationLinks
               employee={employee}
@@ -92,13 +101,23 @@ export default function AppShell({ children, employee }: { children: React.React
             </div>
           </div>
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <Link
-              href="/leads/new"
-              className="inline-flex h-9 shrink-0 items-center rounded-full bg-black px-3 text-sm font-semibold text-white hover:bg-gray-800 sm:px-4"
-            >
-              <span className="sm:hidden">+ Lead</span>
-              <span className="hidden sm:inline">+ New Lead</span>
-            </Link>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                href="/leads/new"
+                className="inline-flex h-9 items-center rounded-full bg-black px-3 text-sm font-semibold text-white hover:bg-gray-800 sm:px-4"
+              >
+                <span className="sm:hidden">+ Lead</span>
+                <span className="hidden sm:inline">+ New Lead</span>
+              </Link>
+              <Link
+                href="/tasks?new=1"
+                aria-label="Create a new task"
+                className="inline-flex h-9 items-center rounded-full border border-gray-300 bg-white px-2.5 text-sm font-semibold text-gray-800 hover:bg-gray-50 sm:px-4"
+              >
+                <Plus className="h-4 w-4 sm:hidden" aria-hidden="true" />
+                <span className="hidden sm:inline">+ New Task</span>
+              </Link>
+            </div>
             <GlobalSearch key={pathname} />
             <div className="hidden min-w-0 text-right lg:block">
               <p className="max-w-36 truncate text-sm font-medium text-gray-900">{employee?.name ?? "Foundation CRM"}</p>

@@ -28,7 +28,7 @@ export default async function LeadsPage() {
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-8">
       <div className="mx-auto max-w-7xl">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <header>
           <div>
             <Link
               href="/"
@@ -46,12 +46,6 @@ export default async function LeadsPage() {
             </p>
           </div>
 
-          <Link
-            href="/leads/new"
-            className="inline-flex w-fit rounded-lg bg-black px-5 py-2.5 font-medium text-white hover:bg-gray-800"
-          >
-            + New Lead
-          </Link>
         </header>
 
         {!errorMessage && (
