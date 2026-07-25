@@ -5,13 +5,32 @@ import type { CalendarAppointment } from "@/components/calendar/types";
 import type { Employee } from "@/lib/services/employees";
 import { getJobs, type Job } from "@/lib/services/jobs";
 import { getActiveInstallerCrews, type InstallerCrew } from "@/lib/services/installer-crews";
+import type { CalendarView } from "@/components/calendar/types";
+import type { CalendarMode } from "@/components/calendar/CalendarModeTabs";
 
 export const dynamic = "force-dynamic";
 
-type CalendarPageProps = { searchParams: Promise<{ appointment?: string; date?: string }> };
+type CalendarPageProps = {
+  searchParams: Promise<{
+    appointment?: string;
+    date?: string;
+    tab?: string;
+    view?: string;
+  }>;
+};
 
 export default async function CalendarPage({ searchParams }: CalendarPageProps) {
-  const { appointment: initialAppointmentId, date: initialDate } = await searchParams;
+  const {
+    appointment: initialAppointmentId,
+    date: initialDate,
+    tab,
+    view,
+  } = await searchParams;
+  const initialMode: CalendarMode = tab === "appointments" ? "appointments" : "installs";
+  const calendarViews: CalendarView[] = ["month", "week", "three_day", "day", "list"];
+  const initialView = calendarViews.includes(view as CalendarView)
+    ? (view as CalendarView)
+    : "month";
   let appointments: CalendarAppointment[] = [];
   let employees: Employee[] = [];
   let jobs: Job[] = [];
@@ -36,7 +55,16 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         {errorMessage ? (
           <div className="mt-6 rounded-lg bg-red-100 p-4 text-red-700">{errorMessage}</div>
         ) : (
-          <CalendarBoard initialAppointments={appointments} employees={employees} installerCrews={installerCrews} jobs={jobs} initialAppointmentId={initialAppointmentId} initialDate={initialDate} />
+          <CalendarBoard
+            initialAppointments={appointments}
+            employees={employees}
+            installerCrews={installerCrews}
+            jobs={jobs}
+            initialAppointmentId={initialAppointmentId}
+            initialDate={initialDate}
+            initialMode={initialMode}
+            initialView={initialView}
+          />
         )}
       </div>
     </main>

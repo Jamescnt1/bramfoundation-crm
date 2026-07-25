@@ -1,15 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AppointmentDetailsPanel from "@/components/calendar/AppointmentDetailsPanel";
 import AppointmentDialog from "@/components/calendar/AppointmentDialog";
 import CalendarGrid from "@/components/calendar/CalendarGrid";
 import CalendarListView from "@/components/calendar/CalendarListView";
 import CalendarScheduleView from "@/components/calendar/CalendarScheduleView";
 import CalendarToolbar from "@/components/calendar/CalendarToolbar";
+import CalendarModeTabs, { type CalendarMode } from "@/components/calendar/CalendarModeTabs";
 import DeleteAppointmentDialog from "@/components/calendar/DeleteAppointmentDialog";
-import InstallationScheduleBand from "@/components/calendar/InstallationScheduleBand";
+import InstallScheduleView from "@/components/calendar/InstallScheduleView";
 import {
   addDays,
   addMonths,
@@ -36,6 +37,8 @@ type CalendarBoardProps = {
   jobs: Job[];
   initialAppointmentId?: string;
   initialDate?: string;
+  initialMode?: CalendarMode;
+  initialView?: CalendarView;
 };
 
 function getHeading(view: CalendarView, date: Date) {
@@ -65,8 +68,12 @@ export default function CalendarBoard({
   jobs,
   initialAppointmentId,
   initialDate,
+  initialMode = "installs",
+  initialView = "month",
 }: CalendarBoardProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const linkedAppointment = initialAppointmentId
     ? initialAppointments.find((appointment) => appointment.id === initialAppointmentId) ?? null
     : null;
@@ -75,7 +82,8 @@ export default function CalendarBoard({
     : initialDate && !Number.isNaN(new Date(`${initialDate}T00:00:00`).getTime())
       ? new Date(`${initialDate}T00:00:00`)
       : new Date();
-  const [view, setView] = useState<CalendarView>("month");
+  const [mode, setMode] = useState<CalendarMode>(initialMode);
+  const [view, setView] = useState<CalendarView>(initialView);
   const [anchorDate, setAnchorDate] = useState(() => linkedDate);
   const [selectedDate, setSelectedDate] = useState<Date | null>(linkedDate);
   const [selectedAppointment, setSelectedAppointment] = useState<CalendarAppointment | null>(linkedAppointment);
@@ -89,6 +97,8 @@ export default function CalendarBoard({
     employeeId: "", eventType: "", status: "", customerId: "", jobId: "",
   });
   const [defaultAppointmentType, setDefaultAppointmentType] = useState<AppointmentType>("appointment");
+  const [installRangeDays, setInstallRangeDays] = useState(14);
+  const [installerCrewId, setInstallerCrewId] = useState("");
 
   const filteredAppointments = useMemo(() => initialAppointments.filter((appointment) => {
     if (filters.employeeId && appointment.assigned_employee_id !== filters.employeeId) return false;
@@ -105,6 +115,14 @@ export default function CalendarBoard({
     ),
     [filteredAppointments],
   );
+
+  function updateUrl(nextMode: CalendarMode, nextView: CalendarView = view) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", nextMode);
+    if (nextMode === "appointments") params.set("view", nextView);
+    else params.delete("view");
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }
 
   const month = useMemo(() => startOfMonth(anchorDate), [anchorDate]);
   const calendarDays = useMemo(() => getCalendarDays(month), [month]);
@@ -145,7 +163,21 @@ export default function CalendarBoard({
 
   function handleViewChange(nextView: CalendarView) {
     setView(nextView);
+    updateUrl("appointments", nextView);
     if (selectedDate) setAnchorDate(selectedDate);
+  }
+
+  function handleModeChange(nextMode: CalendarMode) {
+    setMode(nextMode);
+    updateUrl(nextMode);
+    const selectedIsInstallation = selectedAppointment?.appointment_type === "installation";
+    if (
+      selectedAppointment &&
+      ((nextMode === "installs" && !selectedIsInstallation) ||
+        (nextMode === "appointments" && selectedIsInstallation))
+    ) {
+      setSelectedAppointment(null);
+    }
   }
 
   function handleSelectDate(date: Date) {
@@ -180,65 +212,89 @@ export default function CalendarBoard({
     <>
       <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
         <section className="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <CalendarToolbar
-            heading={getHeading(view, anchorDate)}
-            view={view}
-            onViewChange={handleViewChange}
-            onPrevious={() => move(-1)}
-            onNext={() => move(1)}
-            onToday={handleToday}
-            onNewAppointment={() => {
-              setDefaultAppointmentType("appointment");
-              setAppointmentBeingEdited(null);
-              setAppointmentDialogOpen(true);
-            }}
-            onScheduleMeasure={() => {
-              setDefaultAppointmentType("measure");
-              setAppointmentBeingEdited(null);
-              setAppointmentDialogOpen(true);
-            }}
-            onScheduleInstallation={() => {
-              setDefaultAppointmentType("installation");
-              setAppointmentBeingEdited(null);
-              setAppointmentDialogOpen(true);
-            }}
-          />
+          <CalendarModeTabs value={mode} onChange={handleModeChange} />
 
-          <CalendarFilters value={filters} employees={employees} jobs={jobs} onChange={setFilters} />
-
-          {view !== "list" ? (
-            <InstallationScheduleBand
-              days={view === "month" ? calendarDays : scheduleDays}
-              appointments={filteredAppointments}
+          {mode === "installs" ? (
+            <InstallScheduleView
+              anchorDate={anchorDate}
+              rangeDays={installRangeDays}
+              installerCrewId={installerCrewId}
+              appointments={initialAppointments}
+              installerCrews={installerCrews}
               selectedAppointmentId={selectedAppointment?.id ?? null}
+              onAnchorDateChange={(date) => {
+                setAnchorDate(date);
+                setSelectedDate(date);
+              }}
+              onRangeDaysChange={setInstallRangeDays}
+              onInstallerCrewChange={setInstallerCrewId}
               onSelectAppointment={handleSelectAppointment}
-            />
-          ) : null}
-
-          {view === "month" ? (
-            <CalendarGrid
-              days={calendarDays}
-              currentMonth={month}
-              selectedDate={selectedDate}
-              selectedAppointmentId={selectedAppointment?.id ?? null}
-              appointmentsByDate={appointmentsByDate}
-              onSelectDate={handleSelectDate}
-              onSelectAppointment={handleSelectAppointment}
-            />
-          ) : view === "list" ? (
-            <CalendarListView
-              appointments={filteredAppointments}
-              selectedAppointmentId={selectedAppointment?.id ?? null}
-              onSelectAppointment={handleSelectAppointment}
+              onScheduleInstallation={() => {
+                setDefaultAppointmentType("installation");
+                setAppointmentBeingEdited(null);
+                setAppointmentDialogOpen(true);
+              }}
             />
           ) : (
-            <CalendarScheduleView
-              days={scheduleDays}
-              appointmentsByDate={appointmentsByDate}
-              selectedAppointmentId={selectedAppointment?.id ?? null}
-              onSelectDate={handleSelectDate}
-              onSelectAppointment={handleSelectAppointment}
-            />
+            <>
+              <CalendarToolbar
+                heading={getHeading(view, anchorDate)}
+                view={view}
+                onViewChange={handleViewChange}
+                onPrevious={() => move(-1)}
+                onNext={() => move(1)}
+                onToday={handleToday}
+                onNewAppointment={() => {
+                  setDefaultAppointmentType("appointment");
+                  setAppointmentBeingEdited(null);
+                  setAppointmentDialogOpen(true);
+                }}
+                onScheduleMeasure={() => {
+                  setDefaultAppointmentType("measure");
+                  setAppointmentBeingEdited(null);
+                  setAppointmentDialogOpen(true);
+                }}
+                onScheduleInstallation={() => {
+                  setDefaultAppointmentType("installation");
+                  setAppointmentBeingEdited(null);
+                  setAppointmentDialogOpen(true);
+                }}
+              />
+
+              <CalendarFilters
+                value={filters}
+                employees={employees}
+                jobs={jobs}
+                includeInstallations={false}
+                onChange={setFilters}
+              />
+
+              {view === "month" ? (
+                <CalendarGrid
+                  days={calendarDays}
+                  currentMonth={month}
+                  selectedDate={selectedDate}
+                  selectedAppointmentId={selectedAppointment?.id ?? null}
+                  appointmentsByDate={appointmentsByDate}
+                  onSelectDate={handleSelectDate}
+                  onSelectAppointment={handleSelectAppointment}
+                />
+              ) : view === "list" ? (
+                <CalendarListView
+                  appointments={timedAppointments}
+                  selectedAppointmentId={selectedAppointment?.id ?? null}
+                  onSelectAppointment={handleSelectAppointment}
+                />
+              ) : (
+                <CalendarScheduleView
+                  days={scheduleDays}
+                  appointmentsByDate={appointmentsByDate}
+                  selectedAppointmentId={selectedAppointment?.id ?? null}
+                  onSelectDate={handleSelectDate}
+                  onSelectAppointment={handleSelectAppointment}
+                />
+              )}
+            </>
           )}
         </section>
 

@@ -16,12 +16,19 @@ type Props = {
   value: CalendarFilterValues;
   employees: Employee[];
   jobs: Job[];
+  includeInstallations?: boolean;
   onChange: (value: CalendarFilterValues) => void;
 };
 
 const label = (value: string) => value.split("_").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
 
-export default function CalendarFilters({ value, employees, jobs, onChange }: Props) {
+export default function CalendarFilters({
+  value,
+  employees,
+  jobs,
+  includeInstallations = true,
+  onChange,
+}: Props) {
   const customers = Array.from(
     new Map(jobs.filter((job) => job.customer_id).map((job) => [job.customer_id, job.customer?.full_name ?? "Customer unavailable"])).entries(),
   );
@@ -38,7 +45,9 @@ export default function CalendarFilters({ value, employees, jobs, onChange }: Pr
       </Filter>
       <Filter label="Event type" value={value.eventType} onChange={(next) => set({ eventType: next as CalendarFilterValues["eventType"] })}>
         <option value="">All event types</option>
-        {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{label(type)}</option>)}
+        {APPOINTMENT_TYPES.filter(
+          (type) => includeInstallations || type !== "installation",
+        ).map((type) => <option key={type} value={type}>{label(type)}</option>)}
       </Filter>
       <Filter label="Status" value={value.status} onChange={(next) => set({ status: next as CalendarFilterValues["status"] })}>
         <option value="">All statuses</option>

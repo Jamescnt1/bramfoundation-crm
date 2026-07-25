@@ -79,15 +79,6 @@ function buildSegments(
     });
 }
 
-function getVisibleGroups(days: Date[]) {
-  if (days.length <= 7) return [days];
-
-  return Array.from(
-    { length: Math.ceil(days.length / 7) },
-    (_, index) => days.slice(index * 7, index * 7 + 7),
-  );
-}
-
 export default function InstallationScheduleBand({
   days,
   appointments,
@@ -97,7 +88,8 @@ export default function InstallationScheduleBand({
   const installAppointments = appointments.filter(
     (appointment) => appointment.appointment_type === "installation",
   );
-  const groups = getVisibleGroups(days);
+  const segments = buildSegments(days, installAppointments);
+  const laneCount = Math.max(1, ...segments.map((segment) => segment.lane + 1));
   const visibleInstallCount = installAppointments.filter((appointment) => {
     if (!days.length) return false;
     const start = startOfDay(new Date(appointment.starts_at));
@@ -106,7 +98,7 @@ export default function InstallationScheduleBand({
   }).length;
 
   return (
-    <section className="border-b border-emerald-200 bg-emerald-50/40">
+    <section className="bg-emerald-50/40">
       <div className="flex items-center justify-between border-b border-emerald-200 px-3 py-2">
         <div>
           <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-950">
@@ -122,78 +114,67 @@ export default function InstallationScheduleBand({
       </div>
 
       <div className="overflow-x-auto">
-        <div className={days.length > 7 ? "min-w-[760px]" : "min-w-[680px]"}>
-          {groups.map((group) => {
-            const segments = buildSegments(group, installAppointments);
-            const laneCount = Math.max(1, ...segments.map((segment) => segment.lane + 1));
-
-            return (
+        <div style={{ minWidth: `${Math.max(720, days.length * 96)}px` }}>
+          <div
+            className="grid divide-x divide-emerald-100 border-b border-emerald-200 bg-white/60"
+            style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+          >
+            {days.map((day) => (
               <div
-                key={`${formatDateKey(group[0])}-${formatDateKey(group[group.length - 1])}`}
-                className="border-b border-emerald-100 last:border-b-0"
+                key={formatDateKey(day)}
+                className="px-2 py-2 text-center text-[10px] font-semibold text-emerald-900/70"
               >
-                <div
-                  className="grid divide-x divide-emerald-100 bg-white/50"
-                  style={{ gridTemplateColumns: `repeat(${group.length}, minmax(0, 1fr))` }}
-                >
-                  {group.map((day) => (
-                    <div key={formatDateKey(day)} className="px-2 py-1 text-center text-[10px] font-medium text-emerald-900/70">
-                      {new Intl.DateTimeFormat("en-US", {
-                        weekday: "short",
-                        month: "numeric",
-                        day: "numeric",
-                      }).format(day)}
-                    </div>
-                  ))}
-                </div>
-
-                <div
-                  className="grid gap-y-1 px-1 py-1.5"
-                  style={{
-                    gridTemplateColumns: `repeat(${group.length}, minmax(0, 1fr))`,
-                    gridTemplateRows: `repeat(${laneCount}, 26px)`,
-                  }}
-                >
-                  {segments.length ? (
-                    segments.map((segment) => (
-                      <div
-                        key={`${segment.appointment.id}-${formatDateKey(group[0])}`}
-                        style={{
-                          gridColumn: `${segment.startColumn + 1} / ${segment.endColumn + 2}`,
-                          gridRow: segment.lane + 1,
-                        }}
-                        className="min-w-0 px-0.5"
-                      >
-                        <AppointmentTooltip
-                          appointment={segment.appointment}
-                          displayName={formatInstallLabel(segment.appointment)}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => onSelectAppointment(segment.appointment)}
-                            className={`h-6 w-full truncate rounded border border-emerald-300 bg-emerald-600 px-2 text-left text-[11px] font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-900 focus:ring-offset-1 ${
-                              selectedAppointmentId === segment.appointment.id
-                                ? "ring-2 ring-emerald-950 ring-offset-1"
-                                : ""
-                            }`}
-                          >
-                            {formatInstallLabel(segment.appointment)}
-                          </button>
-                        </AppointmentTooltip>
-                      </div>
-                    ))
-                  ) : (
-                    <p
-                      className="col-span-full self-center px-2 text-[11px] text-emerald-800/70"
-                      style={{ gridRow: 1 }}
-                    >
-                      No installations scheduled
-                    </p>
-                  )}
-                </div>
+                {new Intl.DateTimeFormat("en-US", {
+                  weekday: "short",
+                  month: "numeric",
+                  day: "numeric",
+                }).format(day)}
               </div>
-            );
-          })}
+            ))}
+          </div>
+
+          <div
+            className="grid gap-y-1.5 bg-[linear-gradient(to_right,rgba(16,185,129,0.12)_1px,transparent_1px)] px-1 py-2"
+            style={{
+              backgroundSize: `${100 / Math.max(days.length, 1)}% 100%`,
+              gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${laneCount}, 30px)`,
+            }}
+          >
+            {segments.length ? (
+              segments.map((segment) => (
+                <div
+                  key={segment.appointment.id}
+                  style={{
+                    gridColumn: `${segment.startColumn + 1} / ${segment.endColumn + 2}`,
+                    gridRow: segment.lane + 1,
+                  }}
+                  className="min-w-0 px-0.5"
+                >
+                  <AppointmentTooltip
+                    appointment={segment.appointment}
+                    displayName={formatInstallLabel(segment.appointment)}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onSelectAppointment(segment.appointment)}
+                      className={`h-7 w-full truncate rounded-md border border-emerald-300 bg-emerald-600 px-2 text-left text-[11px] font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-900 focus:ring-offset-1 ${
+                        selectedAppointmentId === segment.appointment.id
+                          ? "ring-2 ring-emerald-950 ring-offset-1"
+                          : ""
+                      }`}
+                    >
+                      {formatInstallLabel(segment.appointment)}
+                    </button>
+                  </AppointmentTooltip>
+                </div>
+              ))
+            ) : (
+              <p className="col-span-full self-center px-3 text-xs text-emerald-800/70">
+                No installations scheduled in this range.
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </section>
