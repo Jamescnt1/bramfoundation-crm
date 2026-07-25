@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import AppSidebar, { NavigationLinks } from "@/components/AppSidebar";
 import SignOutButton from "@/components/auth/SignOutButton";
+import GlobalSearch from "@/components/search/GlobalSearch";
 import type { Employee } from "@/lib/services/employees";
 import { getRoleLabel } from "@/lib/auth/roles";
 
@@ -90,10 +91,20 @@ export default function AppShell({ children, employee }: { children: React.React
             <p className="hidden text-sm text-gray-500 sm:block">Sales Operations</p>
             </div>
           </div>
-          <div className="min-w-0 text-right">
-            <p className="max-w-28 truncate text-sm font-medium text-gray-900 sm:max-w-none">{employee?.name ?? "Foundation CRM"}</p>
-            <p className="hidden text-xs text-gray-500 sm:block">{employee ? getRoleLabel(employee.role) : "Employee"}</p>
-            {employee ? <SignOutButton /> : null}
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <Link
+              href="/leads/new"
+              className="inline-flex h-9 shrink-0 items-center rounded-full bg-black px-3 text-sm font-semibold text-white hover:bg-gray-800 sm:px-4"
+            >
+              <span className="sm:hidden">+ Lead</span>
+              <span className="hidden sm:inline">+ New Lead</span>
+            </Link>
+            <GlobalSearch key={pathname} />
+            <div className="hidden min-w-0 text-right lg:block">
+              <p className="max-w-36 truncate text-sm font-medium text-gray-900">{employee?.name ?? "Foundation CRM"}</p>
+              <p className="text-xs text-gray-500">{employee ? getRoleLabel(employee.role) : "Employee"}</p>
+              {employee ? <SignOutButton /> : null}
+            </div>
           </div>
         </header>
         <div>{children}</div>
