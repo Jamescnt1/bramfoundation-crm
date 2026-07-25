@@ -11,6 +11,31 @@ Use this document to disable or remove the Layouts beta while preserving the cur
 
 This is the safest rollback. It changes no customer/job data and allows the feature to be re-enabled.
 
+## July 2026 version-2 drawing-model rollback
+
+The refined editor writes `document_data.version = 2`. Version 2 adds:
+
+- Portrait/landscape page orientation
+- Independent grid visibility and snapping
+- Object opacity, rotation, scale, lock state, and layer order
+- Highlighter strokes
+- Embedded compressed photo objects
+- Partial-stroke erase results (one stroke may become several stroke objects)
+
+No database column or table is changed by this editor revision. However, the original
+version-1 editor does not understand version-2 JSON. Therefore:
+
+1. The safest rollback remains `LAYOUTS_BETA_ENABLED=false`.
+2. Do not deploy the original version-1 editor while version-2 records remain accessible.
+3. To restore editing without data loss, deploy the last version-2-compatible application.
+4. A code rollback to the version-1 editor requires either restoring a pre-upgrade database
+   backup or running a purpose-built JSON downgrade/export process first.
+5. PNG/PDF exports are flattened safety copies and cannot reconstruct editable objects.
+
+Opening a version-1 document in the revised editor is non-destructive. It is normalized in
+memory and is only written back as version 2 after the user changes the drawing or metadata.
+Existing Door and Stairs objects remain readable even though their creation buttons are gone.
+
 ## Full code rollback in reverse order
 
 1. Revert the Layouts implementation commit(s), keeping unrelated later work.
@@ -63,6 +88,7 @@ PNG/PDF exports saved through Job Files are normal `job_attachments` records. Ke
 
 - Disabling the flag is non-destructive.
 - Reverting application code is non-destructive if the table/storage remain.
+- Reverting specifically to the version-1 editor is not compatible with saved version-2 JSON.
 - Dropping `job_layouts` permanently removes editable drawings.
 - Removing preview objects permanently removes previews but not editable JSON until the table is dropped.
 - Saved PNG/PDF exports remain ordinary Job Files and are independent of the Layouts table.
@@ -94,3 +120,4 @@ If the database migration and data were retained:
 4. Open a known saved layout and confirm its editable model and preview.
 5. Test an autosave and export before reopening access to the full beta group.
 
+For records upgraded to document version 2, recovery must use a version-2-compatible build.

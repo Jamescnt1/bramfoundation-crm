@@ -3,7 +3,7 @@ import { canvasToBlob, renderPageToCanvas } from "@/components/layouts/layout-re
 
 export async function layoutDocumentToPdf(document: LayoutDocument) {
   const pages = await Promise.all(document.pages.map(async (page) => {
-    const canvas = renderPageToCanvas(page);
+    const canvas = await renderPageToCanvas(page);
     const blob = await canvasToBlob(canvas, "image/jpeg", 0.9);
     return { bytes: new Uint8Array(await blob.arrayBuffer()), width: canvas.width, height: canvas.height };
   }));

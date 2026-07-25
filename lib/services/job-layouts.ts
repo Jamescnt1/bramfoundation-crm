@@ -1,14 +1,14 @@
 import "server-only";
 
-import type { JobLayout, LayoutDocument, LayoutTemplate } from "@/components/layouts/types";
-import { createLayoutDocument } from "@/components/layouts/types";
+import type { JobLayout, LayoutDocument, LayoutOrientation, LayoutTemplate } from "@/components/layouts/types";
+import { createLayoutDocument, normalizeLayoutDocument } from "@/components/layouts/types";
 import { requireLayoutsBeta } from "@/lib/features/layouts-beta";
 import { requireEmployee, requirePermission } from "@/lib/services/employees";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const BUCKET = "job-attachments";
 const SIGNED_URL_SECONDS = 60 * 60;
-const MAXIMUM_DOCUMENT_BYTES = 3 * 1024 * 1024;
+const MAXIMUM_DOCUMENT_BYTES = Math.floor(3.5 * 1024 * 1024);
 
 export async function getJobLayouts(jobId: string): Promise<JobLayout[]> {
   requireLayoutsBeta();
@@ -46,7 +46,7 @@ export async function getJobLayouts(jobId: string): Promise<JobLayout[]> {
 
   return rows.map((row) => ({
     ...row,
-    document_data: row.document_data as LayoutDocument,
+    document_data: normalizeLayoutDocument(row.document_data as LayoutDocument),
     created_by: firstRelation(row.created_by),
     updated_by: firstRelation(row.updated_by),
     preview_url: row.preview_storage_path ? previewUrls.get(row.preview_storage_path) ?? null : null,
@@ -57,13 +57,14 @@ export async function createJobLayout(input: {
   jobId: string;
   name: string;
   template: LayoutTemplate;
+  orientation: LayoutOrientation;
 }) {
   requireLayoutsBeta();
   const actor = await requirePermission("layouts.manage");
   const admin = createAdminClient();
   await requireActiveJob(admin, input.jobId);
   const name = validateName(input.name);
-  const document = createLayoutDocument(input.template);
+  const document = createLayoutDocument(input.template, input.orientation);
 
   const { data, error } = await admin
     .from("job_layouts")
@@ -189,7 +190,7 @@ function validateName(value: string) {
 }
 
 function validateDocument(document: LayoutDocument) {
-  if (document.version !== 1 || !Array.isArray(document.pages) || document.pages.length < 1 || document.pages.length > 50) {
+  if (document.version !== 2 || !Array.isArray(document.pages) || document.pages.length < 1 || document.pages.length > 50) {
     throw new Error("The layout document is invalid.");
   }
   if (!document.pages.some((page) => page.id === document.activePageId)) throw new Error("The active layout page is invalid.");
@@ -198,12 +199,14 @@ function validateDocument(document: LayoutDocument) {
     if (!page.id || !page.name || page.width < 300 || page.width > 5000 || page.height < 300 || page.height > 5000) {
       throw new Error("A layout page is invalid.");
     }
+    if (!["portrait", "landscape"].includes(page.orientation)) throw new Error("A layout orientation is invalid.");
+    if (![0, 15, 25, 50].includes(page.gridSize)) throw new Error("A layout grid size is invalid.");
     if (!Array.isArray(page.objects)) throw new Error("Layout objects are invalid.");
     objectCount += page.objects.length;
   }
   if (objectCount > 10_000) throw new Error("This layout contains too many drawing objects.");
   if (Buffer.byteLength(JSON.stringify(document), "utf8") > MAXIMUM_DOCUMENT_BYTES) {
-    throw new Error("This layout exceeds the 3 MB editable-data limit.");
+    throw new Error("This layout exceeds the 3.5 MB editable-data limit. Remove or reduce one or more photos.");
   }
 }
 

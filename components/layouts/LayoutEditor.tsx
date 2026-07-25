@@ -1,31 +1,53 @@
 "use client";
 
 import {
-  DoorOpen,
+  BringToFront,
+  Camera,
+  Copy,
   Download,
   Eraser,
+  Expand,
   FileDown,
   Grid3X3,
   Hand,
+  Highlighter,
+  ImagePlus,
+  Lock,
+  Maximize2,
   Minus,
   MousePointer2,
   Plus,
   Redo2,
+  RotateCcw,
+  RotateCw,
   Save,
+  SendToBack,
+  Shrink,
   Square,
-  Rows3,
   TextCursorInput,
+  Trash2,
   Undo2,
+  Unlock,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   LayoutDocument,
+  LayoutGridSize,
   LayoutObject,
+  LayoutOrientation,
   LayoutPage,
   LayoutPoint,
   LayoutTool,
 } from "@/components/layouts/types";
-import { canvasToBlob, drawObject, renderLayoutPage, renderPageToCanvas } from "@/components/layouts/layout-renderer";
+import { createObjectBase } from "@/components/layouts/types";
+import {
+  canvasToBlob,
+  drawObject,
+  getObjectBounds,
+  renderLayoutPage,
+  renderPageToCanvas,
+} from "@/components/layouts/layout-renderer";
 import { layoutDocumentToPdf } from "@/components/layouts/pdf-export";
 
 type Props = {
@@ -38,44 +60,60 @@ type Props = {
   onPreview: (blob: Blob) => Promise<void | string>;
 };
 
-const colors = ["#111827", "#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c"];
+type Marquee = { start: LayoutPoint; end: LayoutPoint };
+type Interaction = {
+  pointerId: number;
+  start: LayoutPoint;
+  last: LayoutPoint;
+  draft: LayoutObject | null;
+  mode: "draw" | "erase" | "move" | "marquee" | "pan";
+  originalObjects?: LayoutObject[];
+  panStart?: { x: number; y: number; offsetX: number; offsetY: number };
+};
 
-export default function LayoutEditor({
-  jobId,
-  name,
-  document,
-  canManage,
-  saveState,
-  onDocumentChange,
-  onPreview,
-}: Props) {
+const penColors = ["#111827", "#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c"];
+const highlighterColors = ["#fde047", "#86efac", "#7dd3fc", "#f9a8d4"];
+const widthOptions = [2, 4, 7, 11, 16];
+const gridOptions: Array<{ label: string; value: LayoutGridSize }> = [
+  { label: "Off", value: 0 },
+  { label: "Small", value: 15 },
+  { label: "Medium", value: 25 },
+  { label: "Large", value: 50 },
+];
+
+export default function LayoutEditor(props: Props) {
+  const { jobId, name, document, canManage, saveState, onDocumentChange, onPreview } = props;
+  const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
-  const interaction = useRef<{
-    pointerId: number;
-    start: LayoutPoint;
-    last: LayoutPoint;
-    draft: LayoutObject | null;
-    panStart?: { x: number; y: number; offsetX: number; offsetY: number };
-  } | null>(null);
-  const pinch = useRef<{ distance: number; zoom: number; center: { x: number; y: number } } | null>(null);
+  const interaction = useRef<Interaction | null>(null);
+  const pinch = useRef<{ distance: number; zoom: number } | null>(null);
   const undoStack = useRef<LayoutDocument[]>([]);
   const redoStack = useRef<LayoutDocument[]>([]);
-  const [tool, setTool] = useState<LayoutTool>("pen");
-  const [color, setColor] = useState(colors[0]);
-  const [thickness, setThickness] = useState(4);
-  const [snap, setSnap] = useState(true);
-  const [zoom, setZoom] = useState(0.75);
+  const [tool, setTool] = useState<LayoutTool>("select");
+  const [color, setColor] = useState(penColors[0]);
+  const [highlighterColor, setHighlighterColor] = useState(highlighterColors[0]);
+  const [toolWidths, setToolWidths] = useState({ pen: 4, highlighter: 16, eraser: 16 });
+  const [zoom, setZoom] = useState(0.55);
   const [offset, setOffset] = useState({ x: 28, y: 28 });
   const [viewport, setViewport] = useState({ width: 900, height: 620 });
   const [draft, setDraft] = useState<LayoutObject | null>(null);
+  const [marquee, setMarquee] = useState<Marquee | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState("");
   const [online, setOnline] = useState(true);
   const page = useMemo(
     () => document.pages.find((item) => item.id === document.activePageId) ?? document.pages[0],
     [document],
+  );
+  const selectedObjects = useMemo(
+    () => page.objects.filter((object) => selectedIds.includes(object.id)),
+    [page.objects, selectedIds],
   );
 
   const redraw = useCallback(() => {
@@ -97,11 +135,13 @@ export default function LayoutEditor({
     context.shadowColor = "rgba(0,0,0,.18)";
     context.shadowBlur = 12 / zoom;
     context.shadowOffsetY = 3 / zoom;
-    renderLayoutPage(context, page);
+    renderLayoutPage(context, page, { onImageLoad: redraw });
     context.shadowColor = "transparent";
-    if (draft) drawObject(context, draft);
+    if (draft) drawObject(context, draft, redraw);
+    drawSelection(context, page.objects, selectedIds, zoom);
+    if (marquee) drawMarquee(context, marquee, zoom);
     context.restore();
-  }, [draft, offset, page, viewport, zoom]);
+  }, [draft, marquee, offset, page, selectedIds, viewport, zoom]);
 
   useEffect(() => redraw(), [redraw]);
   useEffect(() => {
@@ -110,12 +150,14 @@ export default function LayoutEditor({
     const observer = new ResizeObserver(([entry]) => {
       setViewport({
         width: Math.max(320, Math.floor(entry.contentRect.width)),
-        height: Math.max(460, Math.min(720, window.innerHeight - 260)),
+        height: isFullScreen
+          ? Math.max(420, Math.floor(window.innerHeight - 116))
+          : Math.max(460, Math.min(760, window.innerHeight - 245)),
       });
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [isFullScreen]);
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
     update();
@@ -126,14 +168,20 @@ export default function LayoutEditor({
       window.removeEventListener("offline", update);
     };
   }, []);
-
+  useEffect(() => {
+    const onFullScreenChange = () => {
+      if (!documentFullscreenElement()) setIsFullScreen(false);
+    };
+    window.document.addEventListener("fullscreenchange", onFullScreenChange);
+    return () => window.document.removeEventListener("fullscreenchange", onFullScreenChange);
+  }, []);
   useEffect(() => {
     const timer = window.setTimeout(async () => {
       try {
-        const previewCanvas = renderPageToCanvas(page, 900);
+        const previewCanvas = await renderPageToCanvas(page, 900);
         await onPreview(await canvasToBlob(previewCanvas));
       } catch {
-        // Preview generation is best-effort; editable autosave remains authoritative.
+        // Editable autosave is authoritative; preview generation is best effort.
       }
     }, 8000);
     return () => window.clearTimeout(timer);
@@ -141,12 +189,14 @@ export default function LayoutEditor({
 
   function commit(next: LayoutDocument, trackHistory = true) {
     if (!canManage) return;
-    if (trackHistory) {
-      undoStack.current.push(structuredClone(document));
-      if (undoStack.current.length > 75) undoStack.current.shift();
-      redoStack.current = [];
-    }
+    if (trackHistory) pushHistory();
     onDocumentChange(next);
+  }
+
+  function pushHistory() {
+    undoStack.current.push(structuredClone(document));
+    if (undoStack.current.length > 75) undoStack.current.shift();
+    redoStack.current = [];
   }
 
   function updatePage(nextPage: LayoutPage, trackHistory = true) {
@@ -156,11 +206,19 @@ export default function LayoutEditor({
     }, trackHistory);
   }
 
+  function updatePageWithoutHistory(nextPage: LayoutPage) {
+    onDocumentChange({
+      ...document,
+      pages: document.pages.map((item) => item.id === nextPage.id ? nextPage : item),
+    });
+  }
+
   function undo() {
     const previous = undoStack.current.pop();
     if (!previous) return;
     redoStack.current.push(structuredClone(document));
     onDocumentChange(previous);
+    setSelectedIds([]);
   }
 
   function redo() {
@@ -168,6 +226,7 @@ export default function LayoutEditor({
     if (!next) return;
     undoStack.current.push(structuredClone(document));
     onDocumentChange(next);
+    setSelectedIds([]);
   }
 
   function canvasPoint(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -177,13 +236,18 @@ export default function LayoutEditor({
       y: (event.clientY - bounds.top - offset.y) / zoom,
       pressure: event.pressure || undefined,
     };
-    return snap && tool !== "pen" && tool !== "eraser"
-      ? { ...raw, x: Math.round(raw.x / page.gridSize) * page.gridSize, y: Math.round(raw.y / page.gridSize) * page.gridSize }
+    return page.snapToGrid && page.gridSize > 0 && !["pen", "highlighter", "eraser", "select"].includes(tool)
+      ? {
+          ...raw,
+          x: Math.round(raw.x / page.gridSize) * page.gridSize,
+          y: Math.round(raw.y / page.gridSize) * page.gridSize,
+        }
       : raw;
   }
 
   function onPointerDown(event: React.PointerEvent<HTMLCanvasElement>) {
     if (!canManage) return;
+    event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pointers.current.size === 2) {
@@ -193,7 +257,6 @@ export default function LayoutEditor({
       pinch.current = {
         distance: Math.hypot(values[1].x - values[0].x, values[1].y - values[0].y),
         zoom,
-        center: { x: (values[0].x + values[1].x) / 2, y: (values[0].y + values[1].y) / 2 },
       };
       return;
     }
@@ -204,13 +267,50 @@ export default function LayoutEditor({
         start: point,
         last: point,
         draft: null,
+        mode: "pan",
         panStart: { x: event.clientX, y: event.clientY, offsetX: offset.x, offsetY: offset.y },
       };
       return;
     }
+    if (tool === "select") {
+      const hit = [...page.objects].reverse().find((object) => hitObject(object, point, 14 / zoom));
+      if (hit) {
+        const selection = event.shiftKey
+          ? selectedIds.includes(hit.id)
+            ? selectedIds.filter((id) => id !== hit.id)
+            : [...selectedIds, hit.id]
+          : selectedIds.includes(hit.id)
+            ? selectedIds
+            : [hit.id];
+        setSelectedIds(selection);
+        pushHistory();
+        interaction.current = {
+          pointerId: event.pointerId,
+          start: point,
+          last: point,
+          draft: null,
+          mode: "move",
+          originalObjects: structuredClone(page.objects),
+        };
+      } else {
+        if (!event.shiftKey) setSelectedIds([]);
+        setMarquee({ start: point, end: point });
+        interaction.current = { pointerId: event.pointerId, start: point, last: point, draft: null, mode: "marquee" };
+      }
+      return;
+    }
     if (tool === "eraser") {
-      eraseAt(point);
-      interaction.current = { pointerId: event.pointerId, start: point, last: point, draft: null };
+      pushHistory();
+      const nextObjects = eraseStrokeParts(page.objects, point, toolWidths.eraser / zoom);
+      updatePageWithoutHistory({ ...page, objects: nextObjects });
+      interaction.current = {
+        pointerId: event.pointerId,
+        start: point,
+        last: point,
+        draft: null,
+        mode: "erase",
+        originalObjects: nextObjects,
+      };
       return;
     }
     if (tool === "text" || tool === "room") {
@@ -219,40 +319,42 @@ export default function LayoutEditor({
         updatePage({
           ...page,
           objects: [...page.objects, {
-            id: crypto.randomUUID(),
+            ...createObjectBase({ color, thickness: 2 }),
             type: tool,
             point,
             text: value.trim(),
             fontSize: tool === "room" ? 30 : 22,
-            color,
-            thickness,
           }],
         });
       }
       return;
     }
-    if (tool === "door" || tool === "stairs" || tool === "transition") {
+    if (tool === "transition") {
       updatePage({
         ...page,
         objects: [...page.objects, {
-          id: crypto.randomUUID(),
+          ...createObjectBase({ color, thickness: 3 }),
           type: "symbol",
-          symbol: tool,
+          symbol: "transition",
           point,
-          size: tool === "transition" ? 100 : 70,
-          color,
-          thickness,
+          size: 100,
         }],
       });
       return;
     }
-    const object = makeDraft(tool, point, color, thickness);
-    interaction.current = { pointerId: event.pointerId, start: point, last: point, draft: object };
+    if (tool === "photo") {
+      photoInputRef.current?.click();
+      return;
+    }
+    const object = makeDraft(tool, point, color, highlighterColor, toolWidths);
+    if (!object) return;
+    interaction.current = { pointerId: event.pointerId, start: point, last: point, draft: object, mode: "draw" };
     setDraft(object);
   }
 
   function onPointerMove(event: React.PointerEvent<HTMLCanvasElement>) {
     if (!pointers.current.has(event.pointerId)) return;
+    event.preventDefault();
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pointers.current.size >= 2 && pinch.current) {
       const values = [...pointers.current.values()];
@@ -271,13 +373,32 @@ export default function LayoutEditor({
     }
     const point = canvasPoint(event);
     current.last = point;
-    if (tool === "eraser") {
-      eraseAt(point);
+    if (current.mode === "erase") {
+      const source = current.originalObjects ?? page.objects;
+      const next = eraseStrokeParts(source, point, toolWidths.eraser / zoom);
+      current.originalObjects = next;
+      updatePageWithoutHistory({ ...page, objects: next });
+      return;
+    }
+    if (current.mode === "move" && current.originalObjects) {
+      const dx = point.x - current.start.x;
+      const dy = point.y - current.start.y;
+      const next = current.originalObjects.map((object) =>
+        selectedIds.includes(object.id) && !object.locked ? moveObject(object, dx, dy) : object,
+      );
+      updatePageWithoutHistory({ ...page, objects: next });
+      return;
+    }
+    if (current.mode === "marquee") {
+      setMarquee({ start: current.start, end: point });
       return;
     }
     if (!current.draft) return;
-    if (current.draft.type === "stroke") current.draft = { ...current.draft, points: [...current.draft.points, point] };
-    else if ("end" in current.draft) current.draft = { ...current.draft, end: point };
+    if (current.draft.type === "stroke") {
+      current.draft = { ...current.draft, points: [...current.draft.points, point] };
+    } else if ("end" in current.draft) {
+      current.draft = { ...current.draft, end: point };
+    }
     setDraft(current.draft);
   }
 
@@ -286,7 +407,14 @@ export default function LayoutEditor({
     if (pointers.current.size < 2) pinch.current = null;
     const current = interaction.current;
     if (!current || current.pointerId !== event.pointerId) return;
-    if (current.draft) {
+    if (current.mode === "marquee") {
+      const selectionBox = normalizeBox({ start: current.start, end: current.last });
+      const matches = page.objects
+        .filter((object) => boxesIntersect(selectionBox, getObjectBounds(object)))
+        .map((object) => object.id);
+      setSelectedIds(matches);
+      setMarquee(null);
+    } else if (current.draft) {
       let object = current.draft;
       if (object.type === "dimension") {
         const label = window.prompt("Dimension (feet/inches)", "0' 0\"")?.trim();
@@ -303,13 +431,6 @@ export default function LayoutEditor({
     interaction.current = null;
   }
 
-  function eraseAt(point: LayoutPoint) {
-    const index = [...page.objects].reverse().findIndex((object) => hitObject(object, point, 18 / zoom));
-    if (index < 0) return;
-    const actualIndex = page.objects.length - 1 - index;
-    updatePage({ ...page, objects: page.objects.filter((_, itemIndex) => itemIndex !== actualIndex) });
-  }
-
   function onWheel(event: React.WheelEvent<HTMLCanvasElement>) {
     event.preventDefault();
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -320,6 +441,71 @@ export default function LayoutEditor({
     setOffset({ x: cursor.x - world.x * nextZoom, y: cursor.y - world.y * nextZoom });
   }
 
+  function changeSelected(action: (object: LayoutObject) => LayoutObject) {
+    if (!selectedIds.length) return;
+    updatePage({
+      ...page,
+      objects: page.objects.map((object) => selectedIds.includes(object.id) ? action(object) : object),
+    });
+  }
+
+  function duplicateSelected() {
+    if (!selectedObjects.length) return;
+    const duplicates = selectedObjects.map((object) => ({
+      ...moveObject(structuredClone(object), 24, 24),
+      id: crypto.randomUUID(),
+      locked: false,
+    }));
+    updatePage({ ...page, objects: [...page.objects, ...duplicates] });
+    setSelectedIds(duplicates.map((object) => object.id));
+  }
+
+  function deleteSelected() {
+    if (!selectedIds.length) return;
+    updatePage({ ...page, objects: page.objects.filter((object) => !selectedIds.includes(object.id)) });
+    setSelectedIds([]);
+  }
+
+  function bringSelectedForward() {
+    if (!selectedIds.length) return;
+    const selected = page.objects.filter((object) => selectedIds.includes(object.id));
+    const rest = page.objects.filter((object) => !selectedIds.includes(object.id));
+    updatePage({ ...page, objects: [...rest, ...selected] });
+  }
+
+  function sendSelectedBackward() {
+    if (!selectedIds.length) return;
+    const selected = page.objects.filter((object) => selectedIds.includes(object.id));
+    const rest = page.objects.filter((object) => !selectedIds.includes(object.id));
+    updatePage({ ...page, objects: [...selected, ...rest] });
+  }
+
+  async function insertPhoto(file: File | undefined) {
+    if (!file) return;
+    setExportMessage("");
+    try {
+      const photo = await preparePhoto(file);
+      const maximumWidth = Math.min(page.width * 0.65, 700);
+      const scale = Math.min(1, maximumWidth / photo.width);
+      const width = photo.width * scale;
+      const height = photo.height * scale;
+      const object: LayoutObject = {
+        ...createObjectBase(),
+        type: "photo",
+        point: { x: (page.width - width) / 2, y: (page.height - height) / 2 },
+        width,
+        height,
+        dataUrl: photo.dataUrl,
+        fileName: file.name || "Photo",
+      };
+      updatePage({ ...page, objects: [...page.objects, object] });
+      setSelectedIds([object.id]);
+      setTool("select");
+    } catch (error) {
+      setExportMessage(error instanceof Error ? error.message : "Unable to add that photo.");
+    }
+  }
+
   function addPage() {
     const id = crypto.randomUUID();
     const nextPage: LayoutPage = {
@@ -327,8 +513,10 @@ export default function LayoutEditor({
       name: `Page ${document.pages.length + 1}`,
       width: page.width,
       height: page.height,
+      orientation: page.orientation,
       gridSize: page.gridSize,
       showGrid: page.showGrid,
+      snapToGrid: page.snapToGrid,
       objects: [],
     };
     commit({ ...document, activePageId: id, pages: [...document.pages, nextPage] });
@@ -340,12 +528,45 @@ export default function LayoutEditor({
     commit({ ...document, activePageId: pages[0].id, pages });
   }
 
+  function changeOrientation(orientation: LayoutOrientation) {
+    if (page.orientation === orientation) return;
+    const nextWidth = page.height;
+    const nextHeight = page.width;
+    const scaleX = nextWidth / page.width;
+    const scaleY = nextHeight / page.height;
+    updatePage({
+      ...page,
+      orientation,
+      width: nextWidth,
+      height: nextHeight,
+      objects: page.objects.map((object) => scaleObjectGeometry(object, scaleX, scaleY)),
+    });
+    setOffset({ x: 28, y: 28 });
+  }
+
+  async function toggleFullScreen() {
+    if (isFullScreen) {
+      if (documentFullscreenElement() && window.document.exitFullscreen) await window.document.exitFullscreen();
+      setIsFullScreen(false);
+      return;
+    }
+    setIsFullScreen(true);
+    const element = rootRef.current;
+    if (element?.requestFullscreen) {
+      try {
+        await element.requestFullscreen();
+      } catch {
+        // iPad Safari uses the fixed full-viewport fallback.
+      }
+    }
+  }
+
   async function exportFile(kind: "png" | "pdf", saveToFiles: boolean) {
     setExporting(true);
     setExportMessage("");
     try {
       const blob = kind === "png"
-        ? await canvasToBlob(renderPageToCanvas(page))
+        ? await canvasToBlob(await renderPageToCanvas(page))
         : await layoutDocumentToPdf(document);
       const fileName = `${safeName(name)}${kind === "png" ? `-${safeName(page.name)}.png` : ".pdf"}`;
       if (saveToFiles) {
@@ -370,38 +591,125 @@ export default function LayoutEditor({
     }
   }
 
+  const activeWidth = tool === "highlighter"
+    ? toolWidths.highlighter
+    : tool === "eraser"
+      ? toolWidths.eraser
+      : toolWidths.pen;
+
   return (
-    <div className="min-w-0">
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-gray-200 bg-white p-2">
-        <ToolButton active={tool === "pen"} label="Pen" onClick={() => setTool("pen")}><MousePointer2 /></ToolButton>
+    <div
+      ref={rootRef}
+      className={`min-w-0 bg-white ${isFullScreen ? "fixed inset-0 z-[100] flex h-[100dvh] flex-col" : ""}`}
+    >
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => {
+          void insertPhoto(event.target.files?.[0]);
+          event.target.value = "";
+        }}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(event) => {
+          void insertPhoto(event.target.files?.[0]);
+          event.target.value = "";
+        }}
+      />
+
+      <div className="flex flex-wrap items-center gap-1 border-b border-gray-200 bg-white p-1.5">
+        <ToolButton active={tool === "select"} label="Select" onClick={() => setTool("select")}><MousePointer2 /></ToolButton>
+        <ToolButton active={tool === "pen"} label="Pen" onClick={() => setTool("pen")}>✎</ToolButton>
+        <ToolButton active={tool === "highlighter"} label="Highlighter" onClick={() => setTool("highlighter")}><Highlighter /></ToolButton>
         <ToolButton active={tool === "eraser"} label="Eraser" onClick={() => setTool("eraser")}><Eraser /></ToolButton>
         <ToolButton active={tool === "line"} label="Line" onClick={() => setTool("line")}><Minus /></ToolButton>
         <ToolButton active={tool === "rectangle"} label="Rectangle" onClick={() => setTool("rectangle")}><Square /></ToolButton>
         <ToolButton active={tool === "text"} label="Text" onClick={() => setTool("text")}><TextCursorInput /></ToolButton>
+        <ToolButton active={tool === "room"} label="Room Label" onClick={() => setTool("room")}>Room</ToolButton>
         <ToolButton active={tool === "dimension"} label="Dimension" onClick={() => setTool("dimension")}>↔</ToolButton>
-        <ToolButton active={tool === "room"} label="Room label" onClick={() => setTool("room")}>Room</ToolButton>
-        <ToolButton active={tool === "door"} label="Door" onClick={() => setTool("door")}><DoorOpen /></ToolButton>
-        <ToolButton active={tool === "stairs"} label="Stairs" onClick={() => setTool("stairs")}><Rows3 /></ToolButton>
         <ToolButton active={tool === "transition"} label="Transition" onClick={() => setTool("transition")}>T</ToolButton>
+        <ToolButton active={tool === "photo"} label="Photo" onClick={() => photoInputRef.current?.click()}><ImagePlus /></ToolButton>
+        <span className="mx-0.5 h-6 w-px bg-gray-200" />
         <ToolButton active={tool === "pan"} label="Pan" onClick={() => setTool("pan")}><Hand /></ToolButton>
-        <span className="mx-1 h-6 w-px bg-gray-200" />
         <button type="button" onClick={undo} className="tool-button" title="Undo"><Undo2 /></button>
         <button type="button" onClick={redo} className="tool-button" title="Redo"><Redo2 /></button>
-        <label className="ml-1 flex items-center gap-1 text-[11px] font-medium text-gray-600">
-          Color
-          <input type="color" value={color} onChange={(event) => setColor(event.target.value)} className="h-8 w-9 rounded border border-gray-300 bg-white p-0.5" />
-        </label>
-        <div className="flex gap-1">
-          {colors.map((value) => <button key={value} type="button" onClick={() => setColor(value)} className={`h-6 w-6 rounded-full border-2 ${color === value ? "border-black" : "border-white ring-1 ring-gray-300"}`} style={{ backgroundColor: value }} aria-label={`Use ${value}`} />)}
-        </div>
-        <label className="flex items-center gap-1 text-[11px] font-medium text-gray-600">
-          Width
-          <input type="range" min="1" max="18" value={thickness} onChange={(event) => setThickness(Number(event.target.value))} className="w-20" />
-        </label>
-        <button type="button" onClick={() => setSnap((value) => !value)} className={`tool-button ${snap ? "bg-gray-900 text-white" : ""}`} title="Grid snapping"><Grid3X3 /></button>
+        <button type="button" onClick={() => void toggleFullScreen()} className="tool-button ml-auto" title={isFullScreen ? "Exit full screen" : "Full screen"}>
+          {isFullScreen ? <X /> : <Maximize2 />}
+          <span className="hidden sm:inline">{isFullScreen ? "Exit Full Screen" : "Full Screen"}</span>
+        </button>
       </div>
 
-      <div ref={viewportRef} className="relative w-full overflow-hidden bg-gray-300" style={{ height: viewport.height }}>
+      <div className="flex min-h-10 flex-wrap items-center gap-1.5 border-b border-gray-200 bg-gray-50 px-2 py-1.5">
+        {["pen", "line", "rectangle", "text", "room", "dimension", "transition"].includes(tool) ? (
+          <>
+            <span className="context-label">Color</span>
+            {penColors.map((value) => (
+              <ColorButton key={value} value={value} active={color === value} onClick={() => setColor(value)} />
+            ))}
+          </>
+        ) : null}
+        {tool === "highlighter" ? (
+          <>
+            <span className="context-label">Highlighter</span>
+            {highlighterColors.map((value) => (
+              <ColorButton key={value} value={value} active={highlighterColor === value} onClick={() => setHighlighterColor(value)} translucent />
+            ))}
+          </>
+        ) : null}
+        {["pen", "highlighter", "eraser", "line", "rectangle", "dimension"].includes(tool) ? (
+          <>
+            <span className="ml-1 context-label">{tool === "eraser" ? "Eraser size" : "Width"}</span>
+            {widthOptions.map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  if (tool === "highlighter") setToolWidths((current) => ({ ...current, highlighter: value }));
+                  else if (tool === "eraser") setToolWidths((current) => ({ ...current, eraser: value }));
+                  else setToolWidths((current) => ({ ...current, pen: value }));
+                }}
+                className={`flex h-8 w-8 items-center justify-center rounded-md border ${activeWidth === value ? "border-black bg-white ring-1 ring-black" : "border-gray-200 bg-white"}`}
+                aria-label={`Width ${value}`}
+              >
+                <span className="rounded-full bg-gray-900" style={{ width: Math.min(18, value), height: Math.min(18, value) }} />
+              </button>
+            ))}
+          </>
+        ) : null}
+        {tool === "photo" ? (
+          <>
+            <button type="button" className="context-button" onClick={() => photoInputRef.current?.click()}><ImagePlus /> Choose Photo</button>
+            <button type="button" className="context-button" onClick={() => cameraInputRef.current?.click()}><Camera /> Take Photo</button>
+          </>
+        ) : null}
+        {tool === "select" && selectedObjects.length ? (
+          <>
+            <span className="context-label">{selectedObjects.length} selected</span>
+            <button type="button" className="context-button" onClick={duplicateSelected}><Copy /> Duplicate</button>
+            <button type="button" className="context-button" onClick={() => changeSelected((object) => ({ ...object, rotation: object.rotation - 15 }))}><RotateCcw /> Rotate</button>
+            <button type="button" className="context-button" onClick={() => changeSelected((object) => ({ ...object, rotation: object.rotation + 15 }))}><RotateCw /> Rotate</button>
+            <button type="button" className="context-button" onClick={() => changeSelected((object) => ({ ...object, scaleX: object.scaleX * 0.9, scaleY: object.scaleY * 0.9 }))}><Shrink /> Smaller</button>
+            <button type="button" className="context-button" onClick={() => changeSelected((object) => ({ ...object, scaleX: object.scaleX * 1.1, scaleY: object.scaleY * 1.1 }))}><Expand /> Larger</button>
+            <button type="button" className="context-button" onClick={bringSelectedForward}><BringToFront /> Forward</button>
+            <button type="button" className="context-button" onClick={sendSelectedBackward}><SendToBack /> Backward</button>
+            <button type="button" className="context-button" onClick={() => changeSelected((object) => ({ ...object, locked: !object.locked }))}>
+              {selectedObjects.every((object) => object.locked) ? <Unlock /> : <Lock />}
+              {selectedObjects.every((object) => object.locked) ? "Unlock" : "Lock"}
+            </button>
+            <button type="button" className="context-button !text-red-700" onClick={deleteSelected}><Trash2 /> Object Delete</button>
+          </>
+        ) : null}
+        {tool === "select" && !selectedObjects.length ? <span className="text-[11px] text-gray-500">Tap an object or drag a box to select several objects.</span> : null}
+      </div>
+
+      <div ref={viewportRef} className="relative w-full flex-1 overflow-hidden bg-gray-300" style={{ height: isFullScreen ? undefined : viewport.height }}>
         <canvas
           ref={canvasRef}
           className="block touch-none select-none"
@@ -416,26 +724,65 @@ export default function LayoutEditor({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 border-t border-gray-200 bg-white p-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 border-t border-gray-200 bg-white p-1.5 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
           {document.pages.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => onDocumentChange({ ...document, activePageId: item.id })}
-              className={`whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold ${item.id === page.id ? "bg-black text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+              className={`whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-semibold ${item.id === page.id ? "bg-black text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
             >
               {item.name}
             </button>
           ))}
           {canManage ? <button type="button" onClick={addPage} className="tool-button" title="Add page"><Plus /></button> : null}
           {canManage && document.pages.length > 1 ? <button type="button" onClick={deletePage} className="tool-button text-red-600" title="Delete current page">×</button> : null}
-          <label className="ml-2 flex items-center gap-1 text-[11px] text-gray-600">
-            <input type="checkbox" checked={page.showGrid} onChange={(event) => updatePage({ ...page, showGrid: event.target.checked })} />
-            Grid
+          <select
+            value={page.orientation}
+            onChange={(event) => changeOrientation(event.target.value as LayoutOrientation)}
+            className="ml-1 h-8 rounded-md border border-gray-300 bg-white px-2 text-[11px] font-semibold text-gray-700"
+            aria-label="Page orientation"
+          >
+            <option value="portrait">Portrait</option>
+            <option value="landscape">Landscape</option>
+          </select>
+          <span className="ml-1 context-label"><Grid3X3 /> Grid</span>
+          {gridOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => updatePage({
+                ...page,
+                gridSize: option.value,
+                showGrid: option.value === 0 ? false : page.showGrid,
+                snapToGrid: option.value === 0 ? false : page.snapToGrid,
+              })}
+              className={`h-8 whitespace-nowrap rounded-md px-2 text-[11px] font-semibold ${page.gridSize === option.value ? "bg-black text-white" : "bg-gray-100 text-gray-600"}`}
+            >
+              {option.label}
+            </button>
+          ))}
+          <label className="ml-1 flex items-center gap-1 text-[11px] text-gray-600">
+            <input
+              type="checkbox"
+              checked={page.showGrid}
+              disabled={page.gridSize === 0}
+              onChange={(event) => updatePage({ ...page, showGrid: event.target.checked })}
+            />
+            Show
+          </label>
+          <label className="flex items-center gap-1 text-[11px] text-gray-600">
+            <input
+              type="checkbox"
+              checked={page.snapToGrid}
+              disabled={page.gridSize === 0}
+              onChange={(event) => updatePage({ ...page, snapToGrid: event.target.checked })}
+            />
+            Snap
           </label>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1">
           <button type="button" disabled={exporting} onClick={() => void exportFile("png", false)} className="export-button"><Download /> PNG</button>
           <button type="button" disabled={exporting} onClick={() => void exportFile("pdf", false)} className="export-button"><FileDown /> PDF</button>
           <button type="button" disabled={exporting || !online} onClick={() => void exportFile("png", true)} className="export-button"><Save /> Save PNG</button>
@@ -444,41 +791,200 @@ export default function LayoutEditor({
       </div>
       {exportMessage ? <p className="border-t border-gray-100 px-3 py-2 text-xs text-gray-600">{exportMessage}</p> : null}
       <style jsx>{`
-        :global(.tool-button) { display:inline-flex; min-height:2rem; min-width:2rem; align-items:center; justify-content:center; gap:.25rem; border-radius:.375rem; padding:.35rem .5rem; font-size:.7rem; font-weight:600; color:#4b5563; }
+        :global(.tool-button) { display:inline-flex; min-height:2rem; min-width:2rem; align-items:center; justify-content:center; gap:.25rem; border-radius:.375rem; padding:.35rem .45rem; font-size:.68rem; font-weight:650; color:#4b5563; }
         :global(.tool-button:hover) { background:#f3f4f6; color:#111827; }
-        :global(.tool-button svg), :global(.export-button svg) { width:.875rem; height:.875rem; }
-        :global(.export-button) { display:inline-flex; min-height:2rem; align-items:center; gap:.3rem; border:1px solid #d1d5db; border-radius:.375rem; padding:.35rem .55rem; font-size:.7rem; font-weight:600; color:#374151; }
+        :global(.tool-button svg), :global(.export-button svg), :global(.context-button svg), :global(.context-label svg) { width:.875rem; height:.875rem; }
+        :global(.context-label) { display:inline-flex; align-items:center; gap:.25rem; font-size:.67rem; font-weight:700; color:#4b5563; }
+        :global(.context-button) { display:inline-flex; min-height:2rem; align-items:center; gap:.3rem; border:1px solid #d1d5db; border-radius:.375rem; background:white; padding:.3rem .5rem; font-size:.68rem; font-weight:650; color:#374151; }
+        :global(.export-button) { display:inline-flex; min-height:2rem; align-items:center; gap:.3rem; border:1px solid #d1d5db; border-radius:.375rem; padding:.3rem .5rem; font-size:.68rem; font-weight:650; color:#374151; }
         :global(.export-button:disabled) { opacity:.5; cursor:not-allowed; }
       `}</style>
     </div>
   );
 }
 
-function ToolButton({ active, label, onClick, children }: { active: boolean; label: string; onClick: () => void; children: React.ReactNode }) {
-  return <button type="button" onClick={onClick} className={`tool-button ${active ? "!bg-black !text-white" : ""}`} title={label}>{children}<span className="hidden 2xl:inline">{label}</span></button>;
+function ToolButton(props: { active: boolean; label: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" onClick={props.onClick} className={`tool-button ${props.active ? "!bg-black !text-white" : ""}`} title={props.label}>
+      {props.children}<span className="hidden 2xl:inline">{props.label}</span>
+    </button>
+  );
 }
 
-function makeDraft(tool: LayoutTool, point: LayoutPoint, color: string, thickness: number): LayoutObject | null {
-  const base = { id: crypto.randomUUID(), color, thickness };
-  if (tool === "pen") return { ...base, type: "stroke", points: [point] };
+function ColorButton(props: { value: string; active: boolean; onClick: () => void; translucent?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={props.onClick}
+      className={`h-7 w-7 rounded-full border-2 ${props.active ? "border-black" : "border-white ring-1 ring-gray-300"}`}
+      style={{ backgroundColor: props.value, opacity: props.translucent ? 0.55 : 1 }}
+      aria-label={`Use ${props.value}`}
+    />
+  );
+}
+
+function makeDraft(
+  tool: LayoutTool,
+  point: LayoutPoint,
+  color: string,
+  highlighterColor: string,
+  widths: { pen: number; highlighter: number; eraser: number },
+): LayoutObject | null {
+  if (tool === "pen") {
+    return { ...createObjectBase({ color, thickness: widths.pen }), type: "stroke", strokeKind: "pen", points: [point] };
+  }
+  if (tool === "highlighter") {
+    return {
+      ...createObjectBase({ color: highlighterColor, thickness: widths.highlighter, opacity: 0.38 }),
+      type: "stroke",
+      strokeKind: "highlighter",
+      points: [point],
+    };
+  }
+  const base = createObjectBase({ color, thickness: widths.pen });
   if (tool === "line") return { ...base, type: "line", start: point, end: point };
   if (tool === "rectangle") return { ...base, type: "rectangle", start: point, end: point };
   if (tool === "dimension") return { ...base, type: "dimension", start: point, end: point, label: "" };
   return null;
 }
 
-function hitObject(object: LayoutObject, point: LayoutPoint, tolerance: number) {
-  if (object.type === "stroke") return object.points.some((value) => distance(value, point) <= tolerance);
-  if (object.type === "line" || object.type === "dimension") return distanceToSegment(point, object.start, object.end) <= tolerance;
-  if (object.type === "rectangle") {
-    const minX = Math.min(object.start.x, object.end.x) - tolerance;
-    const maxX = Math.max(object.start.x, object.end.x) + tolerance;
-    const minY = Math.min(object.start.y, object.end.y) - tolerance;
-    const maxY = Math.max(object.start.y, object.end.y) + tolerance;
-    return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
+function eraseStrokeParts(objects: LayoutObject[], point: LayoutPoint, radius: number) {
+  return objects.flatMap((object) => {
+    if (object.type !== "stroke" || object.locked) return [object];
+    if (!object.points.some((value, index) =>
+      distance(value, point) <= radius ||
+      (index > 0 && distanceToSegment(point, object.points[index - 1], value) <= radius)
+    )) return [object];
+    const segments: LayoutPoint[][] = [];
+    let current: LayoutPoint[] = [];
+    for (const value of object.points) {
+      if (distance(value, point) > radius) {
+        current.push(value);
+      } else if (current.length) {
+        if (current.length > 1) segments.push(current);
+        current = [];
+      }
+    }
+    if (current.length > 1) segments.push(current);
+    return segments.map((points) => ({ ...object, id: crypto.randomUUID(), points }));
+  });
+}
+
+function moveObject(object: LayoutObject, dx: number, dy: number): LayoutObject {
+  const move = (point: LayoutPoint) => ({ ...point, x: point.x + dx, y: point.y + dy });
+  if (object.type === "stroke") return { ...object, points: object.points.map(move) };
+  if (object.type === "line" || object.type === "rectangle" || object.type === "dimension") {
+    return { ...object, start: move(object.start), end: move(object.end) };
   }
-  const origin = object.point;
-  return distance(origin, point) <= ("size" in object ? object.size : 80) + tolerance;
+  return { ...object, point: move(object.point) };
+}
+
+function scaleObjectGeometry(object: LayoutObject, scaleX: number, scaleY: number): LayoutObject {
+  const scale = (point: LayoutPoint) => ({ ...point, x: point.x * scaleX, y: point.y * scaleY });
+  if (object.type === "stroke") return { ...object, points: object.points.map(scale) };
+  if (object.type === "line" || object.type === "rectangle" || object.type === "dimension") {
+    return { ...object, start: scale(object.start), end: scale(object.end) };
+  }
+  if (object.type === "photo") {
+    return {
+      ...object,
+      point: scale(object.point),
+      width: object.width * scaleX,
+      height: object.height * scaleY,
+    };
+  }
+  return { ...object, point: scale(object.point) };
+}
+
+function hitObject(object: LayoutObject, point: LayoutPoint, tolerance: number) {
+  const bounds = getObjectBounds(object);
+  const expanded = {
+    x: bounds.x - tolerance,
+    y: bounds.y - tolerance,
+    width: bounds.width + tolerance * 2,
+    height: bounds.height + tolerance * 2,
+  };
+  if (object.type === "stroke") return object.points.some((value) => distance(value, point) <= tolerance + object.thickness / 2);
+  if (object.type === "line" || object.type === "dimension") return distanceToSegment(point, object.start, object.end) <= tolerance;
+  return point.x >= expanded.x && point.x <= expanded.x + expanded.width && point.y >= expanded.y && point.y <= expanded.y + expanded.height;
+}
+
+function drawSelection(
+  context: CanvasRenderingContext2D,
+  objects: LayoutObject[],
+  selectedIds: string[],
+  zoom: number,
+) {
+  context.save();
+  context.setLineDash([7 / zoom, 5 / zoom]);
+  context.strokeStyle = "#2563eb";
+  context.fillStyle = "#2563eb";
+  context.lineWidth = 2 / zoom;
+  for (const object of objects) {
+    if (!selectedIds.includes(object.id)) continue;
+    const bounds = getObjectBounds(object);
+    context.strokeRect(bounds.x - 6 / zoom, bounds.y - 6 / zoom, bounds.width + 12 / zoom, bounds.height + 12 / zoom);
+    context.fillRect(bounds.x + bounds.width - 4 / zoom, bounds.y + bounds.height - 4 / zoom, 8 / zoom, 8 / zoom);
+  }
+  context.restore();
+}
+
+function drawMarquee(context: CanvasRenderingContext2D, marquee: Marquee, zoom: number) {
+  const bounds = normalizeBox(marquee);
+  context.save();
+  context.setLineDash([7 / zoom, 5 / zoom]);
+  context.strokeStyle = "#2563eb";
+  context.fillStyle = "rgba(37,99,235,.08)";
+  context.lineWidth = 1.5 / zoom;
+  context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+  context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+  context.restore();
+}
+
+function normalizeBox(value: { start: LayoutPoint; end: LayoutPoint }) {
+  return {
+    x: Math.min(value.start.x, value.end.x),
+    y: Math.min(value.start.y, value.end.y),
+    width: Math.abs(value.end.x - value.start.x),
+    height: Math.abs(value.end.y - value.start.y),
+  };
+}
+
+function boxesIntersect(first: { x: number; y: number; width: number; height: number }, second: { x: number; y: number; width: number; height: number }) {
+  return first.x <= second.x + second.width &&
+    first.x + first.width >= second.x &&
+    first.y <= second.y + second.height &&
+    first.y + first.height >= second.y;
+}
+
+async function preparePhoto(file: File) {
+  if (!file.type.startsWith("image/")) throw new Error("Choose an image file.");
+  if (file.size > 20 * 1024 * 1024) throw new Error("Photos must be 20 MB or smaller.");
+  const source = URL.createObjectURL(file);
+  try {
+    const image = await loadBrowserImage(source);
+    const scale = Math.min(1, 1200 / Math.max(image.naturalWidth, image.naturalHeight));
+    const width = Math.max(1, Math.round(image.naturalWidth * scale));
+    const height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const canvas = window.document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Photo processing is unavailable.");
+    context.drawImage(image, 0, 0, width, height);
+    return { dataUrl: canvas.toDataURL("image/jpeg", 0.72), width, height };
+  } finally {
+    URL.revokeObjectURL(source);
+  }
+}
+
+function loadBrowserImage(source: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Unable to read that photo."));
+    image.src = source;
+  });
 }
 
 function distance(first: LayoutPoint, second: LayoutPoint) {
@@ -490,6 +996,10 @@ function distanceToSegment(point: LayoutPoint, start: LayoutPoint, end: LayoutPo
   if (!lengthSquared) return distance(point, start);
   const ratio = clamp(((point.x - start.x) * (end.x - start.x) + (point.y - start.y) * (end.y - start.y)) / lengthSquared, 0, 1);
   return distance(point, { x: start.x + ratio * (end.x - start.x), y: start.y + ratio * (end.y - start.y) });
+}
+
+function documentFullscreenElement() {
+  return window.document.fullscreenElement;
 }
 
 function saveStateLabel(value: Props["saveState"]) {
@@ -506,7 +1016,7 @@ function safeName(value: string) {
 
 function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
+  const anchor = window.document.createElement("a");
   anchor.href = url;
   anchor.download = name;
   anchor.click();

@@ -6,7 +6,13 @@ import { Archive, CloudOff, FilePlus2, LayoutTemplate, PencilRuler, Plus } from 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { archiveLayout, createLayout, saveLayout } from "@/app/actions/job-layouts";
-import type { JobLayout, LayoutDocument, LayoutTemplate as LayoutTemplateName } from "@/components/layouts/types";
+import type {
+  JobLayout,
+  LayoutDocument,
+  LayoutOrientation,
+  LayoutTemplate as LayoutTemplateName,
+} from "@/components/layouts/types";
+import { normalizeLayoutDocument } from "@/components/layouts/types";
 import { clearOfflineDraft, getOfflineDraft, putOfflineDraft } from "@/components/layouts/offline-store";
 
 const LayoutEditor = dynamic(() => import("@/components/layouts/LayoutEditor"), {
@@ -29,7 +35,9 @@ export default function LayoutWorkspace({ jobId, initialLayouts, canManage, canA
   const [selectedId, setSelectedId] = useState(initialLayouts[0]?.id ?? "");
   const selected = initialLayouts.find((layout) => layout.id === selectedId) ?? null;
   const [name, setName] = useState(selected?.name ?? "");
-  const [document, setDocument] = useState<LayoutDocument | null>(selected?.document_data ?? null);
+  const [document, setDocument] = useState<LayoutDocument | null>(
+    selected ? normalizeLayoutDocument(selected.document_data) : null,
+  );
   const [updatedAt, setUpdatedAt] = useState(selected?.updated_at ?? "");
   const updatedAtRef = useRef(selected?.updated_at ?? "");
   const [saveState, setSaveState] = useState<SaveState>("saved");
@@ -37,6 +45,7 @@ export default function LayoutWorkspace({ jobId, initialLayouts, canManage, canA
   const [creating, setCreating] = useState(false);
   const [createName, setCreateName] = useState("Field Layout");
   const [template, setTemplate] = useState<LayoutTemplateName>("grid");
+  const [orientation, setOrientation] = useState<LayoutOrientation>("portrait");
   const [actionError, setActionError] = useState("");
   const loadingDraftFor = useRef("");
 
@@ -44,7 +53,7 @@ export default function LayoutWorkspace({ jobId, initialLayouts, canManage, canA
     if (!selected || loadingDraftFor.current === selected.id) return;
     loadingDraftFor.current = selected.id;
     setName(selected.name);
-    setDocument(selected.document_data);
+    setDocument(normalizeLayoutDocument(selected.document_data));
     setUpdatedAt(selected.updated_at);
     updatedAtRef.current = selected.updated_at;
     setSaveState("saved");
@@ -55,7 +64,7 @@ export default function LayoutWorkspace({ jobId, initialLayouts, canManage, canA
       const localIsNewer = new Date(draft.savedLocallyAt).getTime() > new Date(selected.updated_at).getTime();
       if (draft.pendingSync || localIsNewer) {
         setName(draft.name);
-        setDocument(draft.document);
+        setDocument(normalizeLayoutDocument(draft.document));
         setUpdatedAt(draft.expectedUpdatedAt);
         updatedAtRef.current = draft.expectedUpdatedAt;
         setSaveState(navigator.onLine ? "saving" : "offline");
@@ -151,7 +160,7 @@ export default function LayoutWorkspace({ jobId, initialLayouts, canManage, canA
   async function handleCreate() {
     setActionError("");
     try {
-      const result = await createLayout({ jobId, name: createName, template });
+      const result = await createLayout({ jobId, name: createName, template, orientation });
       setCreating(false);
       router.refresh();
       window.setTimeout(() => setSelectedId(result.id), 0);
@@ -199,6 +208,17 @@ export default function LayoutWorkspace({ jobId, initialLayouts, canManage, canA
                   <option value="blank">Blank</option>
                   <option value="grid">Graph grid</option>
                   <option value="room">Room outline</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                Orientation
+                <select
+                  value={orientation}
+                  onChange={(event) => setOrientation(event.target.value as LayoutOrientation)}
+                  className="h-9 rounded-md border border-gray-300 bg-white px-2 text-sm font-normal normal-case tracking-normal text-gray-900"
+                >
+                  <option value="portrait">Portrait</option>
+                  <option value="landscape">Landscape</option>
                 </select>
               </label>
               <div className="flex gap-1.5">

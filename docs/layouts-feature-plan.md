@@ -1,8 +1,23 @@
 # Layouts Beta Feature Plan
 
-Status: Planned beta implementation  
+Status: Active guarded beta
 Feature flag: `LAYOUTS_BETA_ENABLED`  
 Stable rollback reference: the Git commit immediately before the Layouts implementation
+
+## July 2026 editor revision
+
+This revision keeps the existing Job Workspace integration and database table, but upgrades
+the editable drawing document from version 1 to version 2.
+
+- Portrait (`900 × 1400`) is the default page orientation.
+- Landscape (`1400 × 900`) remains available when a layout is created and while it is edited.
+- Full-screen drawing visually removes all CRM chrome. The editor uses the browser Fullscreen
+  API where supported and a fixed, full-viewport fallback for iPad Safari.
+- The editor is object based. Every editable item has transform, layer, visibility, lock, and
+  opacity metadata.
+- Existing version-1 documents are normalized in memory to version 2 when opened and are
+  persisted as version 2 on their next edit/autosave.
+- This is a JSON document-model migration only. No Supabase schema migration is required.
 
 ## Purpose
 
@@ -131,8 +146,21 @@ Each layout stores a versioned JSON document:
 - Page list
 - Page name and dimensions
 - Grid settings
-- Vector objects: freehand strokes, straight lines, rectangles, text, dimension lines, and symbols
+- Editable objects: freehand strokes, highlighter strokes, straight lines, rectangles, text,
+  room labels, dimension lines, transition symbols, and photos
+- Shared object metadata: opacity, rotation, scale, lock state, and layer order
+- Page orientation and independent `showGrid`, `snapToGrid`, and grid-size settings
 - Object color, thickness, coordinates, and tool-specific metadata
+
+Version 2 removes Door and Stairs from the creation toolbar. Existing version-1 Door and
+Stairs symbols remain renderable after normalization so opening an older drawing is
+non-destructive.
+
+Photos are resized client-side before insertion (maximum 1200 pixels on the longest edge)
+and stored as compressed data URLs inside the editable JSON. This keeps them editable and
+available to the existing IndexedDB offline draft. It also means photo-heavy drawings are
+subject to the editable-document size limit. Rendered previews and explicit exports remain
+separate derived artifacts.
 
 Rendered preview images and exported files are derived artifacts and are not required to reopen or edit a layout.
 
@@ -140,12 +168,17 @@ Rendered preview images and exported files are derived artifacts and are not req
 
 - Multiple layouts per job
 - Pen input for mouse, touch, and Apple Pencil-capable browsers
-- Color and line thickness
-- Eraser
+- Pen colors and five fixed pen widths
+- Four translucent highlighter colors: yellow, green, blue, and pink
+- Partial freehand-stroke eraser plus explicit whole-object deletion
 - Undo and redo
 - Straight lines and rectangles
 - Text labels
+- Select/grab with single- and multi-object selection
+- Move, resize, rotate, duplicate, layer, lock, and delete object actions
+- Editable mobile-camera/photo-library/file images
 - Pan and zoom
+- Full-screen drawing
 - Debounced autosave
 - Editable persistence
 - PNG export
@@ -156,8 +189,10 @@ Rendered preview images and exported files are derived artifacts and are not req
 
 - Dimension lines with feet/inches labels
 - Room labels
-- Door, stairs, and transition symbols
-- Grid snapping
+- Transition symbols
+- Photo objects
+- Grid size buttons: Off, Small, Medium, and Large
+- Independent grid visibility and grid snapping
 - Multiple pages
 - Layout templates
 - Offline field mode
@@ -194,11 +229,15 @@ Offline field mode stores an active layout draft and queued save in IndexedDB. W
 - Apple Pencil pressure and palm rejection vary by iPadOS/Safari version.
 - Offline editing requires the layout to have been opened or created online at least once.
 - Concurrent editing is conflict-detected, not collaboratively merged.
-- Eraser removes intersected vector objects/strokes; it is not a pixel-level bitmap eraser.
+- Partial erasing applies to freehand/highlighter strokes. Other object types use selection
+  followed by Object Delete.
 - Text entry uses a compact dialog rather than rich text.
 - PDF output is flattened and not editable.
-- Imported PDF/photo backgrounds are not part of this beta.
+- Imported PDFs are not part of this beta. Photos are editable objects, not page backgrounds.
 - Browser storage can be evicted by the operating system; remote autosave remains the durable source.
+- Embedded photos increase `document_data` size. The service rejects documents above its
+  3.5 MB editable-document limit rather than allowing an oversized autosave. Next.js Server
+  Actions are configured with a 4 MB request limit to leave transport overhead.
 
 ## Testing checklist
 
@@ -221,10 +260,15 @@ Offline field mode stores an active layout draft and queued save in IndexedDB. W
 - [ ] Mouse drawing works on desktop.
 - [ ] Touch drawing works on iPad.
 - [ ] Apple Pencil produces pointer input where supported.
-- [ ] Pen color and thickness persist.
-- [ ] Eraser, undo, and redo work.
-- [ ] Line, rectangle, text, dimension, room label, and symbols render.
-- [ ] Grid snapping works when enabled.
+- [ ] Pen/highlighter color and last-used widths persist during the editor session.
+- [ ] Partial eraser, Object Delete, undo, and redo work.
+- [ ] Line, rectangle, text, dimension, room label, transition, and photo objects render.
+- [ ] Select supports one object and marquee multi-selection.
+- [ ] Move, resize, rotate, duplicate, layer, lock, and delete work for applicable objects.
+- [ ] Grid visibility and snapping can be controlled independently.
+- [ ] Off, Small, Medium, and Large grid-size buttons work.
+- [ ] Portrait is the default and orientation can be changed safely.
+- [ ] Full-screen entry and exit work with browser API and iPad fallback.
 - [ ] Pan, wheel zoom, and pinch zoom do not scroll the surrounding page.
 
 ### Persistence and offline
@@ -242,6 +286,7 @@ Offline field mode stores an active layout draft and queued save in IndexedDB. W
 - [ ] All pages export as PDF.
 - [ ] PNG/PDF can be saved into Job Files.
 - [ ] Exported attachments appear in the existing Files tab.
+- [ ] Highlighter alpha and inserted photos are preserved in PNG/PDF output.
 
 ### Regression
 
