@@ -11,8 +11,12 @@ the editable drawing document from version 1 to version 2.
 
 - Portrait (`900 × 1400`) is the default page orientation.
 - Landscape (`1400 × 900`) remains available when a layout is created and while it is edited.
-- Full-screen drawing visually removes all CRM chrome. The editor uses the browser Fullscreen
-  API where supported and a fixed, full-viewport fallback for iPad Safari.
+- Full-screen drawing visually removes all CRM chrome using an in-app fixed, full-viewport
+  mode. It deliberately avoids Safari's native Fullscreen API so downward Pencil strokes
+  cannot trigger the browser's swipe-to-close gesture.
+- The page automatically fits and remains centered in the gray drawing workspace. Users can
+  zoom with explicit controls, a mouse wheel, or a two-finger pinch; the page itself is not
+  draggable.
 - The editor is object based. Every editable item has transform, layer, visibility, lock, and
   opacity metadata.
 - Existing version-1 documents are normalized in memory to version 2 when opened and are

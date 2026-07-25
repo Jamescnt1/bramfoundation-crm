@@ -9,7 +9,6 @@ import {
   Expand,
   FileDown,
   Grid3X3,
-  Hand,
   Highlighter,
   ImagePlus,
   Lock,
@@ -66,9 +65,8 @@ type Interaction = {
   start: LayoutPoint;
   last: LayoutPoint;
   draft: LayoutObject | null;
-  mode: "draw" | "erase" | "move" | "marquee" | "pan";
+  mode: "draw" | "erase" | "move" | "marquee";
   originalObjects?: LayoutObject[];
-  panStart?: { x: number; y: number; offsetX: number; offsetY: number };
 };
 
 const penColors = ["#111827", "#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c"];
@@ -98,7 +96,7 @@ export default function LayoutEditor(props: Props) {
   const [highlighterColor, setHighlighterColor] = useState(highlighterColors[0]);
   const [toolWidths, setToolWidths] = useState({ pen: 4, highlighter: 16, eraser: 16 });
   const [zoom, setZoom] = useState(0.55);
-  const [offset, setOffset] = useState({ x: 28, y: 28 });
+  const [zoomMode, setZoomMode] = useState<"fit" | "manual">("fit");
   const [viewport, setViewport] = useState({ width: 900, height: 620 });
   const [draft, setDraft] = useState<LayoutObject | null>(null);
   const [marquee, setMarquee] = useState<Marquee | null>(null);
@@ -115,6 +113,25 @@ export default function LayoutEditor(props: Props) {
     () => page.objects.filter((object) => selectedIds.includes(object.id)),
     [page.objects, selectedIds],
   );
+  const fitZoom = useMemo(
+    () => clamp(
+      Math.min(
+        Math.max(1, viewport.width - 32) / page.width,
+        Math.max(1, viewport.height - 32) / page.height,
+      ),
+      0.2,
+      3,
+    ),
+    [page.height, page.width, viewport.height, viewport.width],
+  );
+  const effectiveZoom = zoomMode === "fit" ? fitZoom : zoom;
+  const pageOffset = useMemo(
+    () => ({
+      x: (viewport.width - page.width * effectiveZoom) / 2,
+      y: (viewport.height - page.height * effectiveZoom) / 2,
+    }),
+    [effectiveZoom, page.height, page.width, viewport.height, viewport.width],
+  );
 
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -130,18 +147,18 @@ export default function LayoutEditor(props: Props) {
     context.fillStyle = "#d1d5db";
     context.fillRect(0, 0, viewport.width, viewport.height);
     context.save();
-    context.translate(offset.x, offset.y);
-    context.scale(zoom, zoom);
+    context.translate(pageOffset.x, pageOffset.y);
+    context.scale(effectiveZoom, effectiveZoom);
     context.shadowColor = "rgba(0,0,0,.18)";
-    context.shadowBlur = 12 / zoom;
-    context.shadowOffsetY = 3 / zoom;
+    context.shadowBlur = 12 / effectiveZoom;
+    context.shadowOffsetY = 3 / effectiveZoom;
     renderLayoutPage(context, page, { onImageLoad: redraw });
     context.shadowColor = "transparent";
     if (draft) drawObject(context, draft, redraw);
-    drawSelection(context, page.objects, selectedIds, zoom);
-    if (marquee) drawMarquee(context, marquee, zoom);
+    drawSelection(context, page.objects, selectedIds, effectiveZoom);
+    if (marquee) drawMarquee(context, marquee, effectiveZoom);
     context.restore();
-  }, [draft, marquee, offset, page, selectedIds, viewport, zoom]);
+  }, [draft, effectiveZoom, marquee, page, pageOffset, selectedIds, viewport]);
 
   useEffect(() => redraw(), [redraw]);
   useEffect(() => {
@@ -169,12 +186,13 @@ export default function LayoutEditor(props: Props) {
     };
   }, []);
   useEffect(() => {
-    const onFullScreenChange = () => {
-      if (!documentFullscreenElement()) setIsFullScreen(false);
+    if (!isFullScreen) return;
+    const previousOverflow = window.document.body.style.overflow;
+    window.document.body.style.overflow = "hidden";
+    return () => {
+      window.document.body.style.overflow = previousOverflow;
     };
-    window.document.addEventListener("fullscreenchange", onFullScreenChange);
-    return () => window.document.removeEventListener("fullscreenchange", onFullScreenChange);
-  }, []);
+  }, [isFullScreen]);
   useEffect(() => {
     const timer = window.setTimeout(async () => {
       try {
@@ -232,8 +250,8 @@ export default function LayoutEditor(props: Props) {
   function canvasPoint(event: React.PointerEvent<HTMLCanvasElement>) {
     const bounds = event.currentTarget.getBoundingClientRect();
     const raw = {
-      x: (event.clientX - bounds.left - offset.x) / zoom,
-      y: (event.clientY - bounds.top - offset.y) / zoom,
+      x: (event.clientX - bounds.left - pageOffset.x) / effectiveZoom,
+      y: (event.clientY - bounds.top - pageOffset.y) / effectiveZoom,
       pressure: event.pressure || undefined,
     };
     return page.snapToGrid && page.gridSize > 0 && !["pen", "highlighter", "eraser", "select"].includes(tool)
@@ -256,24 +274,13 @@ export default function LayoutEditor(props: Props) {
       const values = [...pointers.current.values()];
       pinch.current = {
         distance: Math.hypot(values[1].x - values[0].x, values[1].y - values[0].y),
-        zoom,
+        zoom: effectiveZoom,
       };
       return;
     }
     const point = canvasPoint(event);
-    if (tool === "pan") {
-      interaction.current = {
-        pointerId: event.pointerId,
-        start: point,
-        last: point,
-        draft: null,
-        mode: "pan",
-        panStart: { x: event.clientX, y: event.clientY, offsetX: offset.x, offsetY: offset.y },
-      };
-      return;
-    }
     if (tool === "select") {
-      const hit = [...page.objects].reverse().find((object) => hitObject(object, point, 14 / zoom));
+      const hit = [...page.objects].reverse().find((object) => hitObject(object, point, 14 / effectiveZoom));
       if (hit) {
         const selection = event.shiftKey
           ? selectedIds.includes(hit.id)
@@ -301,7 +308,7 @@ export default function LayoutEditor(props: Props) {
     }
     if (tool === "eraser") {
       pushHistory();
-      const nextObjects = eraseStrokeParts(page.objects, point, toolWidths.eraser / zoom);
+      const nextObjects = eraseStrokeParts(page.objects, point, toolWidths.eraser / effectiveZoom);
       updatePageWithoutHistory({ ...page, objects: nextObjects });
       interaction.current = {
         pointerId: event.pointerId,
@@ -359,23 +366,17 @@ export default function LayoutEditor(props: Props) {
     if (pointers.current.size >= 2 && pinch.current) {
       const values = [...pointers.current.values()];
       const distance = Math.hypot(values[1].x - values[0].x, values[1].y - values[0].y);
+      setZoomMode("manual");
       setZoom(clamp(pinch.current.zoom * (distance / Math.max(1, pinch.current.distance)), 0.2, 3));
       return;
     }
     const current = interaction.current;
     if (!current || current.pointerId !== event.pointerId) return;
-    if (current.panStart) {
-      setOffset({
-        x: current.panStart.offsetX + event.clientX - current.panStart.x,
-        y: current.panStart.offsetY + event.clientY - current.panStart.y,
-      });
-      return;
-    }
     const point = canvasPoint(event);
     current.last = point;
     if (current.mode === "erase") {
       const source = current.originalObjects ?? page.objects;
-      const next = eraseStrokeParts(source, point, toolWidths.eraser / zoom);
+      const next = eraseStrokeParts(source, point, toolWidths.eraser / effectiveZoom);
       current.originalObjects = next;
       updatePageWithoutHistory({ ...page, objects: next });
       return;
@@ -433,12 +434,8 @@ export default function LayoutEditor(props: Props) {
 
   function onWheel(event: React.WheelEvent<HTMLCanvasElement>) {
     event.preventDefault();
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const cursor = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
-    const nextZoom = clamp(zoom * (event.deltaY > 0 ? 0.9 : 1.1), 0.2, 3);
-    const world = { x: (cursor.x - offset.x) / zoom, y: (cursor.y - offset.y) / zoom };
-    setZoom(nextZoom);
-    setOffset({ x: cursor.x - world.x * nextZoom, y: cursor.y - world.y * nextZoom });
+    setZoomMode("manual");
+    setZoom(clamp(effectiveZoom * (event.deltaY > 0 ? 0.9 : 1.1), 0.2, 3));
   }
 
   function changeSelected(action: (object: LayoutObject) => LayoutObject) {
@@ -541,24 +538,16 @@ export default function LayoutEditor(props: Props) {
       height: nextHeight,
       objects: page.objects.map((object) => scaleObjectGeometry(object, scaleX, scaleY)),
     });
-    setOffset({ x: 28, y: 28 });
+    setZoomMode("fit");
   }
 
-  async function toggleFullScreen() {
+  function toggleFullScreen() {
     if (isFullScreen) {
-      if (documentFullscreenElement() && window.document.exitFullscreen) await window.document.exitFullscreen();
       setIsFullScreen(false);
       return;
     }
     setIsFullScreen(true);
-    const element = rootRef.current;
-    if (element?.requestFullscreen) {
-      try {
-        await element.requestFullscreen();
-      } catch {
-        // iPad Safari uses the fixed full-viewport fallback.
-      }
-    }
+    setZoomMode("fit");
   }
 
   async function exportFile(kind: "png" | "pdf", saveToFiles: boolean) {
@@ -637,10 +626,9 @@ export default function LayoutEditor(props: Props) {
         <ToolButton active={tool === "transition"} label="Transition" onClick={() => setTool("transition")}>T</ToolButton>
         <ToolButton active={tool === "photo"} label="Photo" onClick={() => photoInputRef.current?.click()}><ImagePlus /></ToolButton>
         <span className="mx-0.5 h-6 w-px bg-gray-200" />
-        <ToolButton active={tool === "pan"} label="Pan" onClick={() => setTool("pan")}><Hand /></ToolButton>
         <button type="button" onClick={undo} className="tool-button" title="Undo"><Undo2 /></button>
         <button type="button" onClick={redo} className="tool-button" title="Redo"><Redo2 /></button>
-        <button type="button" onClick={() => void toggleFullScreen()} className="tool-button ml-auto" title={isFullScreen ? "Exit full screen" : "Full screen"}>
+        <button type="button" onClick={toggleFullScreen} className="tool-button ml-auto" title={isFullScreen ? "Exit full screen" : "Full screen"}>
           {isFullScreen ? <X /> : <Maximize2 />}
           <span className="hidden sm:inline">{isFullScreen ? "Exit Full Screen" : "Full Screen"}</span>
         </button>
@@ -720,7 +708,40 @@ export default function LayoutEditor(props: Props) {
           onWheel={onWheel}
         />
         <div className="pointer-events-none absolute bottom-2 left-2 rounded bg-black/65 px-2 py-1 text-[10px] font-medium text-white">
-          {Math.round(zoom * 100)}% · {saveStateLabel(saveState)}
+          {Math.round(effectiveZoom * 100)}% · {saveStateLabel(saveState)}
+        </div>
+        <div className="absolute bottom-2 right-2 flex items-center overflow-hidden rounded-md border border-gray-300 bg-white shadow-sm">
+          <button
+            type="button"
+            onClick={() => {
+              setZoomMode("manual");
+              setZoom(clamp(effectiveZoom - 0.1, 0.2, 3));
+            }}
+            className="flex h-9 w-9 items-center justify-center text-lg font-semibold text-gray-700 hover:bg-gray-100"
+            aria-label="Zoom out"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setZoomMode("fit");
+            }}
+            className="h-9 border-x border-gray-200 px-3 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+          >
+            Fit
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setZoomMode("manual");
+              setZoom(clamp(effectiveZoom + 0.1, 0.2, 3));
+            }}
+            className="flex h-9 w-9 items-center justify-center text-lg font-semibold text-gray-700 hover:bg-gray-100"
+            aria-label="Zoom in"
+          >
+            +
+          </button>
         </div>
       </div>
 
@@ -996,10 +1017,6 @@ function distanceToSegment(point: LayoutPoint, start: LayoutPoint, end: LayoutPo
   if (!lengthSquared) return distance(point, start);
   const ratio = clamp(((point.x - start.x) * (end.x - start.x) + (point.y - start.y) * (end.y - start.y)) / lengthSquared, 0, 1);
   return distance(point, { x: start.x + ratio * (end.x - start.x), y: start.y + ratio * (end.y - start.y) });
-}
-
-function documentFullscreenElement() {
-  return window.document.fullscreenElement;
 }
 
 function saveStateLabel(value: Props["saveState"]) {
