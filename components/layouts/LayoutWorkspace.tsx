@@ -186,18 +186,19 @@ export default function LayoutWorkspace({ jobId, initialLayouts, canManage, canA
       {error ? <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
       {actionError ? <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{actionError}</div> : null}
 
-      <div className="grid overflow-hidden rounded-lg border border-gray-200 lg:grid-cols-[230px_minmax(0,1fr)]">
-        <aside className="border-b border-gray-200 bg-gray-50 p-2 lg:border-b-0 lg:border-r">
-          <div className="flex items-center justify-between gap-2 px-1 py-1">
-            <div>
+      <div className="overflow-hidden rounded-lg border border-gray-200">
+        <aside className="border-b border-gray-200 bg-gray-50 p-2">
+          <div className="flex items-center gap-2">
+            <div className="flex w-28 shrink-0 items-center justify-between gap-2 px-1">
+              <div>
               <p className="text-xs font-bold text-gray-900">Saved layouts</p>
               <p className="text-[10px] text-gray-500">{initialLayouts.length} for this job</p>
+              </div>
+              {canManage ? <button type="button" onClick={() => setCreating((value) => !value)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-black text-white" aria-label="New layout"><Plus className="h-4 w-4" /></button> : null}
             </div>
-            {canManage ? <button type="button" onClick={() => setCreating((value) => !value)} className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-black text-white" aria-label="New layout"><Plus className="h-4 w-4" /></button> : null}
-          </div>
 
           {creating ? (
-            <div className="mt-2 space-y-2 rounded-md border border-gray-200 bg-white p-2">
+            <div className="grid min-w-[520px] flex-1 grid-cols-[minmax(150px,1fr)_150px_130px_auto] items-end gap-2 rounded-md border border-gray-200 bg-white p-2">
               <label className="grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
                 Layout name
                 <input value={createName} onChange={(event) => setCreateName(event.target.value)} maxLength={120} className="h-9 rounded-md border border-gray-300 px-2 text-sm font-normal normal-case tracking-normal text-gray-900" />
@@ -222,25 +223,26 @@ export default function LayoutWorkspace({ jobId, initialLayouts, canManage, canA
                 </select>
               </label>
               <div className="flex gap-1.5">
-                <button type="button" onClick={() => void handleCreate()} className="flex-1 rounded-md bg-black px-2 py-2 text-xs font-semibold text-white">Create</button>
+                <button type="button" onClick={() => void handleCreate()} className="rounded-md bg-black px-3 py-2 text-xs font-semibold text-white">Create</button>
                 <button type="button" onClick={() => setCreating(false)} className="rounded-md border border-gray-300 px-2 py-2 text-xs font-semibold text-gray-600">Cancel</button>
               </div>
             </div>
-          ) : null}
-
-          <div className="mt-2 flex gap-2 overflow-x-auto lg:block lg:space-y-1">
-            {initialLayouts.map((layout) => (
-              <button
-                key={layout.id}
-                type="button"
-                onClick={() => choose(layout)}
-                className={`min-w-48 rounded-md border p-2 text-left lg:w-full lg:min-w-0 ${selectedId === layout.id ? "border-gray-900 bg-white shadow-sm" : "border-transparent hover:bg-white"}`}
-              >
-                {layout.preview_url ? <img src={layout.preview_url} alt="" className="mb-2 aspect-[14/9] w-full rounded border border-gray-200 bg-white object-cover" /> : <div className="mb-2 flex aspect-[14/9] items-center justify-center rounded border border-dashed border-gray-300 bg-white text-gray-300"><PencilRuler className="h-7 w-7" /></div>}
-                <p className="truncate text-xs font-semibold text-gray-950">{layout.name}</p>
-                <p className="mt-0.5 text-[10px] text-gray-500">{layout.page_count} {layout.page_count === 1 ? "page" : "pages"} · {formatDate(layout.updated_at)}</p>
-              </button>
-            ))}
+          ) : (
+            <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto">
+              {initialLayouts.map((layout) => (
+                <button
+                  key={layout.id}
+                  type="button"
+                  onClick={() => choose(layout)}
+                  className={`w-36 shrink-0 rounded-md border p-1.5 text-left ${selectedId === layout.id ? "border-gray-900 bg-white shadow-sm" : "border-transparent hover:bg-white"}`}
+                >
+                  {layout.preview_url ? <img src={layout.preview_url} alt="" className="h-16 w-full rounded border border-gray-200 bg-white object-cover object-top" /> : <div className="flex h-16 w-full items-center justify-center rounded border border-dashed border-gray-300 bg-white text-gray-300"><PencilRuler className="h-5 w-5" /></div>}
+                  <p className="mt-1 truncate text-[11px] font-semibold text-gray-950">{layout.name}</p>
+                  <p className="truncate text-[9px] text-gray-500">{layout.page_count} {layout.page_count === 1 ? "page" : "pages"} · {formatDate(layout.updated_at)}</p>
+                </button>
+              ))}
+            </div>
+          )}
           </div>
         </aside>
 
