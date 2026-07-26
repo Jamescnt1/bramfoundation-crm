@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type { Customer } from "@/components/customers/types";
 import {
@@ -73,10 +74,16 @@ export default function ContactFormDialog({
     }
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[70] overflow-y-auto bg-black/45 p-3 sm:p-6">
       <div className="flex min-h-full items-start justify-center sm:items-center">
-        <form onSubmit={submit} className="my-3 w-full max-w-xl rounded-xl bg-white shadow-2xl">
+        <form
+          onSubmit={(event) => {
+            event.stopPropagation();
+            void submit(event);
+          }}
+          className="my-3 w-full max-w-xl rounded-xl bg-white shadow-2xl"
+        >
           <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
             <div>
               <h2 className="font-semibold text-gray-950">{contact ? "Edit Contact" : "Create New Contact"}</h2>
@@ -126,7 +133,8 @@ export default function ContactFormDialog({
           </footer>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
