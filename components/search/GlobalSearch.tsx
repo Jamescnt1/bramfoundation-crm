@@ -14,10 +14,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { GlobalSearchResponse, GlobalSearchResult, GlobalSearchResultType } from "@/lib/search/types";
 
 const groupOrder: GlobalSearchResultType[] = [
-  "customer", "lead", "job", "task", "appointment", "employee", "file",
+  "customer", "contact", "lead", "job", "task", "appointment", "employee", "file",
 ];
 const groupLabels: Record<GlobalSearchResultType, string> = {
   customer: "Customers",
+  contact: "Contacts",
   job: "Jobs",
   lead: "Leads",
   task: "Tasks",
@@ -27,6 +28,7 @@ const groupLabels: Record<GlobalSearchResultType, string> = {
 };
 const icons = {
   customer: UserRound,
+  contact: UserRound,
   job: BriefcaseBusiness,
   lead: BriefcaseBusiness,
   task: CheckSquare,

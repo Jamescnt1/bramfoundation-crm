@@ -5,6 +5,8 @@ import type { Job } from "@/lib/services/jobs";
 import type { Employee } from "@/lib/services/employees";
 import type { TaskType, UniversalTask } from "@/components/tasks/types";
 import TaskManager from "@/components/tasks/TaskManager";
+import CustomerContactsManager from "@/components/contacts/CustomerContactsManager";
+import type { CustomerContact } from "@/lib/services/customer-contacts";
 
 type CustomerDetailsProps = {
   customer: Customer;
@@ -12,6 +14,9 @@ type CustomerDetailsProps = {
   tasks: UniversalTask[];
   employees: Employee[];
   taskTypes: TaskType[];
+  contacts: CustomerContact[];
+  canManageContacts: boolean;
+  canArchiveContacts: boolean;
 };
 
 export default function CustomerDetails({
@@ -20,6 +25,9 @@ export default function CustomerDetails({
   tasks,
   employees,
   taskTypes,
+  contacts,
+  canManageContacts,
+  canArchiveContacts,
 }: CustomerDetailsProps) {
   return (
     <div className="space-y-8">
@@ -103,6 +111,13 @@ export default function CustomerDetails({
           </p>
         </div>
       </section>
+
+      <CustomerContactsManager
+        customer={customer}
+        initialContacts={contacts}
+        canManage={canManageContacts}
+        canArchive={canArchiveContacts}
+      />
 
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

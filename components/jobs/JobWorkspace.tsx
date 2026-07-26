@@ -16,7 +16,7 @@ import { changeJobPipelineStatus } from "@/app/actions/job-status";
 import type { CalendarAppointment } from "@/components/calendar/types";
 import type { Customer } from "@/components/customers/types";
 import type { Employee } from "@/lib/services/employees";
-import type { Job, JobActivity } from "@/lib/services/jobs";
+import type { Job, JobActivity, JobContactSummary } from "@/lib/services/jobs";
 import type { InstallerCrew } from "@/lib/services/installer-crews";
 import type { TaskType, UniversalTask } from "@/components/tasks/types";
 import { formatJobDisplayName } from "@/lib/job-display";
@@ -242,6 +242,8 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                     <Fact label="Status" value={resolveConfiguredStage(currentStatus, stages)?.label ?? currentStatus} />
                     <Fact label="Contract Amount" value={currentContractAmount ? formatCurrency(currentContractAmount) : "Not entered"} />
                     <Fact label="Assigned employee" value={employeeName} />
+                    <ContactFact label="Company Contact" contact={job.company_contact} />
+                    <ContactFact label="Job Site Contact" contact={job.job_site_contact} />
                     <Fact label="Created" value={formatDate(job.created_at)} />
                     <Fact label="Next action due" value={job.next_action_due ? formatDate(job.next_action_due) : "No due date"} />
                     <Fact label="Project address" value={job.address ?? "Not provided"} />
@@ -445,6 +447,19 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
 
 function QuickButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) { return <button type="button" onClick={onClick} className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 [&_svg]:h-3.5 [&_svg]:w-3.5">{children}</button>; }
 function Fact({ label, value }: { label: string; value: string }) { return <div className="min-w-0"><dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{label}</dt><dd className="mt-0.5 break-words text-sm font-medium leading-5 text-gray-900" title={value}>{value}</dd></div>; }
+function ContactFact({ label, contact }: { label: string; contact: JobContactSummary | null }) {
+  if (!contact) return <Fact label={label} value="Not selected" />;
+  const name = `${contact.first_name} ${contact.last_name}`.trim();
+  const phone = contact.mobile_phone ?? contact.office_phone;
+  return (
+    <div className="min-w-0">
+      <dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{label}</dt>
+      <dd className="mt-0.5 text-sm font-medium leading-5 text-gray-900">{name}</dd>
+      {phone ? <a className="block truncate text-xs text-gray-600 hover:underline" href={`tel:${phone}`}>{phone}</a> : null}
+      {contact.email ? <a className="block truncate text-xs text-gray-600 hover:underline" href={`mailto:${contact.email}`}>{contact.email}</a> : null}
+    </div>
+  );
+}
 function Metric({ label, value, danger = false }: { label: string; value: number; danger?: boolean }) { return <div className={`rounded-md px-3 py-2 ${danger ? "bg-red-50 text-red-800" : "bg-gray-50 text-gray-900"}`}><p className="text-[11px] font-medium opacity-70">{label}</p><p className="text-lg font-bold leading-6">{value}</p></div>; }
 function formatDate(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value.length === 10 ? `${value}T00:00:00` : value)); }
 function formatDateTime(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value)); }

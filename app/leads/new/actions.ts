@@ -23,6 +23,8 @@ export type CreateLeadInput = {
     nextAction: string;
     nextActionDue: string;
     notes: string;
+    companyContactId: string;
+    jobSiteContactId: string;
   };
 };
 
@@ -101,6 +103,8 @@ export async function createLeadAction(input: CreateLeadInput) {
       next_action: clean(input.job.nextAction),
       next_action_due: clean(input.job.nextActionDue),
       notes: clean(input.job.notes),
+      company_contact_id: clean(input.job.companyContactId),
+      job_site_contact_id: clean(input.job.jobSiteContactId),
     })
     .select("id")
     .single();

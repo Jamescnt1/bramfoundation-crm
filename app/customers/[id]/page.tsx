@@ -11,6 +11,8 @@ import { getActiveEmployees } from "@/lib/services/employees";
 import { getTasks, getTaskTypes } from "@/lib/services/tasks";
 import type { Employee } from "@/lib/services/employees";
 import type { TaskType, UniversalTask } from "@/components/tasks/types";
+import { getCustomerContacts, getContactJobs, type CustomerContact } from "@/lib/services/customer-contacts";
+import { hasPermission } from "@/lib/services/employees";
 
 export const dynamic = "force-dynamic";
 
@@ -29,16 +31,26 @@ export default async function CustomerPage({
   let tasks: UniversalTask[] = [];
   let employees: Employee[] = [];
   let taskTypes: TaskType[] = [];
+  let contacts: CustomerContact[] = [];
+  let canManageContacts = false;
+  let canArchiveContacts = false;
   let errorMessage = "";
 
   try {
-    [customer, jobs, tasks, employees, taskTypes] = await Promise.all([
+    [customer, jobs, tasks, employees, taskTypes, contacts, canManageContacts, canArchiveContacts] = await Promise.all([
       getCustomerById(id),
       getJobsByCustomerId(id),
       getTasks({ customerId: id }),
       getActiveEmployees(),
       getTaskTypes(),
+      getCustomerContacts(id),
+      hasPermission("customers.manage"),
+      hasPermission("delete_customers"),
     ]);
+    contacts = await Promise.all(contacts.map(async (contact) => ({
+      ...contact,
+      jobs: await getContactJobs(contact.id),
+    })));
   } catch (error) {
     errorMessage =
       error instanceof Error ? error.message : "";
@@ -92,6 +104,9 @@ export default async function CustomerPage({
             tasks={tasks}
             employees={employees}
             taskTypes={taskTypes}
+            contacts={contacts}
+            canManageContacts={canManageContacts}
+            canArchiveContacts={canArchiveContacts}
           />
         </div>
       </div>

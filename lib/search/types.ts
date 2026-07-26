@@ -1,5 +1,6 @@
 export type GlobalSearchResultType =
   | "customer"
+  | "contact"
   | "job"
   | "lead"
   | "task"

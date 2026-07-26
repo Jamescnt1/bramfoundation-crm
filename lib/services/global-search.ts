@@ -29,7 +29,7 @@ export async function searchFoundationCrm(rawQuery: string): Promise<GlobalSearc
   const supabase = await createClient();
   const pattern = searchPattern(query);
 
-  const [customersResult, jobsResult, tasksResult, appointmentsResult, employeesResult, filesResult] =
+  const [customersResult, contactsResult, jobsResult, tasksResult, appointmentsResult, employeesResult, filesResult] =
     await Promise.all([
       supabase
         .from("customers")
@@ -37,6 +37,13 @@ export async function searchFoundationCrm(rawQuery: string): Promise<GlobalSearc
         .is("archived_at", null)
         .or(`full_name.ilike.${pattern},phone.ilike.${pattern},email.ilike.${pattern}`)
         .order("full_name")
+        .limit(RESULT_LIMIT),
+      supabase
+        .from("customer_contacts")
+        .select("id, customer_id, first_name, last_name, job_title, email, office_phone, mobile_phone, customer:customers!customer_contacts_customer_id_fkey(full_name)")
+        .is("archived_at", null)
+        .or(`first_name.ilike.${pattern},last_name.ilike.${pattern},email.ilike.${pattern},office_phone.ilike.${pattern},mobile_phone.ilike.${pattern}`)
+        .order("last_name")
         .limit(RESULT_LIMIT),
       supabase
         .from("jobs")
@@ -75,6 +82,7 @@ export async function searchFoundationCrm(rawQuery: string): Promise<GlobalSearc
 
   const firstError = [
     customersResult.error,
+    contactsResult.error,
     jobsResult.error,
     tasksResult.error,
     appointmentsResult.error,
@@ -93,6 +101,19 @@ export async function searchFoundationCrm(rawQuery: string): Promise<GlobalSearc
       subtitle: clean(customer.phone) ?? clean(customer.email),
       href: `/customers/${customer.id}`,
       keywords: [customer.full_name, customer.phone, customer.email].filter(Boolean).join(" "),
+    });
+  }
+
+  for (const contact of contactsResult.data ?? []) {
+    const customer = relation(contact.customer);
+    const name = `${contact.first_name} ${contact.last_name}`.trim();
+    results.push({
+      type: "contact",
+      id: contact.id,
+      title: name,
+      subtitle: [contact.job_title, customer?.full_name, contact.mobile_phone ?? contact.office_phone].filter(Boolean).join(" · ") || contact.email,
+      href: `/customers/${contact.customer_id}#contacts`,
+      keywords: [name, contact.email, contact.office_phone, contact.mobile_phone, customer?.full_name].filter(Boolean).join(" "),
     });
   }
 

@@ -8,6 +8,9 @@ import {
 import { formatJobDisplayName } from "@/lib/job-display";
 import { getActiveEmployees, getCurrentEmployee, type Employee } from "@/lib/services/employees";
 import { getPipelineStages, type PipelineStageConfig } from "@/lib/services/pipeline-stages";
+import { getCustomerContacts, type CustomerContact } from "@/lib/services/customer-contacts";
+import { getCustomers } from "@/lib/services/customers";
+import type { Customer } from "@/components/customers/types";
 
 type EditLeadPageProps = {
   params: Promise<{
@@ -27,17 +30,23 @@ export default async function EditLeadPage({
   let canDeleteLead = false;
   let stages: PipelineStageConfig[] = [];
   let employees: Employee[] = [];
+  let contacts: CustomerContact[] = [];
+  let customers: Customer[] = [];
 
   try {
-    const [loadedJob, currentEmployee, loadedStages, loadedEmployees] = await Promise.all([
+    const [loadedJob, currentEmployee, loadedStages, loadedEmployees, loadedContacts, loadedCustomers] = await Promise.all([
       getJobById(id),
       getCurrentEmployee(),
       getPipelineStages(),
       getActiveEmployees(),
+      getCustomerContacts(),
+      getCustomers(),
     ]);
     job = loadedJob;
     stages = loadedStages;
     employees = loadedEmployees;
+    contacts = loadedContacts;
+    customers = loadedCustomers;
     canDeleteLead = currentEmployee?.role === "administrator";
   } catch (error) {
     errorMessage =
@@ -94,7 +103,7 @@ export default async function EditLeadPage({
         </header>
 
         <section className="mt-8 rounded-xl bg-white p-6 shadow-sm md:p-8">
-          <EditLeadForm job={job} canDelete={canDeleteLead} stages={stages} employees={employees} />
+          <EditLeadForm job={job} canDelete={canDeleteLead} stages={stages} employees={employees} contacts={contacts} customers={customers} />
         </section>
       </div>
     </main>

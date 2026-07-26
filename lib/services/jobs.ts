@@ -4,6 +4,8 @@ export type Job = {
   id: string;
   customer_id: string | null;
   assigned_employee_id: string | null;
+  company_contact_id: string | null;
+  job_site_contact_id: string | null;
   customer_name: string;
   phone: string | null;
   email: string | null;
@@ -25,6 +27,19 @@ export type Job = {
     id: string;
     full_name: string;
   } | null;
+  company_contact: JobContactSummary | null;
+  job_site_contact: JobContactSummary | null;
+};
+
+export type JobContactSummary = {
+  id: string;
+  customer_id: string;
+  first_name: string;
+  last_name: string;
+  job_title: string | null;
+  email: string | null;
+  office_phone: string | null;
+  mobile_phone: string | null;
 };
 
 export type JobActivity = {
@@ -60,6 +75,8 @@ export type JobTask = {
 export type CreateJobValues = {
   customer_id?: string | null;
   assigned_employee_id?: string | null;
+  company_contact_id?: string | null;
+  job_site_contact_id?: string | null;
   customer_name: string;
   phone?: string | null;
   email?: string | null;
@@ -126,6 +143,8 @@ const jobColumns = `
   id,
   customer_id,
   assigned_employee_id,
+  company_contact_id,
+  job_site_contact_id,
   customer_name,
   phone,
   email,
@@ -147,14 +166,24 @@ const jobColumns = `
     id,
     full_name
   )
+  ,company_contact:customer_contacts!jobs_company_contact_id_fkey (
+    id, customer_id, first_name, last_name, job_title, email, office_phone, mobile_phone
+  )
+  ,job_site_contact:customer_contacts!jobs_job_site_contact_id_fkey (
+    id, customer_id, first_name, last_name, job_title, email, office_phone, mobile_phone
+  )
 `;
 
 function normalizeJob(job: Record<string, unknown>): Job {
   const relation = job.customer;
+  const companyContact = job.company_contact;
+  const siteContact = job.job_site_contact;
 
   return {
     ...job,
     customer: Array.isArray(relation) ? relation[0] ?? null : relation ?? null,
+    company_contact: Array.isArray(companyContact) ? companyContact[0] ?? null : companyContact ?? null,
+    job_site_contact: Array.isArray(siteContact) ? siteContact[0] ?? null : siteContact ?? null,
   } as Job;
 }
 
@@ -429,6 +458,8 @@ export async function createJob(
       assigned_employee_id:
         values.assigned_employee_id ??
         (await findEmployeeIdByName(values.salesperson)),
+      company_contact_id: values.company_contact_id ?? null,
+      job_site_contact_id: values.job_site_contact_id ?? null,
       customer_name: values.customer_name.trim(),
       phone: values.phone?.trim() || null,
       email: values.email?.trim() || null,
@@ -496,6 +527,14 @@ export async function updateJob(
     updates.assigned_employee_id = values.assigned_employee_id;
   } else if (values.salesperson !== undefined) {
     updates.assigned_employee_id = await findEmployeeIdByName(values.salesperson);
+  }
+
+  if (values.company_contact_id !== undefined) {
+    updates.company_contact_id = values.company_contact_id;
+  }
+
+  if (values.job_site_contact_id !== undefined) {
+    updates.job_site_contact_id = values.job_site_contact_id;
   }
 
   if (values.customer_name !== undefined) {

@@ -10,14 +10,17 @@ import SalespersonSelect from "@/components/SalespersonSelect";
 import { createLeadAction } from "@/app/leads/new/actions";
 import type { Job } from "@/lib/services/jobs";
 import type { LeadSource } from "@/lib/services/lead-sources";
+import ContactPicker from "@/components/contacts/ContactPicker";
+import type { CustomerContact } from "@/lib/services/customer-contacts";
 
 type NewLeadFormProps = {
   customers: Customer[];
   jobs: Job[];
   leadSources: LeadSource[];
+  contacts: CustomerContact[];
 };
 
-export default function NewLeadForm({ customers, jobs, leadSources }: NewLeadFormProps) {
+export default function NewLeadForm({ customers, jobs, leadSources, contacts }: NewLeadFormProps) {
   const router = useRouter();
 
   const [customerMode, setCustomerMode] =
@@ -39,6 +42,9 @@ export default function NewLeadForm({ customers, jobs, leadSources }: NewLeadFor
   const [notes, setNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [companyContactId, setCompanyContactId] = useState("");
+  const [jobSiteContactId, setJobSiteContactId] = useState("");
+  const [availableContacts, setAvailableContacts] = useState(contacts);
 
   const selectedCustomer =
     customers.find((customer) => customer.id === customerId) ?? null;
@@ -60,11 +66,15 @@ export default function NewLeadForm({ customers, jobs, leadSources }: NewLeadFor
   function handleCustomerModeChange(mode: CustomerSelectionMode) {
     setCustomerMode(mode);
     setCustomerId("");
+    setCompanyContactId("");
+    setJobSiteContactId("");
     setErrorMessage("");
   }
 
   function handleCustomerSelect(customer: Customer | null) {
     setCustomerId(customer?.id ?? "");
+    setCompanyContactId("");
+    setJobSiteContactId("");
     setErrorMessage("");
   }
 
@@ -118,6 +128,8 @@ export default function NewLeadForm({ customers, jobs, leadSources }: NewLeadFor
           nextAction,
           nextActionDue,
           notes,
+          companyContactId,
+          jobSiteContactId,
         },
       });
 
@@ -233,6 +245,42 @@ export default function NewLeadForm({ customers, jobs, leadSources }: NewLeadFor
         <Field label="Project Address" htmlFor="projectAddress">
           <input id="projectAddress" type="text" disabled={isSaving} value={projectAddress} onChange={(event) => setProjectAddress(event.target.value)} placeholder="Unit or property address for this job" className={inputClass} />
         </Field>
+
+        {customerMode === "existing" && selectedCustomer ? (
+          <div className="grid gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:col-span-2 sm:grid-cols-2">
+            <ContactPicker
+              label="Company Contact"
+              value={companyContactId}
+              contacts={availableContacts}
+              customers={customers}
+              parentCustomerId={selectedCustomer.id}
+              restrictToParent
+              disabled={isSaving}
+              description="Optional company employee or project manager."
+              onChange={(id, created) => {
+                if (created) setAvailableContacts((current) => [...current, created]);
+                setCompanyContactId(id);
+              }}
+            />
+            <ContactPicker
+              label="Job Site Contact"
+              value={jobSiteContactId}
+              contacts={availableContacts}
+              customers={customers}
+              parentCustomerId={selectedCustomer.id}
+              disabled={isSaving}
+              description="Optional homeowner, tenant, or on-site contact."
+              onChange={(id, created) => {
+                if (created) setAvailableContacts((current) => [...current, created]);
+                setJobSiteContactId(id);
+              }}
+            />
+          </div>
+        ) : customerMode === "new" ? (
+          <p className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500 sm:col-span-2">
+            Create the customer and job first, then add organization and site contacts from Edit Job Info.
+          </p>
+        ) : null}
 
         <div className="grid gap-6 sm:col-span-2 sm:grid-cols-2">
           <Field label="Lead Source" htmlFor="leadSource">

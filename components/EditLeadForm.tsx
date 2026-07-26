@@ -11,12 +11,17 @@ import { deleteLeadAction, updateJobInfoAction } from "@/app/leads/[id]/edit/act
 import RecordDeleteDialog from "@/components/ui/RecordDeleteDialog";
 import { formatJobDisplayName } from "@/lib/job-display";
 import type { Employee } from "@/lib/services/employees";
+import type { Customer } from "@/components/customers/types";
+import ContactPicker from "@/components/contacts/ContactPicker";
+import type { CustomerContact } from "@/lib/services/customer-contacts";
 
 type EditLeadFormProps = {
   job: Job;
   canDelete?: boolean;
   stages: PipelineStageView[];
   employees?: Employee[];
+  contacts?: CustomerContact[];
+  customers?: Customer[];
 };
 
 export default function EditLeadForm({
@@ -24,6 +29,8 @@ export default function EditLeadForm({
   canDelete = false,
   stages,
   employees = [],
+  contacts = [],
+  customers = [],
 }: EditLeadFormProps) {
   const router = useRouter();
 
@@ -55,6 +62,9 @@ export default function EditLeadForm({
   const [jobName, setJobName] = useState(job.customer_name);
   const [address, setAddress] = useState(job.address ?? "");
   const [assignedEmployeeId, setAssignedEmployeeId] = useState(job.assigned_employee_id ?? "");
+  const [companyContactId, setCompanyContactId] = useState(job.company_contact_id ?? "");
+  const [jobSiteContactId, setJobSiteContactId] = useState(job.job_site_contact_id ?? "");
+  const [availableContacts, setAvailableContacts] = useState(contacts);
 
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -93,6 +103,8 @@ export default function EditLeadForm({
         customer_name: jobName.trim(),
         address: address.trim() || null,
         assigned_employee_id: assignedEmployeeId || null,
+        company_contact_id: companyContactId || null,
+        job_site_contact_id: jobSiteContactId || null,
         status,
         salesperson: salesperson || null,
         next_action: nextAction.trim() || null,
@@ -169,6 +181,38 @@ export default function EditLeadForm({
           {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}
         </select>
       </div>
+
+      {job.customer_id ? (
+        <div className="grid gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:grid-cols-2">
+          <ContactPicker
+            label="Company Contact"
+            value={companyContactId}
+            contacts={availableContacts}
+            customers={customers}
+            parentCustomerId={job.customer_id}
+            restrictToParent
+            disabled={isSaving}
+            description="Project manager or employee at the parent customer."
+            onChange={(id, created) => {
+              if (created) setAvailableContacts((current) => [...current, created]);
+              setCompanyContactId(id);
+            }}
+          />
+          <ContactPicker
+            label="Job Site Contact"
+            value={jobSiteContactId}
+            contacts={availableContacts}
+            customers={customers}
+            parentCustomerId={job.customer_id}
+            disabled={isSaving}
+            description="Homeowner, tenant, business owner, or on-site contact."
+            onChange={(id, created) => {
+              if (created) setAvailableContacts((current) => [...current, created]);
+              setJobSiteContactId(id);
+            }}
+          />
+        </div>
+      ) : null}
 
       {isConfiguredContractAmountRequired(status, stages) || contractAmount ? (
         <div>

@@ -3,14 +3,16 @@ import NewLeadForm from "@/components/NewLeadForm";
 import { getCustomers } from "@/lib/services/customers";
 import { getJobs } from "@/lib/services/jobs";
 import { getLeadSources } from "@/lib/services/lead-sources";
+import { getCustomerContacts } from "@/lib/services/customer-contacts";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewLeadPage() {
-  const [customersResult, jobsResult, leadSourcesResult] = await Promise.allSettled([
+  const [customersResult, jobsResult, leadSourcesResult, contactsResult] = await Promise.allSettled([
     getCustomers(),
     getJobs(),
     getLeadSources(),
+    getCustomerContacts(),
   ]);
 
   const customers =
@@ -18,6 +20,7 @@ export default async function NewLeadPage() {
   const jobs = jobsResult.status === "fulfilled" ? jobsResult.value : [];
   const leadSources =
     leadSourcesResult.status === "fulfilled" ? leadSourcesResult.value : [];
+  const contacts = contactsResult.status === "fulfilled" ? contactsResult.value : [];
   const loadError =
     customersResult.status === "rejected"
       ? getErrorMessage(customersResult.reason)
@@ -54,7 +57,8 @@ export default async function NewLeadPage() {
             <NewLeadForm
               customers={customers}
               jobs={jobs}
-              leadSources={leadSources}
+            leadSources={leadSources}
+            contacts={contacts}
             />
           </div>
         )}
