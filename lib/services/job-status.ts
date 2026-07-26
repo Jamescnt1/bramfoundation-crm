@@ -1,7 +1,12 @@
 import "server-only";
 
 import type { PipelineStage } from "@/components/pipeline/constants";
-import { ContractAmountRequiredError, normalizeContractAmount, QfNumberRequiredError } from "@/lib/services/jobs";
+import {
+  ContractAmountRequiredError,
+  InstallAppointmentRequiredError,
+  normalizeContractAmount,
+  QfNumberRequiredError,
+} from "@/lib/services/jobs";
 import { requirePermission } from "@/lib/services/employees";
 import { createClient } from "@/lib/supabase/server";
 import { getPipelineStages } from "@/lib/services/pipeline-stages";
@@ -12,6 +17,7 @@ export type JobStatusUpdate = {
   qfloors_job_number: string | null;
   contract_amount: string | null;
   customer_id: string | null;
+  installation_required: boolean;
 };
 
 export async function updateJobPipelineStatus(
@@ -31,7 +37,7 @@ export async function updateJobPipelineStatus(
   const supabase = await createClient();
   const { data: currentJob, error: loadError } = await supabase
     .from("jobs")
-    .select("id, customer_id, status, qfloors_job_number, contract_amount")
+    .select("id, customer_id, status, qfloors_job_number, contract_amount, installation_required")
     .eq("id", jobId)
     .is("archived_at", null)
     .maybeSingle();
@@ -54,6 +60,17 @@ export async function updateJobPipelineStatus(
   if (targetStage.contract_amount_required && !resultingContractAmount) {
     throw new ContractAmountRequiredError();
   }
+  if (targetStage.slug === "install_scheduled" && currentJob.installation_required) {
+    const { count, error: appointmentError } = await supabase
+      .from("appointments")
+      .select("id", { count: "exact", head: true })
+      .eq("job_id", jobId)
+      .eq("appointment_type", "installation")
+      .neq("status", "cancelled");
+
+    if (appointmentError) throw new Error(appointmentError.message);
+    if (!count) throw new InstallAppointmentRequiredError();
+  }
 
   const updates: {
     status: PipelineStage;
@@ -72,7 +89,7 @@ export async function updateJobPipelineStatus(
     .from("jobs")
     .update(updates)
     .eq("id", jobId)
-    .select("id, customer_id, status, qfloors_job_number, contract_amount")
+    .select("id, customer_id, status, qfloors_job_number, contract_amount, installation_required")
     .single();
 
   if (error) throw new Error(error.message);

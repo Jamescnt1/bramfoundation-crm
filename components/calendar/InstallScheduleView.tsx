@@ -48,6 +48,7 @@ export default function InstallScheduleView({
   const installs = appointments.filter(
     (appointment) =>
       appointment.appointment_type === "installation" &&
+      appointment.job?.installation_required !== false &&
       (!installerCrewId || appointment.installer_crew_id === installerCrewId),
   );
 

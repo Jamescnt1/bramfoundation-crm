@@ -2,14 +2,16 @@ import PipelineBoard from "@/components/pipeline/PipelineBoard";
 import { getJobs } from "@/lib/services/jobs";
 import { hasPermission } from "@/lib/services/employees";
 import { getPipelineStages } from "@/lib/services/pipeline-stages";
+import { getInstallationJobIds } from "@/lib/services/appointments";
 
 export const dynamic = "force-dynamic";
 
 export default async function PipelinePage() {
-  const [{ jobs, errorMessage }, canChangeStatus, stages] = await Promise.all([
+  const [{ jobs, errorMessage }, canChangeStatus, stages, installationJobIds] = await Promise.all([
     loadPipelineJobs(),
     hasPermission("pipeline.manage"),
     getPipelineStages(),
+    getInstallationJobIds(),
   ]);
 
   return (
@@ -33,7 +35,12 @@ export default async function PipelinePage() {
             Unable to load pipeline data: {errorMessage}
           </div>
         ) : (
-          <PipelineBoard initialJobs={jobs} canChangeStatus={canChangeStatus} stages={stages} />
+          <PipelineBoard
+            initialJobs={jobs}
+            canChangeStatus={canChangeStatus}
+            stages={stages}
+            installationJobIds={installationJobIds}
+          />
         )}
       </div>
     </main>

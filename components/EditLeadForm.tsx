@@ -59,6 +59,7 @@ export default function EditLeadForm({
   );
   const [contractAmount, setContractAmount] = useState(job.contract_amount ?? "");
   const [isBilled, setIsBilled] = useState(Boolean(job.billed_at));
+  const [installationRequired, setInstallationRequired] = useState(job.installation_required);
   const [jobName, setJobName] = useState(job.customer_name);
   const [address, setAddress] = useState(job.address ?? "");
   const [assignedEmployeeId, setAssignedEmployeeId] = useState(job.assigned_employee_id ?? "");
@@ -113,6 +114,7 @@ export default function EditLeadForm({
         qfloors_job_number: qfNumber.trim() || null,
         contract_amount: contractAmount.trim() || null,
         billed_at: isBilled ? job.billed_at ?? new Date().toISOString() : null,
+        installation_required: installationRequired,
       });
 
       router.push(`/leads/${job.id}`);
@@ -230,6 +232,22 @@ export default function EditLeadForm({
       <label className="flex items-center gap-3 rounded-lg border border-gray-200 p-3 text-sm font-medium text-gray-700">
         <input type="checkbox" checked={isBilled} onChange={(event) => setIsBilled(event.target.checked)} disabled={isSaving} className="h-4 w-4 rounded border-gray-300" />
         Mark this job as billed
+      </label>
+
+      <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          checked={installationRequired}
+          onChange={(event) => setInstallationRequired(event.target.checked)}
+          disabled={isSaving}
+          className="mt-0.5 h-4 w-4 rounded border-gray-300"
+        />
+        <span>
+          <span className="block font-medium text-gray-900">Installation Required</span>
+          <span className="mt-0.5 block text-gray-500">
+            Turn this off for materials-only jobs or customers using another installer.
+          </span>
+        </span>
       </label>
 
       <div>

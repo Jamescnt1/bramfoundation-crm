@@ -141,6 +141,10 @@ export function isConfiguredContractAmountRequired(status: string | null, stages
   );
 }
 
+export function isInstallScheduledStage(status: string | null, stages: PipelineStageView[]) {
+  return resolveConfiguredStage(status, stages)?.slug === "install_scheduled";
+}
+
 const LEGACY_STAGE_MAP: Record<string, LegacyPipelineStage> = {
   "New Lead": "New Lead",
   Contacted: "New Lead",

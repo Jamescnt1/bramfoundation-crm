@@ -19,6 +19,7 @@ export type Job = {
   qfloors_job_number: string | null;
   contract_amount: string | null;
   billed_at: string | null;
+  installation_required: boolean;
   created_at: string;
   updated_at: string | null;
   archived_at: string | null;
@@ -90,6 +91,7 @@ export type CreateJobValues = {
   qfloors_job_number?: string | null;
   contract_amount?: string | number | null;
   billed_at?: string | null;
+  installation_required?: boolean;
 };
 
 export type UpdateJobValues =
@@ -97,6 +99,7 @@ export type UpdateJobValues =
 
 export const QF_NUMBER_REQUIRED_ERROR = "QF_NUMBER_REQUIRED";
 export const CONTRACT_AMOUNT_REQUIRED_ERROR = "CONTRACT_AMOUNT_REQUIRED";
+export const INSTALL_APPOINTMENT_REQUIRED_ERROR = "INSTALL_APPOINTMENT_REQUIRED";
 
 export class QfNumberRequiredError extends Error {
   code = QF_NUMBER_REQUIRED_ERROR;
@@ -121,6 +124,15 @@ export class ContractAmountRequiredError extends Error {
   constructor() {
     super("Contract Amount is required at Approved and every later pipeline stage.");
     this.name = "ContractAmountRequiredError";
+  }
+}
+
+export class InstallAppointmentRequiredError extends Error {
+  code = INSTALL_APPOINTMENT_REQUIRED_ERROR;
+
+  constructor() {
+    super("Schedule an installation before moving this job to Install Scheduled.");
+    this.name = "InstallAppointmentRequiredError";
   }
 }
 
@@ -158,6 +170,7 @@ const jobColumns = `
   qfloors_job_number,
   contract_amount,
   billed_at,
+  installation_required,
   created_at,
   updated_at
   ,archived_at
@@ -450,6 +463,12 @@ export async function createJob(
   if (values.billed_at && !contractAmount) {
     throw new Error("Contract Amount is required before a job can be marked billed.");
   }
+  if (
+    values.installation_required !== false &&
+    await databaseIsInstallScheduled(values.status ?? "New Lead")
+  ) {
+    throw new InstallAppointmentRequiredError();
+  }
 
   const { data, error } = await supabase
     .from("jobs")
@@ -475,6 +494,7 @@ export async function createJob(
       qfloors_job_number: qfNumber,
       contract_amount: contractAmount,
       billed_at: values.billed_at ?? null,
+      installation_required: values.installation_required ?? true,
     })
     .select(jobColumns)
     .single();
@@ -515,6 +535,15 @@ export async function updateJob(
   const resultingBilledAt = values.billed_at !== undefined ? values.billed_at : currentJob.billed_at;
   if (resultingBilledAt && !resultingContractAmount) {
     throw new Error("Contract Amount is required before a job can be marked billed.");
+  }
+  const resultingInstallationRequired =
+    values.installation_required ?? currentJob.installation_required;
+  if (
+    resultingInstallationRequired &&
+    await databaseIsInstallScheduled(resultingStatus) &&
+    !await jobHasInstallAppointment(id)
+  ) {
+    throw new InstallAppointmentRequiredError();
   }
 
   const updates: Record<string, unknown> = {};
@@ -598,6 +627,9 @@ export async function updateJob(
   if (values.billed_at !== undefined) {
     updates.billed_at = values.billed_at;
   }
+  if (values.installation_required !== undefined) {
+    updates.installation_required = values.installation_required;
+  }
 
   const { data, error } = await supabase
     .from("jobs")
@@ -670,4 +702,22 @@ async function databaseRequiresContractAmount(status: string) {
   const stage = await getConfiguredStage(status);
   if (stage) return stage.contract_amount_required;
   return ["Approved", "Materials Ordered", "Install Scheduled", "Complete", "Lost"].includes(status);
+}
+
+async function databaseIsInstallScheduled(status: string) {
+  const stage = await getConfiguredStage(status);
+  if (stage) return stage.slug === "install_scheduled";
+  return ["Install Scheduled", "Installation Scheduled", "install_scheduled"].includes(status);
+}
+
+async function jobHasInstallAppointment(jobId: string) {
+  const { count, error } = await supabase
+    .from("appointments")
+    .select("id", { count: "exact", head: true })
+    .eq("job_id", jobId)
+    .eq("appointment_type", "installation")
+    .neq("status", "cancelled");
+
+  if (error) throw new Error(error.message);
+  return Boolean(count);
 }

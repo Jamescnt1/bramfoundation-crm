@@ -7,6 +7,7 @@ import JobRequirementsDialog from "@/components/pipeline/JobRequirementsDialog";
 import {
   isConfiguredQfNumberRequired,
   isConfiguredContractAmountRequired,
+  isInstallScheduledStage,
   resolveConfiguredStage,
   type PipelineStage,
   type PipelineStageView,
@@ -19,9 +20,10 @@ type PipelineBoardProps = {
   initialJobs: PipelineJob[];
   canChangeStatus: boolean;
   stages: PipelineStageView[];
+  installationJobIds: string[];
 };
 
-export default function PipelineBoard({ initialJobs, canChangeStatus, stages }: PipelineBoardProps) {
+export default function PipelineBoard({ initialJobs, canChangeStatus, stages, installationJobIds }: PipelineBoardProps) {
   const router = useRouter();
   const [jobs, setJobs] = useState(initialJobs);
   const [movingJobId, setMovingJobId] = useState<string | null>(null);
@@ -72,6 +74,11 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages }: 
     if (
       (isConfiguredQfNumberRequired(newStatus, stages) && !currentJob.qfloors_job_number?.trim()) ||
       (isConfiguredContractAmountRequired(newStatus, stages) && !currentJob.contract_amount)
+      || (
+        isInstallScheduledStage(newStatus, stages) &&
+        currentJob.installation_required &&
+        !installationJobIds.includes(currentJob.id)
+      )
     ) {
       clearDragState();
       setPendingMove({ jobId, status: newStatus });
@@ -197,6 +204,12 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages }: 
         targetStatus={pendingMove.status}
         requireQfNumber={isConfiguredQfNumberRequired(pendingMove.status, stages) && !jobs.find((job) => job.id === pendingMove.jobId)?.qfloors_job_number?.trim()}
         requireContractAmount={isConfiguredContractAmountRequired(pendingMove.status, stages) && !jobs.find((job) => job.id === pendingMove.jobId)?.contract_amount}
+        requireInstallAppointment={
+          isInstallScheduledStage(pendingMove.status, stages) &&
+          Boolean(jobs.find((job) => job.id === pendingMove.jobId)?.installation_required) &&
+          !installationJobIds.includes(pendingMove.jobId)
+        }
+        scheduleInstallHref={`/leads/${pendingMove.jobId}?tab=calendar`}
         initialQfNumber={jobs.find((job) => job.id === pendingMove.jobId)?.qfloors_job_number}
         initialContractAmount={jobs.find((job) => job.id === pendingMove.jobId)?.contract_amount}
         isSaving={Boolean(movingJobId)}

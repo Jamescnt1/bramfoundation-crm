@@ -11,7 +11,7 @@ import AppointmentDialog from "@/components/calendar/AppointmentDialog";
 import TaskManager from "@/components/tasks/TaskManager";
 import PipelineStatusControl from "@/components/pipeline/PipelineStatusControl";
 import JobRequirementsDialog from "@/components/pipeline/JobRequirementsDialog";
-import { isConfiguredContractAmountRequired, isConfiguredQfNumberRequired, resolveConfiguredStage, type PipelineStage, type PipelineStageView } from "@/components/pipeline/constants";
+import { isConfiguredContractAmountRequired, isConfiguredQfNumberRequired, isInstallScheduledStage, resolveConfiguredStage, type PipelineStage, type PipelineStageView } from "@/components/pipeline/constants";
 import { changeJobPipelineStatus } from "@/app/actions/job-status";
 import type { CalendarAppointment } from "@/components/calendar/types";
 import type { Customer } from "@/components/customers/types";
@@ -118,6 +118,15 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
     if (
       (isConfiguredQfNumberRequired(nextStatus, stages) && !currentQfNumber?.trim()) ||
       (isConfiguredContractAmountRequired(nextStatus, stages) && !currentContractAmount)
+      || (
+        isInstallScheduledStage(nextStatus, stages) &&
+        job.installation_required &&
+        !appointments.some(
+          (appointment) =>
+            appointment.appointment_type === "installation" &&
+            appointment.status !== "cancelled",
+        )
+      )
     ) {
       setPendingStatus(nextStatus);
       return;
@@ -428,6 +437,19 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
           targetStatus={pendingStatus}
           requireQfNumber={isConfiguredQfNumberRequired(pendingStatus, stages) && !currentQfNumber?.trim()}
           requireContractAmount={isConfiguredContractAmountRequired(pendingStatus, stages) && !currentContractAmount}
+          requireInstallAppointment={
+            isInstallScheduledStage(pendingStatus, stages) &&
+            job.installation_required &&
+            !appointments.some(
+              (appointment) =>
+                appointment.appointment_type === "installation" &&
+                appointment.status !== "cancelled",
+            )
+          }
+          onScheduleInstall={() => {
+            setPendingStatus(null);
+            schedule("installation");
+          }}
           initialQfNumber={currentQfNumber}
           initialContractAmount={currentContractAmount}
           isSaving={statusSaving}

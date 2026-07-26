@@ -11,5 +11,6 @@ export type PipelineJob = Pick<
   | "next_action_due"
   | "qfloors_job_number"
   | "contract_amount"
+  | "installation_required"
   | "created_at"
 > & Pick<Job, "customer">;

@@ -86,7 +86,9 @@ export default function InstallationScheduleBand({
   onSelectAppointment,
 }: InstallationScheduleBandProps) {
   const installAppointments = appointments.filter(
-    (appointment) => appointment.appointment_type === "installation",
+    (appointment) =>
+      appointment.appointment_type === "installation" &&
+      appointment.job?.installation_required !== false,
   );
   const segments = buildSegments(days, installAppointments);
   const laneCount = Math.max(1, ...segments.map((segment) => segment.lane + 1));

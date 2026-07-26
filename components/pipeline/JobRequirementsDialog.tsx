@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +14,9 @@ type Props = {
   targetStatus: string;
   requireQfNumber: boolean;
   requireContractAmount: boolean;
+  requireInstallAppointment?: boolean;
+  scheduleInstallHref?: string;
+  onScheduleInstall?: () => void;
   initialQfNumber?: string | null;
   initialContractAmount?: string | null;
   isSaving: boolean;
@@ -71,11 +75,39 @@ export default function JobRequirementsDialog(props: Props) {
                 <span className="mt-1 block text-xs font-normal text-gray-500">Used for CRM pipeline reporting only. QFloors remains the accounting system.</span>
               </label>
             ) : null}
+            {props.requireInstallAppointment ? (
+              <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3">
+                <p className="text-sm font-semibold text-indigo-950">Install date required</p>
+                <p className="mt-1 text-xs leading-5 text-indigo-800">
+                  Schedule a non-cancelled installation appointment before moving this job to Install Scheduled.
+                </p>
+                {props.onScheduleInstall ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-3 bg-white"
+                    onClick={props.onScheduleInstall}
+                    disabled={props.isSaving}
+                  >
+                    Schedule install
+                  </Button>
+                ) : props.scheduleInstallHref ? (
+                  <Link
+                    href={props.scheduleInstallHref}
+                    className="mt-3 inline-flex h-8 items-center justify-center rounded-lg border border-gray-200 bg-white px-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100"
+                  >
+                    Open job to schedule install
+                  </Link>
+                ) : null}
+              </div>
+            ) : null}
             {validationError || props.errorMessage ? <p className="text-sm text-red-700">{validationError || props.errorMessage}</p> : null}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => props.onOpenChange(false)} disabled={props.isSaving}>Cancel</Button>
-            <Button type="submit" disabled={props.isSaving}>{props.isSaving ? "Saving..." : `Save and move to ${props.targetStatus}`}</Button>
+            <Button type="submit" disabled={props.isSaving || props.requireInstallAppointment}>
+              {props.isSaving ? "Saving..." : `Save and move to ${props.targetStatus}`}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -25,6 +25,7 @@ export type CreateLeadInput = {
     notes: string;
     companyContactId: string;
     jobSiteContactId: string;
+    installationRequired: boolean;
   };
 };
 
@@ -105,6 +106,7 @@ export async function createLeadAction(input: CreateLeadInput) {
       notes: clean(input.job.notes),
       company_contact_id: clean(input.job.companyContactId),
       job_site_contact_id: clean(input.job.jobSiteContactId),
+      installation_required: input.job.installationRequired,
     })
     .select("id")
     .single();

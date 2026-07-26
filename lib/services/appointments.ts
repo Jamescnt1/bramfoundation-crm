@@ -69,6 +69,7 @@ export async function getAppointments() {
         customer_name,
         qfloors_job_number,
         status,
+        installation_required,
         customer:customers!jobs_customer_id_fkey (id, full_name)
       )
     `)
@@ -100,6 +101,7 @@ export async function getAppointmentsByJobId(jobId: string) {
         customer_name,
         qfloors_job_number,
         status,
+        installation_required,
         customer:customers!jobs_customer_id_fkey (id, full_name)
       )
     `)
@@ -108,6 +110,18 @@ export async function getAppointmentsByJobId(jobId: string) {
 
   if (error) throw new Error(error.message);
   return (data ?? []) as CalendarAppointment[];
+}
+
+export async function getInstallationJobIds(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("job_id")
+    .eq("appointment_type", "installation")
+    .neq("status", "cancelled")
+    .not("job_id", "is", null);
+
+  if (error) throw new Error(error.message);
+  return [...new Set((data ?? []).flatMap((row) => row.job_id ? [row.job_id] : []))];
 }
 
 export async function completeAppointment(
@@ -133,6 +147,7 @@ export async function completeAppointment(
         customer_name,
         qfloors_job_number,
         status,
+        installation_required,
         customer:customers!jobs_customer_id_fkey (id, full_name)
       )
     `)

@@ -40,6 +40,7 @@ export type CalendarAppointment = {
     customer_name: string;
     qfloors_job_number: string | null;
     status: string | null;
+    installation_required: boolean;
     customer: {
       id: string;
       full_name: string;

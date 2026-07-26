@@ -45,6 +45,7 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts }: 
   const [companyContactId, setCompanyContactId] = useState("");
   const [jobSiteContactId, setJobSiteContactId] = useState("");
   const [availableContacts, setAvailableContacts] = useState(contacts);
+  const [installationRequired, setInstallationRequired] = useState(true);
 
   const selectedCustomer =
     customers.find((customer) => customer.id === customerId) ?? null;
@@ -130,6 +131,7 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts }: 
           notes,
           companyContactId,
           jobSiteContactId,
+          installationRequired,
         },
       });
 
@@ -245,6 +247,22 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts }: 
         <Field label="Project Address" htmlFor="projectAddress">
           <input id="projectAddress" type="text" disabled={isSaving} value={projectAddress} onChange={(event) => setProjectAddress(event.target.value)} placeholder="Unit or property address for this job" className={inputClass} />
         </Field>
+
+        <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            checked={installationRequired}
+            onChange={(event) => setInstallationRequired(event.target.checked)}
+            disabled={isSaving}
+            className="mt-0.5 h-4 w-4 rounded border-gray-300"
+          />
+          <span>
+            <span className="block font-medium text-gray-900">Installation Required</span>
+            <span className="mt-0.5 block text-gray-500">
+              Turn this off for materials-only jobs or customers using another installer.
+            </span>
+          </span>
+        </label>
 
         {customerMode === "existing" && selectedCustomer ? (
           <div className="grid gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:col-span-2 sm:grid-cols-2">

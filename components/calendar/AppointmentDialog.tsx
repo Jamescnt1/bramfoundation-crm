@@ -38,6 +38,8 @@ type AppointmentDialogProps = {
   defaultAppointmentType?: AppointmentType;
 };
 
+type LocationMode = "job" | "custom";
+
 function formatDateInput(date: Date | null | undefined) {
   if (!date) {
     return "";
@@ -92,6 +94,7 @@ export default function AppointmentDialog({
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
   const [location, setLocation] = useState("");
+  const [locationMode, setLocationMode] = useState<LocationMode>("custom");
   const [notes, setNotes] = useState("");
   const [assignedEmployeeId, setAssignedEmployeeId] = useState("");
   const [installerCrewId, setInstallerCrewId] = useState("");
@@ -123,17 +126,26 @@ export default function AppointmentDialog({
       setStartTime(formatTimeInput(startsAt));
       setEndTime(formatTimeInput(endsAt));
       setLocation(appointment.location ?? "");
+      const appointmentJob = jobs.find((job) => job.id === appointment.job_id);
+      setLocationMode(
+        appointmentJob?.address &&
+          appointment.location?.trim() === appointmentJob.address.trim()
+          ? "job"
+          : "custom",
+      );
       setNotes(appointment.notes ?? "");
       setAssignedEmployeeId(appointment.assigned_employee_id ?? "");
       setInstallerCrewId(appointment.installer_crew_id ?? "");
       setJobId(appointment.job_id ?? "");
     } else {
+      const initialJob = jobs.find((job) => job.id === defaultJobId);
       setAppointmentType(defaultAppointmentType);
       setDate(formatDateInput(defaultDate ?? new Date()));
       setEndDate(formatDateInput(defaultDate ?? new Date()));
       setStartTime("09:00");
       setEndTime("10:00");
-      setLocation("");
+      setLocation(initialJob?.address ?? "");
+      setLocationMode(initialJob?.address ? "job" : "custom");
       setNotes("");
       setAssignedEmployeeId("");
       setInstallerCrewId("");
@@ -141,7 +153,7 @@ export default function AppointmentDialog({
     }
 
     setErrorMessage(null);
-  }, [open, appointment, defaultDate, defaultJobId, defaultAppointmentType]);
+  }, [open, appointment, defaultDate, defaultJobId, defaultAppointmentType, jobs]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function handleOpenChange(nextOpen: boolean) {
@@ -259,7 +271,18 @@ export default function AppointmentDialog({
                 <select
                   id="appointment-job"
                   value={jobId}
-                  onChange={(event) => setJobId(event.target.value)}
+                  onChange={(event) => {
+                    const nextJobId = event.target.value;
+                    const nextJob = jobs.find((job) => job.id === nextJobId);
+                    setJobId(nextJobId);
+                    if (nextJob?.address) {
+                      setLocationMode("job");
+                      setLocation(nextJob.address);
+                    } else {
+                      setLocationMode("custom");
+                      setLocation("");
+                    }
+                  }}
                   className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-base text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200 sm:h-9 sm:text-sm"
                 >
                   <option value="">General appointment</option>
@@ -419,11 +442,44 @@ export default function AppointmentDialog({
 
             <div className="grid gap-2">
               <label
-                htmlFor="appointment-location"
                 className="text-sm font-medium text-gray-900"
               >
                 Location
               </label>
+
+              {jobId ? (
+                <div className="grid grid-cols-2 rounded-md bg-gray-100 p-1" role="group" aria-label="Appointment location source">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const selectedJob = jobs.find((job) => job.id === jobId);
+                      setLocationMode("job");
+                      setLocation(selectedJob?.address ?? "");
+                    }}
+                    className={`min-h-9 rounded px-2 text-xs font-semibold ${
+                      locationMode === "job"
+                        ? "bg-white text-gray-950 shadow-sm"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    Use Job Address
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLocationMode("custom");
+                      setLocation("");
+                    }}
+                    className={`min-h-9 rounded px-2 text-xs font-semibold ${
+                      locationMode === "custom"
+                        ? "bg-white text-gray-950 shadow-sm"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    Custom Address
+                  </button>
+                </div>
+              ) : null}
 
               <Input
                 id="appointment-location"
@@ -431,8 +487,17 @@ export default function AppointmentDialog({
                 onChange={(event) =>
                   setLocation(event.target.value)
                 }
-                placeholder="123 Main Street"
+                placeholder={
+                  locationMode === "job"
+                    ? "Job address is not available"
+                    : "Vendor, showroom, or meeting address"
+                }
               />
+              <p className="text-xs text-gray-500">
+                {locationMode === "job"
+                  ? "Loaded from the job. Editing this changes only this appointment."
+                  : "Saved only on this appointment; the job address will not change."}
+              </p>
             </div>
 
             <div className="grid gap-2">
