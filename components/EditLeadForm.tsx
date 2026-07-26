@@ -5,23 +5,25 @@ import { useRouter } from "next/navigation";
 import SalespersonSelect from "@/components/SalespersonSelect";
 import { isConfiguredContractAmountRequired, isConfiguredQfNumberRequired, resolveConfiguredStage, type PipelineStageView } from "@/components/pipeline/constants";
 import {
-  updateJob,
   type Job,
 } from "@/lib/services/jobs";
-import { deleteLeadAction } from "@/app/leads/[id]/edit/actions";
+import { deleteLeadAction, updateJobInfoAction } from "@/app/leads/[id]/edit/actions";
 import RecordDeleteDialog from "@/components/ui/RecordDeleteDialog";
 import { formatJobDisplayName } from "@/lib/job-display";
+import type { Employee } from "@/lib/services/employees";
 
 type EditLeadFormProps = {
   job: Job;
   canDelete?: boolean;
   stages: PipelineStageView[];
+  employees?: Employee[];
 };
 
 export default function EditLeadForm({
   job,
   canDelete = false,
   stages,
+  employees = [],
 }: EditLeadFormProps) {
   const router = useRouter();
 
@@ -50,6 +52,9 @@ export default function EditLeadForm({
   );
   const [contractAmount, setContractAmount] = useState(job.contract_amount ?? "");
   const [isBilled, setIsBilled] = useState(Boolean(job.billed_at));
+  const [jobName, setJobName] = useState(job.customer_name);
+  const [address, setAddress] = useState(job.address ?? "");
+  const [assignedEmployeeId, setAssignedEmployeeId] = useState(job.assigned_employee_id ?? "");
 
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -84,7 +89,10 @@ export default function EditLeadForm({
     }
 
     try {
-      await updateJob(job.id, {
+      await updateJobInfoAction(job.id, {
+        customer_name: jobName.trim(),
+        address: address.trim() || null,
+        assigned_employee_id: assignedEmployeeId || null,
         status,
         salesperson: salesperson || null,
         next_action: nextAction.trim() || null,
@@ -140,6 +148,27 @@ export default function EditLeadForm({
         </p>
       </div>
       ) : null}
+
+      <div>
+        <label htmlFor="jobName" className="block text-sm font-medium text-gray-700">Job Name</label>
+        <input id="jobName" required disabled={isSaving} value={jobName} onChange={(event) => setJobName(event.target.value)}
+          className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 disabled:bg-gray-100" />
+      </div>
+
+      <div>
+        <label htmlFor="jobAddress" className="block text-sm font-medium text-gray-700">Job Address / Details</label>
+        <textarea id="jobAddress" rows={3} disabled={isSaving} value={address} onChange={(event) => setAddress(event.target.value)}
+          className="mt-2 w-full resize-y rounded-lg border border-gray-300 px-3 py-2 disabled:bg-gray-100" />
+      </div>
+
+      <div>
+        <label htmlFor="assignedEmployee" className="block text-sm font-medium text-gray-700">Assigned Employee</label>
+        <select id="assignedEmployee" disabled={isSaving} value={assignedEmployeeId} onChange={(event) => setAssignedEmployeeId(event.target.value)}
+          className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 disabled:bg-gray-100">
+          <option value="">Unassigned</option>
+          {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}
+        </select>
+      </div>
 
       {isConfiguredContractAmountRequired(status, stages) || contractAmount ? (
         <div>

@@ -6,7 +6,7 @@ import {
   type Job,
 } from "@/lib/services/jobs";
 import { formatJobDisplayName } from "@/lib/job-display";
-import { getCurrentEmployee } from "@/lib/services/employees";
+import { getActiveEmployees, getCurrentEmployee, type Employee } from "@/lib/services/employees";
 import { getPipelineStages, type PipelineStageConfig } from "@/lib/services/pipeline-stages";
 
 type EditLeadPageProps = {
@@ -26,15 +26,18 @@ export default async function EditLeadPage({
   let errorMessage = "";
   let canDeleteLead = false;
   let stages: PipelineStageConfig[] = [];
+  let employees: Employee[] = [];
 
   try {
-    const [loadedJob, currentEmployee, loadedStages] = await Promise.all([
+    const [loadedJob, currentEmployee, loadedStages, loadedEmployees] = await Promise.all([
       getJobById(id),
       getCurrentEmployee(),
       getPipelineStages(),
+      getActiveEmployees(),
     ]);
     job = loadedJob;
     stages = loadedStages;
+    employees = loadedEmployees;
     canDeleteLead = currentEmployee?.role === "administrator";
   } catch (error) {
     errorMessage =
@@ -91,7 +94,7 @@ export default async function EditLeadPage({
         </header>
 
         <section className="mt-8 rounded-xl bg-white p-6 shadow-sm md:p-8">
-          <EditLeadForm job={job} canDelete={canDeleteLead} stages={stages} />
+          <EditLeadForm job={job} canDelete={canDeleteLead} stages={stages} employees={employees} />
         </section>
       </div>
     </main>

@@ -20,6 +20,7 @@ import { getActiveEmailTemplates, getJobCustomerEmails } from "@/lib/services/cu
 import { getActiveInstallerCrews } from "@/lib/services/installer-crews";
 import { getJobLayouts } from "@/lib/services/job-layouts";
 import { LAYOUTS_BETA_ENABLED } from "@/lib/features/layouts-beta";
+import { getJobNotes, type JobNote } from "@/lib/services/job-notes";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -28,6 +29,7 @@ type Props = {
 
 const tabs: JobWorkspaceTab[] = [
   "overview",
+  "notes",
   "timeline",
   "tasks",
   "calendar",
@@ -80,6 +82,11 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
   let templatesResult = emptyResult<EmailTemplate[]>([]);
   let emailSendPermissionResult = emptyResult(false);
   let layoutsResult = emptyResult<JobLayout[]>([]);
+  let notesResult = emptyResult<JobNote[]>([]);
+  let notesViewResult = emptyResult(false);
+  let notesCreateResult = emptyResult(false);
+  let notesEditResult = emptyResult(false);
+  let notesDeleteResult = emptyResult(false);
   let layoutManagePermissionResult = emptyResult(false);
   let layoutArchivePermissionResult = emptyResult(false);
 
@@ -91,6 +98,15 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
     ]);
   } else if (activeTab === "timeline") {
     activitiesResult = await safe(getJobActivities(job.id), []);
+  } else if (activeTab === "notes") {
+    [notesResult, currentEmployeeResult, notesViewResult, notesCreateResult, notesEditResult, notesDeleteResult] = await Promise.all([
+      safe(getJobNotes(job.id), []),
+      safe(requireEmployee(), null),
+      safe(hasPermission("job_notes.view"), false),
+      safe(hasPermission("job_notes.create"), false),
+      safe(hasPermission("job_notes.edit"), false),
+      safe(hasPermission("job_notes.delete"), false),
+    ]);
   } else if (activeTab === "tasks") {
     [tasksResult, taskTypesResult] = await Promise.all([
       safe(getTasks({ jobId: job.id }), []),
@@ -171,6 +187,12 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
             layoutError={layoutsResult.error}
             canManageLayouts={layoutManagePermissionResult.value}
             canArchiveLayouts={layoutArchivePermissionResult.value}
+            notes={notesResult.value}
+            notesError={notesResult.error}
+            canViewNotes={notesViewResult.value}
+            canCreateNotes={notesCreateResult.value}
+            canEditNotes={notesEditResult.value}
+            canDeleteNotes={notesDeleteResult.value}
           />
         </div>
       </div>

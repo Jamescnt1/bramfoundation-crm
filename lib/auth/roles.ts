@@ -34,6 +34,10 @@ export const PERMISSIONS = [
   "customer_email.view",
   "customer_email.send",
   "email_templates.manage",
+  "job_notes.view",
+  "job_notes.create",
+  "job_notes.edit",
+  "job_notes.delete",
 ] as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[number];

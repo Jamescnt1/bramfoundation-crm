@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { CalendarPlus, CheckSquare, MoreHorizontal, NotebookPen, UserRound } from "lucide-react";
+import { CalendarPlus, CheckSquare, MoreHorizontal, Pencil, UserRound } from "lucide-react";
 import AttachmentManager from "@/components/attachments/AttachmentManager";
 import type { JobAttachment } from "@/components/attachments/types";
 import AppointmentCard from "@/components/calendar/AppointmentCard";
@@ -28,6 +28,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { WorkspaceCard, WorkspaceEmpty, WorkspaceError, WorkspaceSectionHeader } from "@/components/jobs/WorkspacePrimitives";
 import LayoutWorkspace from "@/components/layouts/LayoutWorkspace";
 import type { JobLayout } from "@/components/layouts/types";
+import JobNotesPanel from "@/components/jobs/JobNotesPanel";
+import type { JobNote } from "@/lib/services/job-notes";
 
 type Props = {
   activeTab: JobWorkspaceTab;
@@ -59,10 +61,17 @@ type Props = {
   layoutError?: string;
   canManageLayouts: boolean;
   canArchiveLayouts: boolean;
+  notes: JobNote[];
+  notesError?: string;
+  canViewNotes: boolean;
+  canCreateNotes: boolean;
+  canEditNotes: boolean;
+  canDeleteNotes: boolean;
 };
 
 export type JobWorkspaceTab =
   | "overview"
+  | "notes"
   | "timeline"
   | "tasks"
   | "calendar"
@@ -72,12 +81,12 @@ export type JobWorkspaceTab =
   | "communications";
 
 const baseNav = [
-  ["overview", "Overview"], ["timeline", "Timeline"], ["tasks", "Tasks"],
+  ["overview", "Overview"], ["notes", "Notes"], ["timeline", "Timeline"], ["tasks", "Tasks"],
   ["calendar", "Calendar"], ["files", "Files"], ["photos", "Photos"],
   ["communications", "Communications"],
 ] as const;
 
-export default function JobWorkspace({ activeTab, job, customer, assignedEmployee, employees, installerCrews, activities, tasks, taskTypes, appointments, activityError, taskError, canChangeStatus, stages, attachments, attachmentError, canManageAttachments, canArchiveAttachments, conversation, currentEmployee, customerEmails, emailTemplates, customerEmailError, canSendCustomerEmail, layoutsEnabled, layouts, layoutError, canManageLayouts, canArchiveLayouts }: Props) {
+export default function JobWorkspace({ activeTab, job, customer, assignedEmployee, employees, installerCrews, activities, tasks, taskTypes, appointments, activityError, taskError, canChangeStatus, stages, attachments, attachmentError, canManageAttachments, canArchiveAttachments, conversation, currentEmployee, customerEmails, emailTemplates, customerEmailError, canSendCustomerEmail, layoutsEnabled, layouts, layoutError, canManageLayouts, canArchiveLayouts, notes, notesError, canViewNotes, canCreateNotes, canEditNotes, canDeleteNotes }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -181,7 +190,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
           <div className="flex flex-wrap items-center gap-1.5">
             <QuickButton onClick={() => selectTab("tasks")}><CheckSquare /> Add Task</QuickButton>
             <QuickButton onClick={() => schedule("measure")}><CalendarPlus /> Schedule Measure</QuickButton>
-            <Link href={`/leads/${job.id}/edit`} className="inline-flex min-h-9 items-center gap-1.5 rounded-md bg-black px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800"><NotebookPen className="h-3.5 w-3.5" /> Add Note / Change Status</Link>
+            <Link href={`/leads/${job.id}/edit`} className="inline-flex min-h-9 items-center gap-1.5 rounded-md bg-black px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800"><Pencil className="h-3.5 w-3.5" /> Edit Job Info</Link>
             <DropdownMenu>
               <DropdownMenuTrigger className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50" aria-label="More job actions"><MoreHorizontal className="h-4 w-4" /></DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -236,12 +245,6 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                     <Fact label="Created" value={formatDate(job.created_at)} />
                     <Fact label="Next action due" value={job.next_action_due ? formatDate(job.next_action_due) : "No due date"} />
                     <Fact label="Project address" value={job.address ?? "Not provided"} />
-                  </div>
-                  <div className="mt-3 border-t border-gray-100 pt-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Notes</p>
-                    <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-sm leading-5 text-gray-800">
-                      {job.notes ?? "No notes have been added."}
-                    </p>
                   </div>
                 </WorkspaceCard>
 
@@ -327,6 +330,20 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                 </div>
               ) : <WorkspaceEmpty text="No activity has been recorded yet." />}
             </WorkspaceCard>
+          </section>
+        ) : null}
+
+        {activeTab === "notes" ? (
+          <section>
+            <WorkspaceSectionHeader title="Job Notes" description="Durable job records. Internal discussions and customer messages remain in Communications." />
+            <div className="mt-2">
+              <WorkspaceCard title="Notes" count={notes.length}>
+                {notesError ? <WorkspaceError text={notesError} /> : canViewNotes ? (
+                  <JobNotesPanel jobId={job.id} initialNotes={notes} currentEmployeeId={currentEmployee?.id ?? null} currentEmployeeRole={currentEmployee?.role ?? null}
+                    canCreate={canCreateNotes} canEdit={canEditNotes} canDelete={canDeleteNotes} />
+                ) : <WorkspaceError text="You do not have permission to view job notes." />}
+              </WorkspaceCard>
+            </div>
           </section>
         ) : null}
 
