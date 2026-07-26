@@ -28,7 +28,12 @@ language plpgsql
 set search_path = public
 as $$
 begin
-  if new.installation_required
+  if (
+       tg_op = 'INSERT'
+       or old.status is distinct from new.status
+       or old.installation_required is distinct from new.installation_required
+     )
+     and new.installation_required
      and (
        new.status = 'install_scheduled'
        or lower(new.status) in ('install scheduled', 'installation scheduled')

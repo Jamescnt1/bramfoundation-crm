@@ -538,9 +538,16 @@ export async function updateJob(
   }
   const resultingInstallationRequired =
     values.installation_required ?? currentJob.installation_required;
+  const isEnteringInstallScheduled =
+    await databaseIsInstallScheduled(resultingStatus) &&
+    !await databaseIsInstallScheduled(currentJob.status);
+  const isTurningInstallationBackOn =
+    resultingInstallationRequired &&
+    !currentJob.installation_required &&
+    await databaseIsInstallScheduled(resultingStatus);
   if (
     resultingInstallationRequired &&
-    await databaseIsInstallScheduled(resultingStatus) &&
+    (isEnteringInstallScheduled || isTurningInstallationBackOn) &&
     !await jobHasInstallAppointment(id)
   ) {
     throw new InstallAppointmentRequiredError();
