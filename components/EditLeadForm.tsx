@@ -8,7 +8,7 @@ import {
   type Job,
   type UpdateJobValues,
 } from "@/lib/services/jobs";
-import { deleteLeadAction, updateJobInfoAction } from "@/app/leads/[id]/edit/actions";
+import { deleteLeadAction } from "@/app/leads/[id]/edit/actions";
 import RecordDeleteDialog from "@/components/ui/RecordDeleteDialog";
 import { formatJobDisplayName } from "@/lib/job-display";
 import type { Employee } from "@/lib/services/employees";
@@ -151,21 +151,36 @@ export default function EditLeadForm({
         return;
       }
 
-      await Promise.race([
-        updateJobInfoAction(job.id, updates),
-        new Promise<never>((_, reject) => {
-          window.setTimeout(
-            () => reject(new Error("The save request timed out. Please try again.")),
-            20_000,
-          );
-        }),
-      ]);
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 20_000);
+      let response: Response;
+
+      try {
+        response = await fetch(`/api/jobs/${job.id}/info`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updates),
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+
+      const result = (await response.json()) as {
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "Unable to save the job.");
+      }
 
       router.push(`/leads/${job.id}`);
       router.refresh();
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
+        error instanceof DOMException && error.name === "AbortError"
+          ? "The save request timed out. Please check your connection and try again."
+          : error instanceof Error
           ? error.message
           : "An unexpected error occurred.",
       );
