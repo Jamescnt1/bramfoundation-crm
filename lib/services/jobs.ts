@@ -194,6 +194,8 @@ function normalizeJob(job: Record<string, unknown>): Job {
 
   return {
     ...job,
+    contract_amount:
+      job.contract_amount == null ? null : String(job.contract_amount),
     customer: Array.isArray(relation) ? relation[0] ?? null : relation ?? null,
     company_contact: Array.isArray(companyContact) ? companyContact[0] ?? null : companyContact ?? null,
     job_site_contact: Array.isArray(siteContact) ? siteContact[0] ?? null : siteContact ?? null,

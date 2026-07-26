@@ -58,7 +58,9 @@ export default function EditLeadForm({
   const [qfNumber, setQfNumber] = useState(
     job.qfloors_job_number ?? "",
   );
-  const [contractAmount, setContractAmount] = useState(job.contract_amount ?? "");
+  const [contractAmount, setContractAmount] = useState(
+    job.contract_amount == null ? "" : String(job.contract_amount),
+  );
   const [isBilled, setIsBilled] = useState(Boolean(job.billed_at));
   const [installationRequired, setInstallationRequired] = useState(job.installation_required);
   const [jobName, setJobName] = useState(job.customer_name);
@@ -138,7 +140,9 @@ export default function EditLeadForm({
       if (nextQfNumber !== job.qfloors_job_number) {
         updates.qfloors_job_number = nextQfNumber;
       }
-      if (nextContractAmount !== job.contract_amount) {
+      const currentContractAmount =
+        job.contract_amount == null ? null : String(job.contract_amount);
+      if (nextContractAmount !== currentContractAmount) {
         updates.contract_amount = nextContractAmount;
       }
       if (nextBilledAt !== job.billed_at) updates.billed_at = nextBilledAt;
