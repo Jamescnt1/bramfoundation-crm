@@ -6,6 +6,7 @@ import SalespersonSelect from "@/components/SalespersonSelect";
 import { isConfiguredContractAmountRequired, isConfiguredQfNumberRequired, resolveConfiguredStage, type PipelineStageView } from "@/components/pipeline/constants";
 import {
   type Job,
+  type UpdateJobValues,
 } from "@/lib/services/jobs";
 import { deleteLeadAction, updateJobInfoAction } from "@/app/leads/[id]/edit/actions";
 import RecordDeleteDialog from "@/components/ui/RecordDeleteDialog";
@@ -100,22 +101,65 @@ export default function EditLeadForm({
     }
 
     try {
-      await updateJobInfoAction(job.id, {
-        customer_name: jobName.trim(),
-        address: address.trim() || null,
-        assigned_employee_id: assignedEmployeeId || null,
-        company_contact_id: companyContactId || null,
-        job_site_contact_id: jobSiteContactId || null,
-        status,
-        salesperson: salesperson || null,
-        next_action: nextAction.trim() || null,
-        next_action_due: nextActionDue || null,
-        notes: notes.trim() || null,
-        qfloors_job_number: qfNumber.trim() || null,
-        contract_amount: contractAmount.trim() || null,
-        billed_at: isBilled ? job.billed_at ?? new Date().toISOString() : null,
-        installation_required: installationRequired,
-      });
+      const updates: UpdateJobValues = {};
+      const nextJobName = jobName.trim();
+      const nextAddress = address.trim() || null;
+      const nextAssignedEmployeeId = assignedEmployeeId || null;
+      const nextCompanyContactId = companyContactId || null;
+      const nextJobSiteContactId = jobSiteContactId || null;
+      const nextSalesperson = salesperson || null;
+      const nextActionValue = nextAction.trim() || null;
+      const nextActionDueValue = nextActionDue || null;
+      const nextNotes = notes.trim() || null;
+      const nextQfNumber = qfNumber.trim() || null;
+      const nextContractAmount = contractAmount.trim() || null;
+      const nextBilledAt = isBilled
+        ? job.billed_at ?? new Date().toISOString()
+        : null;
+
+      if (nextJobName !== job.customer_name) updates.customer_name = nextJobName;
+      if (nextAddress !== job.address) updates.address = nextAddress;
+      if (nextAssignedEmployeeId !== job.assigned_employee_id) {
+        updates.assigned_employee_id = nextAssignedEmployeeId;
+      }
+      if (nextCompanyContactId !== job.company_contact_id) {
+        updates.company_contact_id = nextCompanyContactId;
+      }
+      if (nextJobSiteContactId !== job.job_site_contact_id) {
+        updates.job_site_contact_id = nextJobSiteContactId;
+      }
+      if (status !== job.status) updates.status = status;
+      if (nextSalesperson !== job.salesperson) updates.salesperson = nextSalesperson;
+      if (nextActionValue !== job.next_action) updates.next_action = nextActionValue;
+      if (nextActionDueValue !== job.next_action_due) {
+        updates.next_action_due = nextActionDueValue;
+      }
+      if (nextNotes !== job.notes) updates.notes = nextNotes;
+      if (nextQfNumber !== job.qfloors_job_number) {
+        updates.qfloors_job_number = nextQfNumber;
+      }
+      if (nextContractAmount !== job.contract_amount) {
+        updates.contract_amount = nextContractAmount;
+      }
+      if (nextBilledAt !== job.billed_at) updates.billed_at = nextBilledAt;
+      if (installationRequired !== job.installation_required) {
+        updates.installation_required = installationRequired;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        setIsSaving(false);
+        return;
+      }
+
+      await Promise.race([
+        updateJobInfoAction(job.id, updates),
+        new Promise<never>((_, reject) => {
+          window.setTimeout(
+            () => reject(new Error("The save request timed out. Please try again.")),
+            20_000,
+          );
+        }),
+      ]);
 
       router.push(`/leads/${job.id}`);
       router.refresh();

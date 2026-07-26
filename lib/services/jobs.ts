@@ -526,14 +526,36 @@ export async function updateJob(
       ? normalizeContractAmount(values.contract_amount)
       : currentJob.contract_amount;
 
-  if (await databaseRequiresQfNumber(resultingStatus) && !resultingQfNumber) {
+  const statusChanged =
+    values.status !== undefined &&
+    values.status !== currentJob.status;
+  const qfNumberChanged =
+    values.qfloors_job_number !== undefined &&
+    resultingQfNumber !== currentJob.qfloors_job_number;
+  const contractAmountChanged =
+    values.contract_amount !== undefined &&
+    resultingContractAmount !== currentJob.contract_amount;
+
+  if (
+    (statusChanged || qfNumberChanged) &&
+    await databaseRequiresQfNumber(resultingStatus) &&
+    !resultingQfNumber
+  ) {
     throw new QfNumberRequiredError();
   }
-  if (await databaseRequiresContractAmount(resultingStatus) && !resultingContractAmount) {
+  if (
+    (statusChanged || contractAmountChanged) &&
+    await databaseRequiresContractAmount(resultingStatus) &&
+    !resultingContractAmount
+  ) {
     throw new ContractAmountRequiredError();
   }
   const resultingBilledAt = values.billed_at !== undefined ? values.billed_at : currentJob.billed_at;
-  if (resultingBilledAt && !resultingContractAmount) {
+  if (
+    (values.billed_at !== undefined || contractAmountChanged) &&
+    resultingBilledAt &&
+    !resultingContractAmount
+  ) {
     throw new Error("Contract Amount is required before a job can be marked billed.");
   }
   const resultingInstallationRequired =
