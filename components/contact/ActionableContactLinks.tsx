@@ -11,7 +11,7 @@ type SharedLinkProps = Omit<ComponentPropsWithoutRef<"a">, "href" | "children"> 
 };
 
 const linkClass =
-  "inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-sm text-inherit underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2";
+  "inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-sm text-blue-700 underline-offset-2 hover:text-blue-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2";
 
 export function normalizePhoneHref(value: string | null | undefined) {
   const trimmed = value?.trim();
@@ -63,7 +63,7 @@ export function PhoneLink({
     <a
       href={href}
       aria-label={label ? `Call ${label}` : `Call ${display}`}
-      className={cn(linkClass, className)}
+      className={cn(className, linkClass)}
       {...props}
     >
       {showIcon ? <Phone className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden="true" /> : null}
@@ -87,7 +87,7 @@ export function EmailLink({
     <a
       href={href}
       aria-label={label ? `Email ${label}` : `Email ${display}`}
-      className={cn(linkClass, className)}
+      className={cn(className, linkClass)}
       {...props}
     >
       {showIcon ? <Mail className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden="true" /> : null}
@@ -139,7 +139,7 @@ export function AddressLink({
       rel="noopener noreferrer"
       onClick={openDeviceMaps}
       aria-label={label ? `Open directions to ${label}` : `Open directions to ${address}`}
-      className={cn(linkClass, className)}
+      className={cn(className, linkClass)}
       {...props}
     >
       {showIcon ? <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden="true" /> : null}
