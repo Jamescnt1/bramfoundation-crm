@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  LayoutDashboard,
   Bell,
   Building2,
   CalendarDays,
@@ -47,6 +48,14 @@ const settingsGroups: SettingsGroup[] = [
         description: "Maintain company identity and organization preferences.",
         href: "/settings/company",
         icon: Building2,
+        restricted: true,
+        available: true,
+      },
+      {
+        title: "Company Dashboard",
+        description: "Choose which rules populate management attention sections.",
+        href: "/settings/company-dashboard",
+        icon: LayoutDashboard,
         restricted: true,
         available: true,
       },

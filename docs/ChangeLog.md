@@ -159,3 +159,14 @@ Connect Jobs to Customers
 - Added an Employee Dashboard inbox with unread direct, job, and mention badges.
 - Added employee mentions, message editing, existing job-file attachments, and message-to-task conversion.
 - Added job timeline summaries for internal notes and Supabase Realtime message refreshes.
+# Company Dashboard Rules
+
+- Preserved the existing Company Dashboard layout and widgets.
+- Added Administration → Company Dashboard settings.
+- Added independently enabled company and personal attention rules.
+- Added Critical, Important, and Informational priority ordering.
+- Added a configurable inactivity threshold.
+- Added an extensible rule registry and optional employee-override storage.
+- Skipped layout, attachment, and mention queries when their rules are disabled.
+- Added implementation and rollback guidance in
+  `docs/company-dashboard-rules-rollback.md`.

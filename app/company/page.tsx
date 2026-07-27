@@ -19,7 +19,7 @@ export default async function CompanyDashboardPage() {
   const employee = await requireEmployee();
   if (!canViewCompanyDashboard(employee.role)) redirect("/my-dashboard");
 
-  const data = await getCompanyDashboardData();
+  const data = await getCompanyDashboardData(employee);
 
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-8">
@@ -46,8 +46,8 @@ export default async function CompanyDashboardPage() {
         </DashboardSection>
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
-          <DashboardSection title="Needs Attention" description={`Exceptions requiring action. Follow-up threshold: ${data.thresholds.followUpDays} days.`} href="/tasks"><AttentionList items={data.attentionItems.slice(0, 14)} /></DashboardSection>
-          <DashboardSection title="Needs My Attention" description="Management-only blockers and administrative follow-up." href="/settings"><AttentionList items={data.managementItems} emptyText="No management blockers detected." /></DashboardSection>
+          <DashboardSection title="Needs Attention" description={`Enabled company exceptions, prioritized by severity. No-activity threshold: ${data.thresholds.noActivityDays} days.`} href="/tasks"><AttentionList items={data.attentionItems.slice(0, 14)} /></DashboardSection>
+          <DashboardSection title="Needs My Attention" description="Enabled items related to the employee viewing this dashboard." href="/settings/company-dashboard"><AttentionList items={data.managementItems} emptyText="Nothing currently needs your attention." /></DashboardSection>
         </div>
 
         <DashboardSection className="mt-6" title="Pipeline Health" description="Actual jobs grouped by stage, using the shared pipeline color system." href="/pipeline" linkLabel="Open full pipeline →">
