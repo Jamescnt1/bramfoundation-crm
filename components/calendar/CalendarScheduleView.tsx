@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useMemo, useRef } from "react";
 import AppointmentCard from "@/components/calendar/AppointmentCard";
 import { formatDateKey, isSameDay } from "@/components/calendar/calendar-utils";
 import type { CalendarAppointment } from "@/components/calendar/types";
@@ -10,6 +13,90 @@ type CalendarScheduleViewProps = {
   onSelectAppointment: (appointment: CalendarAppointment) => void;
 };
 
+type PositionedAppointment = {
+  appointment: CalendarAppointment;
+  startMinute: number;
+  endMinute: number;
+  lane: number;
+  laneCount: number;
+};
+
+const HOUR_HEIGHT = 64;
+const DAY_HEIGHT = HOUR_HEIGHT * 24;
+const MORNING_SCROLL_HOUR = 7;
+const hours = Array.from({ length: 24 }, (_, hour) => hour);
+
+function minuteOfDay(date: Date) {
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+function positionAppointments(
+  appointments: CalendarAppointment[],
+): PositionedAppointment[] {
+  const entries = appointments
+    .map((appointment) => {
+      const start = new Date(appointment.starts_at);
+      const end = new Date(appointment.ends_at ?? start.getTime() + 60 * 60 * 1000);
+      const startMinute = minuteOfDay(start);
+      const sameDay =
+        start.getFullYear() === end.getFullYear() &&
+        start.getMonth() === end.getMonth() &&
+        start.getDate() === end.getDate();
+      const endMinute = Math.max(
+        startMinute + 15,
+        sameDay ? minuteOfDay(end) : 24 * 60,
+      );
+      return {
+        appointment,
+        startMinute: Math.max(0, startMinute),
+        endMinute: Math.min(24 * 60, endMinute),
+      };
+    })
+    .sort(
+      (first, second) =>
+        first.startMinute - second.startMinute ||
+        first.endMinute - second.endMinute,
+    );
+
+  const result: PositionedAppointment[] = [];
+  let group: typeof entries = [];
+  let groupEnd = -1;
+
+  const flushGroup = () => {
+    if (!group.length) return;
+    const laneEnds: number[] = [];
+    const positioned = group.map((entry) => {
+      let lane = laneEnds.findIndex((end) => end <= entry.startMinute);
+      if (lane === -1) {
+        lane = laneEnds.length;
+        laneEnds.push(entry.endMinute);
+      } else {
+        laneEnds[lane] = entry.endMinute;
+      }
+      return { ...entry, lane };
+    });
+    const laneCount = Math.max(1, laneEnds.length);
+    result.push(
+      ...positioned.map((entry) => ({
+        ...entry,
+        laneCount,
+      })),
+    );
+    group = [];
+  };
+
+  for (const entry of entries) {
+    if (group.length && entry.startMinute >= groupEnd) {
+      flushGroup();
+      groupEnd = -1;
+    }
+    group.push(entry);
+    groupEnd = Math.max(groupEnd, entry.endMinute);
+  }
+  flushGroup();
+  return result;
+}
+
 export default function CalendarScheduleView({
   days,
   appointmentsByDate,
@@ -17,58 +104,123 @@ export default function CalendarScheduleView({
   onSelectDate,
   onSelectAppointment,
 }: CalendarScheduleViewProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const today = new Date();
+  const positionedByDate = useMemo(
+    () =>
+      Object.fromEntries(
+        days.map((day) => {
+          const key = formatDateKey(day);
+          return [key, positionAppointments(appointmentsByDate[key] ?? [])];
+        }),
+      ),
+    [appointmentsByDate, days],
+  );
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    container.scrollTop = MORNING_SCROLL_HOUR * HOUR_HEIGHT;
+  }, [days.length]);
 
   return (
-    <div className="overflow-x-auto">
+    <div
+      ref={scrollRef}
+      className="max-h-[72dvh] overflow-auto bg-white"
+      aria-label="Appointment time grid"
+    >
       <div
-        className="grid min-w-[680px] divide-x divide-gray-200"
-        style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+        className="relative"
+        style={{
+          minWidth: days.length === 7 ? "980px" : days.length === 3 ? "700px" : "480px",
+        }}
       >
-        {days.map((day) => {
-          const appointments = appointmentsByDate[formatDateKey(day)] ?? [];
-          const isToday = isSameDay(day, today);
+        <div
+          className="sticky top-0 z-30 grid border-b border-gray-200 bg-white shadow-sm"
+          style={{ gridTemplateColumns: `72px repeat(${days.length}, minmax(0, 1fr))` }}
+        >
+          <div className="border-r border-gray-200 bg-gray-50" />
+          {days.map((day) => (
+            <button
+              key={formatDateKey(day)}
+              type="button"
+              onClick={() => onSelectDate(day)}
+              className={`border-r border-gray-200 px-3 py-2 text-center hover:bg-gray-50 ${
+                isSameDay(day, today) ? "bg-blue-50" : "bg-white"
+              }`}
+            >
+              <span className="block text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                {new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(day)}
+              </span>
+              <span className="mt-0.5 block text-lg font-semibold text-gray-900">
+                {day.getDate()}
+              </span>
+            </button>
+          ))}
+        </div>
 
-          return (
-            <section key={formatDateKey(day)} className="min-h-[620px] bg-white">
-              <button
-                type="button"
-                onClick={() => onSelectDate(day)}
-                className={`w-full border-b border-gray-200 px-4 py-4 text-left transition hover:bg-gray-50 ${
-                  isToday ? "bg-blue-50" : "bg-gray-50"
-                }`}
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `72px repeat(${days.length}, minmax(0, 1fr))` }}
+        >
+          <div className="relative border-r border-gray-200 bg-gray-50" style={{ height: DAY_HEIGHT }}>
+            {hours.map((hour) => (
+              <div
+                key={hour}
+                className="absolute right-2 -translate-y-1/2 text-[10px] font-medium text-gray-500"
+                style={{ top: hour * HOUR_HEIGHT }}
               >
-                <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  {new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(day)}
-                </span>
-                <span className="mt-1 block text-2xl font-semibold text-gray-900">
-                  {day.getDate()}
-                </span>
-              </button>
+                {new Intl.DateTimeFormat("en-US", {
+                  hour: "numeric",
+                }).format(new Date(2026, 0, 1, hour))}
+              </div>
+            ))}
+          </div>
 
-              <div className="space-y-3 p-3">
-                {appointments.length ? (
-                  appointments.map((appointment) => (
-                    <AppointmentCard
-                      key={appointment.id}
-                      appointment={appointment}
-                      selected={selectedAppointmentId === appointment.id}
-                      onSelect={onSelectAppointment}
-                    />
-                  ))
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => onSelectDate(day)}
-                    className="w-full rounded-lg border border-dashed border-gray-200 px-3 py-8 text-sm text-gray-400 hover:border-gray-300 hover:text-gray-600"
-                  >
-                    No appointments
-                  </button>
+          {days.map((day) => {
+            const key = formatDateKey(day);
+            const appointments = positionedByDate[key] ?? [];
+            return (
+              <div
+                key={key}
+                className="relative border-r border-gray-200 bg-[repeating-linear-gradient(to_bottom,#ffffff_0,#ffffff_31px,#f3f4f6_31px,#f3f4f6_32px,#ffffff_32px,#ffffff_63px,#d1d5db_63px,#d1d5db_64px)]"
+                style={{ height: DAY_HEIGHT }}
+                onDoubleClick={() => onSelectDate(day)}
+              >
+                {appointments.map(
+                  ({ appointment, startMinute, endMinute, lane, laneCount }) => {
+                    const top = (startMinute / 60) * HOUR_HEIGHT;
+                    const height = Math.max(
+                      24,
+                      ((endMinute - startMinute) / 60) * HOUR_HEIGHT,
+                    );
+                    const width = 100 / laneCount;
+                    return (
+                      <div
+                        key={appointment.id}
+                        className="absolute z-10 px-0.5 py-px"
+                        style={{
+                          top,
+                          height,
+                          left: `${lane * width}%`,
+                          width: `${width}%`,
+                        }}
+                      >
+                        <AppointmentCard
+                          appointment={appointment}
+                          showTime={false}
+                          selected={selectedAppointmentId === appointment.id}
+                          onSelect={onSelectAppointment}
+                          className="h-full overflow-hidden"
+                        />
+                      </div>
+                    );
+                  },
                 )}
               </div>
-            </section>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

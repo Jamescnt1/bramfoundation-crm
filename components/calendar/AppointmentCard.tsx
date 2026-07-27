@@ -1,6 +1,11 @@
 import type { CalendarAppointment } from "@/components/calendar/types";
 import AppointmentTooltip from "@/components/calendar/AppointmentTooltip";
 import {
+  AppointmentTypeIcon,
+  getReadableTextColor,
+  normalizeCalendarColor,
+} from "@/components/calendar/appointment-appearance";
+import {
   formatAppointmentDisplayName,
   formatAppointmentType,
 } from "@/lib/appointment-display";
@@ -8,8 +13,10 @@ import {
 type AppointmentCardProps = {
   appointment: CalendarAppointment;
   compact?: boolean;
+  showTime?: boolean;
   selected?: boolean;
   onSelect?: (appointment: CalendarAppointment) => void;
+  className?: string;
 };
 
 function formatAppointmentTime(startsAt: string) {
@@ -19,69 +26,60 @@ function formatAppointmentTime(startsAt: string) {
   }).format(new Date(startsAt));
 }
 
-function getAppointmentStyles(type: string | null) {
-  switch (type) {
-    case "measure":
-      return "border-yellow-200 bg-yellow-50 text-yellow-900";
-
-    case "installation":
-      return "border-green-200 bg-green-50 text-green-900";
-
-    case "follow_up":
-      return "border-purple-200 bg-purple-50 text-purple-900";
-
-    default:
-      return "border-blue-200 bg-blue-50 text-blue-900";
-  }
-}
-
 export default function AppointmentCard({
   appointment,
   compact = false,
+  showTime = true,
   selected = false,
   onSelect,
+  className = "",
 }: AppointmentCardProps) {
+  const backgroundColor = normalizeCalendarColor(
+    appointment.assigned_employee?.color,
+  );
+  const color = getReadableTextColor(backgroundColor);
+  const displayName = formatAppointmentDisplayName({
+    appointmentType: appointment.appointment_type,
+    customerName: appointment.job?.customer?.full_name,
+    jobName: appointment.job?.customer_name,
+  });
+  const typeLabel = formatAppointmentType(appointment.appointment_type);
+  const customerName = appointment.job?.customer?.full_name?.trim();
+  const jobName = appointment.job?.customer_name?.trim();
+  const badgeLabel =
+    customerName && jobName
+      ? `${customerName} / ${jobName}`
+      : jobName || customerName || typeLabel;
+
   return (
-    <AppointmentTooltip appointment={appointment}>
+    <AppointmentTooltip appointment={appointment} displayName={displayName}>
       <button
         type="button"
         onClick={(event) => {
           event.stopPropagation();
           onSelect?.(appointment);
         }}
-        className={`block w-full rounded-md border text-left transition hover:brightness-95 ${getAppointmentStyles(
-          appointment.appointment_type,
-        )} ${
-          compact
-            ? "px-2 py-1.5 text-[11px]"
-            : "px-3 py-2 text-[11px]"
-        } ${
-          selected
-            ? "ring-2 ring-black ring-offset-1"
-            : ""
-        }`}
+        style={{ backgroundColor, color }}
+        aria-label={`${typeLabel}: ${badgeLabel}`}
+        className={`block w-full min-w-0 rounded-md border border-black/10 text-left shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-1 ${
+          compact ? "px-2 py-1.5 text-[11px]" : "px-2.5 py-2 text-xs"
+        } ${selected ? "ring-2 ring-black ring-offset-1" : ""} ${className}`}
       >
-        <div className="flex items-center justify-between gap-2">
-          <p className="font-semibold">
-            {formatAppointmentTime(appointment.starts_at)}
-          </p>
-
-          {!compact ? (
-            <p className="truncate text-[11px] font-semibold uppercase tracking-wide opacity-75">
-              {formatAppointmentType(
-                appointment.appointment_type,
-              )}
-            </p>
+        <span className="flex min-w-0 items-center gap-1.5">
+          <AppointmentTypeIcon
+            type={appointment.appointment_type}
+            className="h-3.5 w-3.5 shrink-0"
+          />
+          <span className="sr-only">{typeLabel}: </span>
+          <span className="min-w-0 flex-1 truncate font-semibold">
+            {badgeLabel}
+          </span>
+          {showTime ? (
+            <span className="shrink-0 text-[10px] font-semibold opacity-85">
+              {formatAppointmentTime(appointment.starts_at)}
+            </span>
           ) : null}
-        </div>
-
-        <p className="mt-1 truncate">
-          {formatAppointmentDisplayName({
-            appointmentType: appointment.appointment_type,
-            customerName: appointment.job?.customer?.full_name,
-            jobName: appointment.job?.customer_name,
-          })}
-        </p>
+        </span>
       </button>
     </AppointmentTooltip>
   );

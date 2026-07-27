@@ -1,19 +1,24 @@
-import SettingsPlaceholder from "@/components/settings/SettingsPlaceholder";
+import CalendarPreferencesForm from "@/components/settings/CalendarPreferencesForm";
+import SettingsPageHeader from "@/components/settings/SettingsPageHeader";
 import { requireEmployee } from "@/lib/services/employees";
 
+export const dynamic = "force-dynamic";
+
 export default async function CalendarSettingsPage() {
-  await requireEmployee();
+  const employee = await requireEmployee();
 
   return (
-    <SettingsPlaceholder
-      title="Calendar"
-      description="Manage calendar behavior and scheduling defaults for appointments, measures, and installations."
-      plannedFeatures={[
-        "Default calendar view",
-        "Appointment type configuration",
-        "Default appointment durations",
-        "Employee and crew display preferences",
-      ]}
-    />
+    <main className="min-h-screen bg-gray-50 p-6 md:p-8">
+      <div className="mx-auto max-w-5xl">
+        <SettingsPageHeader
+          title="Calendar"
+          description="Choose the calendar view that works best for your schedule."
+        />
+        <CalendarPreferencesForm
+          initialDefaultView={employee.default_calendar_view}
+          initialRememberLastView={employee.remember_last_calendar_view}
+        />
+      </div>
+    </main>
   );
 }

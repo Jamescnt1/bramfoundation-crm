@@ -19,7 +19,7 @@ export type EmployeeAdminValues = {
 };
 
 const employeeColumns =
-  "id, auth_user_id, name, email, username, phone, role, active, avatar_url, color, job_title, bio, created_at, updated_at";
+  "id, auth_user_id, name, email, username, phone, role, active, avatar_url, color, default_calendar_view, remember_last_calendar_view, last_calendar_view, job_title, bio, created_at, updated_at";
 
 export type EmployeeAdminErrorCode =
   | "duplicate_email"

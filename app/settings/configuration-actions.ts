@@ -11,7 +11,7 @@ import {
 } from "@/lib/services/configuration-admin";
 
 type ConfigurationKind = "lead_sources" | "task_types" | "installer_crews";
-type Item = { id: string; name: string; active: boolean; sort_order: number };
+type Item = { id: string; name: string; active: boolean; sort_order: number; color?: string };
 
 export async function createConfigurationItemAction(kind: ConfigurationKind, name: string) {
   await requireAdministrator();

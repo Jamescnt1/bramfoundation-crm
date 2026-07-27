@@ -5,13 +5,14 @@ export type InstallerCrew = {
   name: string;
   active: boolean;
   sort_order: number;
+  color: string;
 };
 
 export async function getActiveInstallerCrews(): Promise<InstallerCrew[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("installer_crews")
-    .select("id, name, active, sort_order")
+    .select("id, name, active, sort_order, color")
     .eq("active", true)
     .order("sort_order")
     .order("name");

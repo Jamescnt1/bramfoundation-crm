@@ -43,6 +43,22 @@ function formatTime(value: string) {
   return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }
 
+function formatContact(
+  contact:
+    | NonNullable<NonNullable<CalendarAppointment["job"]>["company_contact"]>
+    | null,
+) {
+  if (!contact) return "Not assigned";
+  const name = `${contact.first_name} ${contact.last_name}`.trim();
+  const details = [
+    contact.job_title,
+    contact.mobile_phone,
+    contact.office_phone,
+    contact.email,
+  ].filter(Boolean);
+  return details.length ? `${name} · ${details.join(" · ")}` : name;
+}
+
 export default function AppointmentDetailsPanel({
   appointment,
   selectedDate,
@@ -83,7 +99,7 @@ export default function AppointmentDetailsPanel({
           <div className="space-y-5 p-5 text-sm">
             <div className="flex gap-3"><CalendarDays className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="font-medium text-gray-900">{formatDate(appointment.starts_at)}{appointment.appointment_type === "installation" && appointment.ends_at ? ` – ${formatDate(appointment.ends_at)}` : ""}</p><p className="mt-1 text-gray-500">{formatTime(appointment.starts_at)}{appointment.ends_at ? ` – ${formatTime(appointment.ends_at)}` : ""}</p></div></div>
             <div className="flex gap-3"><UserRound className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="text-gray-500">{appointment.appointment_type === "installation" ? "Install crew" : "Assigned employee"}</p><p className="mt-1 font-medium text-gray-900">{appointment.appointment_type === "installation" ? installerCrew?.name ?? appointment.installer_crew?.name ?? "Unassigned crew" : employee?.name ?? "Unassigned"}</p></div></div>
-            <div className="flex gap-3"><MapPin className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="text-gray-500">Location</p><p className="mt-1 whitespace-pre-wrap font-medium text-gray-900">{appointment.location || "No location provided"}</p></div></div>
+            <div className="flex gap-3"><MapPin className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="text-gray-500">Location</p><p className="mt-1 whitespace-pre-wrap font-medium text-gray-900">{appointment.location || appointment.job?.address || "No location provided"}</p></div></div>
 
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Customer / job</p>
@@ -98,6 +114,21 @@ export default function AppointmentDetailsPanel({
                   <div className="mt-3 flex gap-3 text-xs font-medium"><Link href={`/leads/${appointment.job.id}`} className="hover:underline">Open job</Link><Link href={`/customers`} className="hover:underline">Customers</Link></div>
                 </>
               ) : <p className="mt-2 text-gray-500">No job linked</p>}
+            </div>
+
+            <div className="grid gap-3 rounded-lg border border-gray-200 p-4 text-xs">
+              <div>
+                <p className="font-semibold uppercase tracking-wide text-gray-500">Company contact</p>
+                <p className="mt-1 break-words text-gray-900">
+                  {formatContact(appointment.job?.company_contact ?? null)}
+                </p>
+              </div>
+              <div>
+                <p className="font-semibold uppercase tracking-wide text-gray-500">Job site contact</p>
+                <p className="mt-1 break-words text-gray-900">
+                  {formatContact(appointment.job?.job_site_contact ?? null)}
+                </p>
+              </div>
             </div>
 
             <div><p className="font-medium text-gray-500">Notes</p><p className="mt-2 whitespace-pre-wrap leading-6 text-gray-900">{appointment.notes || "No notes provided."}</p></div>

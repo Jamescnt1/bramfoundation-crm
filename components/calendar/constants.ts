@@ -4,6 +4,7 @@ export const APPOINTMENT_TYPES = [
   "job_walk",
   "material_selection",
   "builder_meeting",
+  "customer_meeting",
   "appointment",
   "follow_up",
   "other",

@@ -10,6 +10,7 @@ export type ConfigurableItem = {
   name: string;
   active: boolean;
   sort_order: number;
+  color?: string;
 };
 
 type Props = {
@@ -20,6 +21,7 @@ type Props = {
   onUpdate: (item: ConfigurableItem) => Promise<void>;
   onReorder: (items: ConfigurableItem[]) => Promise<void>;
   onRemove: (id: string) => Promise<"deleted" | "retired">;
+  showColor?: boolean;
 };
 
 export default function ConfigurableListManager({
@@ -30,11 +32,13 @@ export default function ConfigurableListManager({
   onUpdate,
   onReorder,
   onRemove,
+  showColor = false,
 }: Props) {
   const [items, setItems] = useState(initialItems);
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [editingColor, setEditingColor] = useState("#047857");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -52,9 +56,14 @@ export default function ConfigurableListManager({
     const name = editingName.trim();
     if (!name) return setError(`${itemLabel} name is required.`);
     await run(async () => {
-      await onUpdate({ ...item, name });
+      const updated = {
+        ...item,
+        name,
+        ...(showColor ? { color: editingColor } : {}),
+      };
+      await onUpdate(updated);
       setItems((current) =>
-        current.map((entry) => (entry.id === item.id ? { ...entry, name } : entry)),
+        current.map((entry) => (entry.id === item.id ? updated : entry)),
       );
       setEditingId(null);
     });
@@ -145,14 +154,35 @@ export default function ConfigurableListManager({
           <div key={item.id} className="flex flex-col gap-3 border-b border-gray-100 p-4 last:border-0 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">
               {editingId === item.id ? (
-                <div className="flex max-w-lg gap-2">
+                <div className="flex max-w-lg flex-wrap gap-2">
                   <Input value={editingName} onChange={(event) => setEditingName(event.target.value)} autoFocus />
+                  {showColor ? (
+                    <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
+                      Calendar color
+                      <Input
+                        type="color"
+                        value={editingColor}
+                        onChange={(event) => setEditingColor(event.target.value)}
+                        className="h-8 w-12 p-1"
+                        aria-label={`${item.name} calendar color`}
+                      />
+                    </label>
+                  ) : null}
                   <Button type="button" onClick={() => save(item)} disabled={busy}>Save</Button>
                   <Button type="button" variant="outline" onClick={() => setEditingId(null)} disabled={busy} aria-label="Cancel edit"><X className="h-4 w-4" /></Button>
                 </div>
               ) : (
                 <>
-                  <p className="font-medium text-gray-900">{item.name}</p>
+                  <p className="flex items-center gap-2 font-medium text-gray-900">
+                    {showColor ? (
+                      <span
+                        className="h-3 w-3 rounded-full ring-1 ring-black/10"
+                        style={{ backgroundColor: item.color ?? "#047857" }}
+                        aria-hidden="true"
+                      />
+                    ) : null}
+                    {item.name}
+                  </p>
                   <p className="mt-1 text-xs text-gray-500">{item.active ? usageDescription : "Retired — preserved on historical records and hidden from new forms."}</p>
                 </>
               )}
@@ -161,7 +191,7 @@ export default function ConfigurableListManager({
             <div className="flex items-center gap-1">
               <button type="button" onClick={() => move(index, -1)} disabled={busy || index === 0} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30" aria-label={`Move ${item.name} up`}><ArrowUp className="h-4 w-4" /></button>
               <button type="button" onClick={() => move(index, 1)} disabled={busy || index === items.length - 1} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30" aria-label={`Move ${item.name} down`}><ArrowDown className="h-4 w-4" /></button>
-              <button type="button" onClick={() => { setEditingId(item.id); setEditingName(item.name); }} disabled={busy} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100" aria-label={`Edit ${item.name}`}><Pencil className="h-4 w-4" /></button>
+              <button type="button" onClick={() => { setEditingId(item.id); setEditingName(item.name); setEditingColor(item.color ?? "#047857"); }} disabled={busy} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100" aria-label={`Edit ${item.name}`}><Pencil className="h-4 w-4" /></button>
               <button type="button" onClick={() => remove(item)} disabled={busy} className="rounded-lg p-2 text-red-600 hover:bg-red-50" aria-label={`Delete or retire ${item.name}`}><Trash2 className="h-4 w-4" /></button>
               <button type="button" onClick={() => toggle(item)} disabled={busy} className={`ml-2 rounded-full px-3 py-1 text-xs font-semibold ${item.active ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-600"}`}>{item.active ? "Active" : "Retired"}</button>
             </div>

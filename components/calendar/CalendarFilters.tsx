@@ -6,7 +6,7 @@ import { formatJobDisplayName } from "@/lib/job-display";
 import { formatAppointmentType } from "@/lib/appointment-display";
 
 export type CalendarFilterValues = {
-  employeeId: string;
+  employeeIds: string[];
   eventType: "" | AppointmentType;
   status: "" | AppointmentStatus;
   customerId: string;
@@ -37,13 +37,57 @@ export default function CalendarFilters({
     ? jobs.filter((job) => job.customer_id === value.customerId)
     : jobs;
   const set = (patch: Partial<CalendarFilterValues>) => onChange({ ...value, ...patch });
+  const toggleEmployee = (employeeId: string) => {
+    const selected = value.employeeIds.includes(employeeId)
+      ? value.employeeIds.filter((id) => id !== employeeId)
+      : [...value.employeeIds, employeeId];
+    set({ employeeIds: selected });
+  };
 
   return (
-    <div className="grid gap-3 border-b border-gray-200 bg-gray-50 p-4 sm:grid-cols-2 xl:grid-cols-5">
-      <Filter label="Employee" value={value.employeeId} onChange={(next) => set({ employeeId: next })}>
-        <option value="">All employees</option>
-        {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}
-      </Filter>
+    <div className="border-b border-gray-200 bg-gray-50 p-4">
+      <fieldset>
+        <legend className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+          Employees
+        </legend>
+        <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+          <button
+            type="button"
+            onClick={() => set({ employeeIds: [] })}
+            className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+              value.employeeIds.length === 0
+                ? "border-gray-900 bg-gray-900 text-white"
+                : "border-gray-300 bg-white text-gray-600"
+            }`}
+          >
+            All employees
+          </button>
+          {employees.map((employee) => {
+            const selected = value.employeeIds.includes(employee.id);
+            return (
+              <button
+                key={employee.id}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => toggleEmployee(employee.id)}
+                className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                  selected
+                    ? "border-gray-900 bg-white text-gray-900 ring-1 ring-gray-900"
+                    : "border-gray-300 bg-white text-gray-600"
+                }`}
+              >
+                <span
+                  className="h-2.5 w-2.5 rounded-full ring-1 ring-black/10"
+                  style={{ backgroundColor: employee.color || "#475569" }}
+                  aria-hidden="true"
+                />
+                {employee.name}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Filter label="Event type" value={value.eventType} onChange={(next) => set({ eventType: next as CalendarFilterValues["eventType"] })}>
         <option value="">All event types</option>
         {APPOINTMENT_TYPES.filter(
@@ -62,6 +106,7 @@ export default function CalendarFilters({
         <option value="">All jobs</option>
         {availableJobs.map((job) => <option key={job.id} value={job.id}>{formatJobDisplayName({ customerName: job.customer?.full_name, jobName: job.customer_name, qfNumber: job.qfloors_job_number })}</option>)}
       </Filter>
+      </div>
     </div>
   );
 }

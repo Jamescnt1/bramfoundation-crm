@@ -19,6 +19,7 @@ export function formatAppointmentType(
     job_walk: "Job Walk",
     material_selection: "Material Selection",
     builder_meeting: "Builder Meeting",
+    customer_meeting: "Customer Meeting",
     other: "Other",
   };
 

@@ -123,7 +123,7 @@ export default function AppointmentTooltip({
         Math.min(left, window.innerWidth - width - VIEWPORT_GAP),
       );
 
-      const estimatedHeight = 260;
+      const estimatedHeight = 430;
       let top = rect.top;
       if (top + estimatedHeight > window.innerHeight - VIEWPORT_GAP) {
         top = Math.max(VIEWPORT_GAP, window.innerHeight - estimatedHeight - VIEWPORT_GAP);
@@ -164,6 +164,22 @@ export default function AppointmentTooltip({
       customerName: appointment.job?.customer?.full_name,
       jobName: appointment.job?.customer_name,
     });
+  const companyContact = appointment.job?.company_contact;
+  const siteContact = appointment.job?.job_site_contact;
+  const contactName = (
+    contact: typeof companyContact,
+    fallback: string,
+  ) => {
+    if (!contact) return fallback;
+    const name = `${contact.first_name} ${contact.last_name}`.trim();
+    const details = [
+      contact.job_title,
+      contact.mobile_phone,
+      contact.office_phone,
+      contact.email,
+    ].filter(Boolean);
+    return details.length ? `${name} · ${details.join(" · ")}` : name;
+  };
 
   return (
     <span
@@ -225,11 +241,21 @@ export default function AppointmentTooltip({
                     : appointment.assigned_employee?.name || "Unassigned"}
                 </dd>
 
-                {appointment.location ? (
+                <dt className="font-medium text-gray-500">Company contact</dt>
+                <dd className="break-words text-gray-900">
+                  {contactName(companyContact, "Not assigned")}
+                </dd>
+
+                <dt className="font-medium text-gray-500">Site contact</dt>
+                <dd className="break-words text-gray-900">
+                  {contactName(siteContact, "Not assigned")}
+                </dd>
+
+                {appointment.location || appointment.job?.address ? (
                   <>
                     <dt className="font-medium text-gray-500">Location</dt>
                     <dd className="break-words text-gray-900">
-                      {appointment.location}
+                      {appointment.location || appointment.job?.address}
                     </dd>
                   </>
                 ) : null}
@@ -242,6 +268,11 @@ export default function AppointmentTooltip({
                 <dt className="font-medium text-gray-500">Status</dt>
                 <dd className="text-gray-900">
                   {formatLabel(appointment.status, "Scheduled")}
+                </dd>
+
+                <dt className="font-medium text-gray-500">Notes</dt>
+                <dd className="max-h-24 overflow-hidden whitespace-pre-wrap break-words text-gray-900">
+                  {appointment.notes || "No notes"}
                 </dd>
               </dl>
             </div>,

@@ -1,6 +1,12 @@
 import AppointmentTooltip from "@/components/calendar/AppointmentTooltip";
 import { formatDateKey } from "@/components/calendar/calendar-utils";
 import type { CalendarAppointment } from "@/components/calendar/types";
+import {
+  AppointmentTypeIcon,
+  FALLBACK_INSTALLER_COLOR,
+  getReadableTextColor,
+  normalizeCalendarColor,
+} from "@/components/calendar/appointment-appearance";
 
 type InstallationScheduleBandProps = {
   days: Date[];
@@ -153,6 +159,13 @@ export default function InstallationScheduleBand({
                   }}
                   className="min-w-0 px-0.5"
                 >
+                  {(() => {
+                    const backgroundColor = normalizeCalendarColor(
+                      segment.appointment.installer_crew?.color,
+                      FALLBACK_INSTALLER_COLOR,
+                    );
+                    const color = getReadableTextColor(backgroundColor);
+                    return (
                   <AppointmentTooltip
                     appointment={segment.appointment}
                     displayName={formatInstallLabel(segment.appointment)}
@@ -160,15 +173,24 @@ export default function InstallationScheduleBand({
                     <button
                       type="button"
                       onClick={() => onSelectAppointment(segment.appointment)}
-                      className={`h-7 w-full truncate rounded-md border border-emerald-300 bg-emerald-600 px-2 text-left text-[11px] font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-900 focus:ring-offset-1 ${
+                      style={{ backgroundColor, color }}
+                      className={`flex h-7 w-full min-w-0 items-center gap-1.5 rounded-md border border-black/10 px-2 text-left text-[11px] font-semibold shadow-sm transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1 ${
                         selectedAppointmentId === segment.appointment.id
-                          ? "ring-2 ring-emerald-950 ring-offset-1"
+                          ? "ring-2 ring-gray-950 ring-offset-1"
                           : ""
                       }`}
                     >
-                      {formatInstallLabel(segment.appointment)}
+                      <AppointmentTypeIcon
+                        type="installation"
+                        className="h-3 w-3 shrink-0"
+                      />
+                      <span className="truncate">
+                        {formatInstallLabel(segment.appointment)}
+                      </span>
                     </button>
                   </AppointmentTooltip>
+                    );
+                  })()}
                 </div>
               ))
             ) : (

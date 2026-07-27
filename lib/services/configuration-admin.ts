@@ -20,7 +20,7 @@ export async function getAllTaskTypes(): Promise<TaskType[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("task_types")
-    .select("id, name, active, sort_order")
+    .select("id, name, active, sort_order, color")
     .order("sort_order")
     .order("name");
   if (error) throw new Error(error.message);
@@ -31,7 +31,7 @@ export async function getAllInstallerCrews(): Promise<InstallerCrew[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("installer_crews")
-    .select("id, name, active, sort_order")
+    .select("id, name, active, sort_order, color")
     .order("sort_order")
     .order("name");
   if (error) throw new Error(error.message);
@@ -58,12 +58,18 @@ export async function createConfigurationItem(table: ConfigurationTable, name: s
 export async function updateConfigurationItem(
   table: ConfigurationTable,
   id: string,
-  values: { name: string; active: boolean; sort_order: number },
+  values: { name: string; active: boolean; sort_order: number; color?: string },
 ) {
   const supabase = await createClient();
   const { error } = await supabase
     .from(table)
-    .update({ ...values, name: validateName(values.name) })
+    .update({
+      ...values,
+      name: validateName(values.name),
+      ...(table === "installer_crews" && values.color
+        ? { color: validateColor(values.color) }
+        : {}),
+    })
     .eq("id", id);
   if (error) throwFriendly(error, table);
 }
@@ -136,6 +142,13 @@ function validateName(name: string) {
   const value = name.trim().replace(/\s+/g, " ");
   if (!value) throw new Error("Name cannot be blank.");
   return value;
+}
+
+function validateColor(color: string) {
+  if (!/^#[0-9a-f]{6}$/i.test(color)) {
+    throw new Error("Select a valid calendar color.");
+  }
+  return color;
 }
 
 function throwFriendly(

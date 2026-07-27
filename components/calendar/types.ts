@@ -27,11 +27,13 @@ export type CalendarAppointment = {
   assigned_employee?: {
     id: string;
     name: string;
+    color: string;
   } | null;
 
   installer_crew?: {
     id: string;
     name: string;
+    color: string;
   } | null;
 
   job?: {
@@ -39,11 +41,28 @@ export type CalendarAppointment = {
     customer_id: string | null;
     customer_name: string;
     qfloors_job_number: string | null;
+    address: string | null;
     status: string | null;
     installation_required: boolean;
     customer: {
       id: string;
       full_name: string;
+    } | null;
+    company_contact: {
+      first_name: string;
+      last_name: string;
+      job_title: string | null;
+      email: string | null;
+      office_phone: string | null;
+      mobile_phone: string | null;
+    } | null;
+    job_site_contact: {
+      first_name: string;
+      last_name: string;
+      job_title: string | null;
+      email: string | null;
+      office_phone: string | null;
+      mobile_phone: string | null;
     } | null;
   } | null;
 };

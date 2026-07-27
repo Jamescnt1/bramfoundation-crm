@@ -1,6 +1,6 @@
 import CalendarBoard from "@/components/calendar/CalendarBoard";
-import { getAppointments } from "@/lib/services/appointments";
-import { getActiveEmployees } from "@/lib/services/employees";
+import { getAppointmentsForCalendar } from "@/lib/services/appointments-server";
+import { getActiveEmployees, requireEmployee } from "@/lib/services/employees";
 import type { CalendarAppointment } from "@/components/calendar/types";
 import type { Employee } from "@/lib/services/employees";
 import { getJobs, type Job } from "@/lib/services/jobs";
@@ -20,17 +20,21 @@ type CalendarPageProps = {
 };
 
 export default async function CalendarPage({ searchParams }: CalendarPageProps) {
+  const currentEmployee = await requireEmployee();
   const {
     appointment: initialAppointmentId,
     date: initialDate,
     tab,
     view,
   } = await searchParams;
-  const initialMode: CalendarMode = tab === "appointments" ? "appointments" : "installs";
+  const initialMode: CalendarMode = tab === "installs" ? "installs" : "appointments";
   const calendarViews: CalendarView[] = ["month", "week", "three_day", "day", "list"];
-  const initialView = calendarViews.includes(view as CalendarView)
+  const requestedView = calendarViews.includes(view as CalendarView)
     ? (view as CalendarView)
-    : "month";
+    : null;
+  const initialView = currentEmployee.remember_last_calendar_view
+    ? requestedView ?? currentEmployee.last_calendar_view ?? currentEmployee.default_calendar_view
+    : currentEmployee.default_calendar_view;
   let appointments: CalendarAppointment[] = [];
   let employees: Employee[] = [];
   let jobs: Job[] = [];
@@ -39,7 +43,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
 
   try {
     [appointments, employees, jobs, installerCrews] = await Promise.all([
-      getAppointments(),
+      getAppointmentsForCalendar(),
       getActiveEmployees(),
       getJobs(),
       getActiveInstallerCrews(),
@@ -64,6 +68,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
             initialDate={initialDate}
             initialMode={initialMode}
             initialView={initialView}
+            rememberLastView={currentEmployee.remember_last_calendar_view}
           />
         )}
       </div>

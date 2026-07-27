@@ -15,6 +15,7 @@ export default function InstallerCrewsManager({ initialCrews }: { initialCrews: 
       initialItems={initialCrews}
       itemLabel="Install Crew"
       usageDescription="Available when scheduling installation appointments."
+      showColor
       onCreate={(name) => createConfigurationItemAction("installer_crews", name)}
       onUpdate={(item) => updateConfigurationItemAction("installer_crews", item)}
       onReorder={(items) => reorderConfigurationItemsAction("installer_crews", items)}

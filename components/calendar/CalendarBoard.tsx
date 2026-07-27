@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AppointmentDetailsPanel from "@/components/calendar/AppointmentDetailsPanel";
 import AppointmentDialog from "@/components/calendar/AppointmentDialog";
@@ -29,6 +30,7 @@ import type { Employee } from "@/lib/services/employees";
 import type { Job } from "@/lib/services/jobs";
 import type { InstallerCrew } from "@/lib/services/installer-crews";
 import CalendarFilters, { type CalendarFilterValues } from "@/components/calendar/CalendarFilters";
+import { rememberCalendarViewAction } from "@/app/settings/calendar/actions";
 
 type CalendarBoardProps = {
   initialAppointments?: CalendarAppointment[];
@@ -39,6 +41,7 @@ type CalendarBoardProps = {
   initialDate?: string;
   initialMode?: CalendarMode;
   initialView?: CalendarView;
+  rememberLastView?: boolean;
 };
 
 function getHeading(view: CalendarView, date: Date) {
@@ -70,6 +73,7 @@ export default function CalendarBoard({
   initialDate,
   initialMode = "installs",
   initialView = "month",
+  rememberLastView = false,
 }: CalendarBoardProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -94,14 +98,18 @@ export default function CalendarBoard({
   const [isCompleting, setIsCompleting] = useState(false);
   const [actionError, setActionError] = useState("");
   const [filters, setFilters] = useState<CalendarFilterValues>({
-    employeeId: "", eventType: "", status: "", customerId: "", jobId: "",
+    employeeIds: [], eventType: "", status: "", customerId: "", jobId: "",
   });
   const [defaultAppointmentType, setDefaultAppointmentType] = useState<AppointmentType>("appointment");
   const [installRangeDays, setInstallRangeDays] = useState(14);
   const [installerCrewId, setInstallerCrewId] = useState("");
 
   const filteredAppointments = useMemo(() => initialAppointments.filter((appointment) => {
-    if (filters.employeeId && appointment.assigned_employee_id !== filters.employeeId) return false;
+    if (
+      filters.employeeIds.length &&
+      (!appointment.assigned_employee_id ||
+        !filters.employeeIds.includes(appointment.assigned_employee_id))
+    ) return false;
     if (filters.eventType && appointment.appointment_type !== filters.eventType) return false;
     if (filters.status && appointment.status !== filters.status) return false;
     if (filters.customerId && appointment.job?.customer_id !== filters.customerId) return false;
@@ -165,6 +173,11 @@ export default function CalendarBoard({
     setView(nextView);
     updateUrl("appointments", nextView);
     if (selectedDate) setAnchorDate(selectedDate);
+    if (rememberLastView && nextView !== "list") {
+      void rememberCalendarViewAction(nextView).catch(() => {
+        // View switching should remain responsive if preference persistence fails.
+      });
+    }
   }
 
   function handleModeChange(nextMode: CalendarMode) {
@@ -288,24 +301,69 @@ export default function CalendarBoard({
           )}
         </section>
 
-        <AppointmentDetailsPanel
-          appointment={selectedAppointment}
-          selectedDate={selectedDate}
-          employees={employees}
-          installerCrews={installerCrews}
-          isCompleting={isCompleting}
-          actionError={actionError}
-          onEditAppointment={(appointment) => {
-            setAppointmentBeingEdited(appointment);
-            setAppointmentDialogOpen(true);
-          }}
-          onCompleteAppointment={handleCompleteAppointment}
-          onDeleteAppointment={(appointment) => {
-            setAppointmentBeingDeleted(appointment);
-            setDeleteDialogOpen(true);
-          }}
-        />
+        <div className="hidden xl:block">
+          <AppointmentDetailsPanel
+            appointment={selectedAppointment}
+            selectedDate={selectedDate}
+            employees={employees}
+            installerCrews={installerCrews}
+            isCompleting={isCompleting}
+            actionError={actionError}
+            onEditAppointment={(appointment) => {
+              setAppointmentBeingEdited(appointment);
+              setAppointmentDialogOpen(true);
+            }}
+            onCompleteAppointment={handleCompleteAppointment}
+            onDeleteAppointment={(appointment) => {
+              setAppointmentBeingDeleted(appointment);
+              setDeleteDialogOpen(true);
+            }}
+          />
+        </div>
       </div>
+
+      {selectedAppointment ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Appointment details"
+          className="fixed inset-0 z-40 flex items-end bg-black/40 p-0 xl:hidden"
+        >
+          <button
+            type="button"
+            aria-label="Close appointment details"
+            className="absolute inset-0"
+            onClick={() => setSelectedAppointment(null)}
+          />
+          <div className="relative max-h-[88dvh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setSelectedAppointment(null)}
+              className="sticky top-3 z-10 float-right mr-3 rounded-full border border-gray-200 bg-white p-2 text-gray-600 shadow-sm"
+              aria-label="Close appointment details"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <AppointmentDetailsPanel
+              appointment={selectedAppointment}
+              selectedDate={selectedDate}
+              employees={employees}
+              installerCrews={installerCrews}
+              isCompleting={isCompleting}
+              actionError={actionError}
+              onEditAppointment={(appointment) => {
+                setAppointmentBeingEdited(appointment);
+                setAppointmentDialogOpen(true);
+              }}
+              onCompleteAppointment={handleCompleteAppointment}
+              onDeleteAppointment={(appointment) => {
+                setAppointmentBeingDeleted(appointment);
+                setDeleteDialogOpen(true);
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
 
       <AppointmentDialog
         open={appointmentDialogOpen}

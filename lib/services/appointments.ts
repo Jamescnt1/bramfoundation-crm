@@ -50,38 +50,6 @@ async function generatedAppointmentTitle(
   });
 }
 
-export async function getAppointments() {
-  const { data, error } = await supabase
-    .from("appointments")
-    .select(`
-      *,
-      assigned_employee:employees!appointments_assigned_employee_id_fkey (
-        id,
-        name
-      ),
-      installer_crew:installer_crews!appointments_installer_crew_id_fkey (
-        id,
-        name
-      ),
-      job:jobs!appointments_job_id_fkey (
-        id,
-        customer_id,
-        customer_name,
-        qfloors_job_number,
-        status,
-        installation_required,
-        customer:customers!jobs_customer_id_fkey (id, full_name)
-      )
-    `)
-    .order("starts_at");
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data ?? []) as CalendarAppointment[];
-}
-
 export async function getAppointmentsByJobId(jobId: string) {
   const { data, error } = await supabase
     .from("appointments")
@@ -89,20 +57,29 @@ export async function getAppointmentsByJobId(jobId: string) {
       *,
       assigned_employee:employees!appointments_assigned_employee_id_fkey (
         id,
-        name
+        name,
+        color
       ),
       installer_crew:installer_crews!appointments_installer_crew_id_fkey (
         id,
-        name
+        name,
+        color
       ),
       job:jobs!appointments_job_id_fkey (
         id,
         customer_id,
         customer_name,
         qfloors_job_number,
+        address,
         status,
         installation_required,
-        customer:customers!jobs_customer_id_fkey (id, full_name)
+        customer:customers!jobs_customer_id_fkey (id, full_name),
+        company_contact:customer_contacts!jobs_company_contact_id_fkey (
+          first_name, last_name, job_title, email, office_phone, mobile_phone
+        ),
+        job_site_contact:customer_contacts!jobs_job_site_contact_id_fkey (
+          first_name, last_name, job_title, email, office_phone, mobile_phone
+        )
       )
     `)
     .eq("job_id", jobId)
@@ -135,20 +112,29 @@ export async function completeAppointment(
       *,
       assigned_employee:employees!appointments_assigned_employee_id_fkey (
         id,
-        name
+        name,
+        color
       ),
       installer_crew:installer_crews!appointments_installer_crew_id_fkey (
         id,
-        name
+        name,
+        color
       ),
       job:jobs!appointments_job_id_fkey (
         id,
         customer_id,
         customer_name,
         qfloors_job_number,
+        address,
         status,
         installation_required,
-        customer:customers!jobs_customer_id_fkey (id, full_name)
+        customer:customers!jobs_customer_id_fkey (id, full_name),
+        company_contact:customer_contacts!jobs_company_contact_id_fkey (
+          first_name, last_name, job_title, email, office_phone, mobile_phone
+        ),
+        job_site_contact:customer_contacts!jobs_job_site_contact_id_fkey (
+          first_name, last_name, job_title, email, office_phone, mobile_phone
+        )
       )
     `)
     .single();

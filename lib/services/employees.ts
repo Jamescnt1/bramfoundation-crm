@@ -14,6 +14,9 @@ export type Employee = {
   active: boolean;
   avatar_url: string | null;
   color: string;
+  default_calendar_view: "month" | "week" | "three_day" | "day";
+  remember_last_calendar_view: boolean;
+  last_calendar_view: "month" | "week" | "three_day" | "day" | null;
   job_title: string | null;
   bio: string | null;
   created_at: string;
@@ -28,7 +31,7 @@ export const getCurrentEmployee = cache(async (): Promise<Employee | null> => {
 
   const { data, error } = await supabase
     .from("employees")
-    .select("id, auth_user_id, name, email, username, phone, role, active, avatar_url, color, job_title, bio, created_at, updated_at")
+    .select("id, auth_user_id, name, email, username, phone, role, active, avatar_url, color, default_calendar_view, remember_last_calendar_view, last_calendar_view, job_title, bio, created_at, updated_at")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
@@ -83,7 +86,7 @@ export async function getActiveEmployees(): Promise<Employee[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("employees")
-    .select("id, auth_user_id, name, email, username, phone, role, active, avatar_url, color, job_title, bio, created_at, updated_at")
+    .select("id, auth_user_id, name, email, username, phone, role, active, avatar_url, color, default_calendar_view, remember_last_calendar_view, last_calendar_view, job_title, bio, created_at, updated_at")
     .eq("active", true)
     .order("name");
 
