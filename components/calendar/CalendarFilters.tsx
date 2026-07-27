@@ -3,6 +3,7 @@ import { APPOINTMENT_STATUSES, APPOINTMENT_TYPES } from "@/components/calendar/c
 import type { Employee } from "@/lib/services/employees";
 import type { Job } from "@/lib/services/jobs";
 import { formatJobDisplayName } from "@/lib/job-display";
+import { formatAppointmentType } from "@/lib/appointment-display";
 
 export type CalendarFilterValues = {
   employeeId: string;
@@ -47,7 +48,7 @@ export default function CalendarFilters({
         <option value="">All event types</option>
         {APPOINTMENT_TYPES.filter(
           (type) => includeInstallations || type !== "installation",
-        ).map((type) => <option key={type} value={type}>{label(type)}</option>)}
+        ).map((type) => <option key={type} value={type}>{formatAppointmentType(type)}</option>)}
       </Filter>
       <Filter label="Status" value={value.status} onChange={(next) => set({ status: next as CalendarFilterValues["status"] })}>
         <option value="">All statuses</option>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { AutomationActionType, AutomationAssignmentType, AutomationEmployee, AutomationRule, AutomationRuleValues, AutomationTriggerEvent } from "@/lib/services/task-automation";
+import { formatAppointmentType } from "@/lib/appointment-display";
 
 type Props = { open: boolean; rule: AutomationRule | null; employees: AutomationEmployee[]; stages: PipelineStageView[];
   emailTemplates: { id: string; name: string }[];
@@ -76,9 +77,8 @@ export default function AutomationRuleDialog({ open, rule, employees, stages, em
 
 function getTriggerValues(event: AutomationTriggerEvent, stages: PipelineStageView[]) {
   if (event === "job_status_changed") return stages.map((stage) => ({ value: stage.slug, label: stage.label }));
-  if (event === "appointment_scheduled" || event === "appointment_completed") return APPOINTMENT_TYPES.map((value) => ({ value, label: title(value) }));
+  if (event === "appointment_scheduled" || event === "appointment_completed") return APPOINTMENT_TYPES.map((value) => ({ value, label: formatAppointmentType(value) }));
   return [];
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="grid gap-2 text-sm font-medium text-gray-800"><span>{label}</span>{children}</label>; }
-function title(value: string) { return value.split("_").map((word) => word[0].toUpperCase() + word.slice(1)).join(" "); }
 const selectClass = "h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm";

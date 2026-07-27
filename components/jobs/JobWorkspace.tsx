@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CalendarPlus, CheckSquare, MoreHorizontal, Pencil, UserRound } from "lucide-react";
 import AttachmentManager from "@/components/attachments/AttachmentManager";
 import type { JobAttachment } from "@/components/attachments/types";
@@ -14,6 +14,7 @@ import JobRequirementsDialog from "@/components/pipeline/JobRequirementsDialog";
 import { isConfiguredContractAmountRequired, isConfiguredQfNumberRequired, isInstallScheduledStage, resolveConfiguredStage, type PipelineStage, type PipelineStageView } from "@/components/pipeline/constants";
 import { changeJobPipelineStatus } from "@/app/actions/job-status";
 import type { CalendarAppointment } from "@/components/calendar/types";
+import type { AppointmentType } from "@/components/calendar/constants";
 import type { Customer } from "@/components/customers/types";
 import type { Employee } from "@/lib/services/employees";
 import type { Job, JobActivity, JobContactSummary } from "@/lib/services/jobs";
@@ -91,7 +92,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [appointmentOpen, setAppointmentOpen] = useState(false);
-  const [appointmentType, setAppointmentType] = useState<"measure" | "installation">("measure");
+  const [appointmentType, setAppointmentType] = useState<AppointmentType>("appointment");
   const [currentStatus, setCurrentStatus] = useState(job.status);
   const [currentQfNumber, setCurrentQfNumber] = useState(job.qfloors_job_number);
   const [currentContractAmount, setCurrentContractAmount] = useState(job.contract_amount);
@@ -161,10 +162,35 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
     }
   }
 
-  function schedule(type: "measure" | "installation") {
+  function schedule(type: AppointmentType = "appointment") {
     setAppointmentType(type);
     setAppointmentOpen(true);
   }
+
+  /* Pipeline deep links open the same shared scheduler with a contextual type. */
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const requestedType = searchParams.get("schedule");
+    if (!requestedType) return;
+
+    const type: AppointmentType =
+      requestedType === "installation"
+        ? "installation"
+        : requestedType === "measure"
+          ? "measure"
+          : "appointment";
+
+    setAppointmentType(type);
+    setAppointmentOpen(true);
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("schedule");
+    router.replace(
+      params.size ? `${pathname}?${params.toString()}` : pathname,
+      { scroll: false },
+    );
+  }, [pathname, router, searchParams]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function selectTab(tab: JobWorkspaceTab) {
     const params = new URLSearchParams(searchParams.toString());
@@ -198,12 +224,11 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
             <QuickButton onClick={() => selectTab("tasks")}><CheckSquare /> Add Task</QuickButton>
-            <QuickButton onClick={() => schedule("measure")}><CalendarPlus /> Schedule Measure</QuickButton>
+            <QuickButton onClick={() => schedule()}><CalendarPlus /> Schedule</QuickButton>
             <Link href={`/leads/${job.id}/edit`} className="inline-flex min-h-9 items-center gap-1.5 rounded-md bg-black px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800"><Pencil className="h-3.5 w-3.5" /> Edit Job Info</Link>
             <DropdownMenu>
               <DropdownMenuTrigger className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50" aria-label="More job actions"><MoreHorizontal className="h-4 w-4" /></DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => schedule("installation")}><CalendarPlus /> Schedule Install</DropdownMenuItem>
                 {customer ? <DropdownMenuItem onClick={() => window.location.assign(`/customers/${customer.id}`)}><UserRound /> Open Customer</DropdownMenuItem> : null}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -290,7 +315,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1.5 border-t border-gray-100 pt-3">
                     <QuickButton onClick={() => selectTab("tasks")}>Open Tasks</QuickButton>
-                    <QuickButton onClick={() => schedule("measure")}>Schedule Measure</QuickButton>
+                    <QuickButton onClick={() => schedule()}>Schedule</QuickButton>
                     <QuickButton onClick={() => selectTab("communications")}>Messages</QuickButton>
                   </div>
                 </WorkspaceCard>
@@ -301,7 +326,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                   ) : (
                     <WorkspaceEmpty
                       text="No upcoming appointments."
-                      action={<button type="button" onClick={() => schedule("measure")} className="text-xs font-semibold text-gray-900 hover:underline">Schedule</button>}
+                      action={<button type="button" onClick={() => schedule()} className="text-xs font-semibold text-gray-900 hover:underline">Schedule</button>}
                     />
                   )}
                 </WorkspaceCard>
@@ -372,8 +397,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
           <section>
             <WorkspaceCard title="Calendar" count={appointments.length} action={<Link href="/calendar" className="text-xs font-semibold text-gray-700 hover:underline">Open full calendar</Link>}>
               <div className="mb-3 flex flex-wrap gap-1.5">
-                <QuickButton onClick={() => schedule("measure")}>Schedule Measure</QuickButton>
-                <QuickButton onClick={() => schedule("installation")}>Schedule Install</QuickButton>
+                <QuickButton onClick={() => schedule()}>Schedule</QuickButton>
               </div>
               {appointments.length ? (
                 <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">

@@ -229,7 +229,7 @@ export default function CalendarBoard({
               onRangeDaysChange={setInstallRangeDays}
               onInstallerCrewChange={setInstallerCrewId}
               onSelectAppointment={handleSelectAppointment}
-              onScheduleInstallation={() => {
+              onScheduleInstall={() => {
                 setDefaultAppointmentType("installation");
                 setAppointmentBeingEdited(null);
                 setAppointmentDialogOpen(true);
@@ -246,16 +246,6 @@ export default function CalendarBoard({
                 onToday={handleToday}
                 onNewAppointment={() => {
                   setDefaultAppointmentType("appointment");
-                  setAppointmentBeingEdited(null);
-                  setAppointmentDialogOpen(true);
-                }}
-                onScheduleMeasure={() => {
-                  setDefaultAppointmentType("measure");
-                  setAppointmentBeingEdited(null);
-                  setAppointmentDialogOpen(true);
-                }}
-                onScheduleInstallation={() => {
-                  setDefaultAppointmentType("installation");
                   setAppointmentBeingEdited(null);
                   setAppointmentDialogOpen(true);
                 }}

@@ -209,7 +209,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
           Boolean(jobs.find((job) => job.id === pendingMove.jobId)?.installation_required) &&
           !installationJobIds.includes(pendingMove.jobId)
         }
-        scheduleInstallHref={`/leads/${pendingMove.jobId}?tab=calendar`}
+        scheduleInstallHref={`/leads/${pendingMove.jobId}?tab=calendar&schedule=installation`}
         initialQfNumber={jobs.find((job) => job.id === pendingMove.jobId)?.qfloors_job_number}
         initialContractAmount={jobs.find((job) => job.id === pendingMove.jobId)?.contract_amount}
         isSaving={Boolean(movingJobId)}

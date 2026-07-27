@@ -25,6 +25,7 @@ import type { Employee } from "@/lib/services/employees";
 import type { Job } from "@/lib/services/jobs";
 import type { InstallerCrew } from "@/lib/services/installer-crews";
 import { formatJobDisplayName } from "@/lib/job-display";
+import { formatAppointmentType } from "@/lib/appointment-display";
 
 type AppointmentDialogProps = {
   open: boolean;
@@ -63,14 +64,9 @@ function createAppointmentDate(date: string, time: string) {
   return new Date(`${date}T${time}:00`);
 }
 
-function formatOptionLabel(value: string) {
-  return value
-    .split("_")
-    .map(
-      (word) =>
-        word.charAt(0).toUpperCase() + word.slice(1),
-    )
-    .join(" ");
+function formatContactName(contact: Job["company_contact"]) {
+  if (!contact) return "Not selected";
+  return `${contact.first_name} ${contact.last_name}`.trim();
 }
 
 export default function AppointmentDialog({
@@ -82,13 +78,13 @@ export default function AppointmentDialog({
   installerCrews,
   jobs = [],
   defaultJobId = null,
-  defaultAppointmentType = "measure",
+  defaultAppointmentType = "appointment",
 }: AppointmentDialogProps) {
   const router = useRouter();
   const isEditing = Boolean(appointment);
 
   const [appointmentType, setAppointmentType] =
-    useState<AppointmentType>("measure");
+    useState<AppointmentType>("appointment");
   const [date, setDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [startTime, setStartTime] = useState("09:00");
@@ -162,6 +158,28 @@ export default function AppointmentDialog({
     }
 
     onOpenChange(nextOpen);
+  }
+
+  function handleAppointmentTypeChange(nextType: AppointmentType) {
+    setAppointmentType(nextType);
+
+    if (isEditing) return;
+
+    const selectedJob = jobs.find((job) => job.id === jobId);
+
+    if (nextType === "material_selection") {
+      setLocationMode("custom");
+      setLocation("");
+      return;
+    }
+
+    if (
+      (nextType === "installation" || nextType === "measure") &&
+      selectedJob?.address
+    ) {
+      setLocationMode("job");
+      setLocation(selectedJob.address);
+    }
   }
 
   async function handleSubmit(
@@ -263,6 +281,30 @@ export default function AppointmentDialog({
             data-appointment-dialog-scroll
           >
             <div className="grid gap-5">
+            <div className="grid gap-2">
+              <label
+                htmlFor="appointment-type"
+                className="text-sm font-medium text-gray-900"
+              >
+                Appointment type
+              </label>
+
+              <select
+                id="appointment-type"
+                value={appointmentType}
+                onChange={(event) =>
+                  handleAppointmentTypeChange(event.target.value as AppointmentType)
+                }
+                className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-base text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200 sm:h-9 sm:text-sm"
+              >
+                {APPOINTMENT_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {formatAppointmentType(type)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {jobs.length ? (
               <div className="grid gap-2">
                 <label htmlFor="appointment-job" className="text-sm font-medium text-gray-900">
@@ -275,7 +317,7 @@ export default function AppointmentDialog({
                     const nextJobId = event.target.value;
                     const nextJob = jobs.find((job) => job.id === nextJobId);
                     setJobId(nextJobId);
-                    if (nextJob?.address) {
+                    if (nextJob?.address && appointmentType !== "material_selection") {
                       setLocationMode("job");
                       setLocation(nextJob.address);
                     } else {
@@ -292,33 +334,28 @@ export default function AppointmentDialog({
                     </option>
                   ))}
                 </select>
+                {jobId ? (() => {
+                  const selectedJob = jobs.find((job) => job.id === jobId);
+                  if (!selectedJob) return null;
+                  return (
+                    <dl className="grid gap-2 rounded-md border border-gray-200 bg-gray-50 p-3 text-xs sm:grid-cols-2">
+                      <div>
+                        <dt className="font-medium text-gray-500">Company Contact</dt>
+                        <dd className="mt-0.5 font-semibold text-gray-900">
+                          {formatContactName(selectedJob.company_contact)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-gray-500">Job Site Contact</dt>
+                        <dd className="mt-0.5 font-semibold text-gray-900">
+                          {formatContactName(selectedJob.job_site_contact)}
+                        </dd>
+                      </div>
+                    </dl>
+                  );
+                })() : null}
               </div>
             ) : null}
-            <div className="grid gap-2">
-              <label
-                htmlFor="appointment-type"
-                className="text-sm font-medium text-gray-900"
-              >
-                Appointment type
-              </label>
-
-              <select
-                id="appointment-type"
-                value={appointmentType}
-                onChange={(event) =>
-                  setAppointmentType(
-                    event.target.value as AppointmentType,
-                  )
-                }
-                className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-base text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200 sm:h-9 sm:text-sm"
-              >
-                {APPOINTMENT_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {formatOptionLabel(type)}
-                  </option>
-                ))}
-              </select>
-            </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">

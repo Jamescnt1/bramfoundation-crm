@@ -89,7 +89,7 @@ export default function JobRequirementsDialog(props: Props) {
                     onClick={props.onScheduleInstall}
                     disabled={props.isSaving}
                   >
-                    Schedule install
+                    Schedule
                   </Button>
                 ) : props.scheduleInstallHref ? (
                   <Link

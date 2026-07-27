@@ -17,7 +17,7 @@ type Props = {
   onRangeDaysChange: (days: number) => void;
   onInstallerCrewChange: (id: string) => void;
   onSelectAppointment: (appointment: CalendarAppointment) => void;
-  onScheduleInstallation: () => void;
+  onScheduleInstall: () => void;
 };
 
 function formatRange(start: Date, count: number) {
@@ -42,7 +42,7 @@ export default function InstallScheduleView({
   onRangeDaysChange,
   onInstallerCrewChange,
   onSelectAppointment,
-  onScheduleInstallation,
+  onScheduleInstall,
 }: Props) {
   const days = getConsecutiveDays(anchorDate, rangeDays);
   const installs = appointments.filter(
@@ -114,11 +114,11 @@ export default function InstallScheduleView({
           </label>
           <button
             type="button"
-            onClick={onScheduleInstallation}
+            onClick={onScheduleInstall}
             className="inline-flex h-9 items-center gap-1.5 rounded-md bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800"
           >
             <Plus className="h-3.5 w-3.5" />
-            Schedule Install
+            Install
           </button>
         </div>
       </div>

@@ -1,9 +1,11 @@
 export const APPOINTMENT_TYPES = [
-  "appointment",
   "measure",
   "installation",
-  "follow_up",
   "job_walk",
+  "material_selection",
+  "builder_meeting",
+  "appointment",
+  "follow_up",
   "other",
 ] as const;
 

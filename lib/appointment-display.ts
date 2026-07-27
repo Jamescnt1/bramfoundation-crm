@@ -12,11 +12,13 @@ export function formatAppointmentType(
   if (!type) return "Appointment";
 
   const labels: Record<AppointmentType, string> = {
-    appointment: "Appointment",
-    measure: "Measure",
-    installation: "Installation",
+    appointment: "Customer Meeting",
+    measure: "Floor Measure",
+    installation: "Install",
     follow_up: "Follow-up",
     job_walk: "Job Walk",
+    material_selection: "Material Selection",
+    builder_meeting: "Builder Meeting",
     other: "Other",
   };
 
@@ -42,4 +44,3 @@ export function formatAppointmentDisplayName({
   if (customer) return `${customer} - ${type}`;
   return `General appointment - ${type}`;
 }
-

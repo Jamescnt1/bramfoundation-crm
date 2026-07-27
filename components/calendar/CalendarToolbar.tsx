@@ -13,8 +13,6 @@ type CalendarToolbarProps = {
   onNext: () => void;
   onToday: () => void;
   onNewAppointment: () => void;
-  onScheduleMeasure: () => void;
-  onScheduleInstallation: () => void;
 };
 
 export default function CalendarToolbar({
@@ -25,8 +23,6 @@ export default function CalendarToolbar({
   onNext,
   onToday,
   onNewAppointment,
-  onScheduleMeasure,
-  onScheduleInstallation,
 }: CalendarToolbarProps) {
   return (
     <div className="flex flex-col gap-4 border-b border-gray-200 p-5 lg:flex-row lg:items-center lg:justify-between">
@@ -86,20 +82,13 @@ export default function CalendarToolbar({
           ))}
         </div>
 
-        <button type="button" onClick={onScheduleMeasure} className="whitespace-nowrap rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-800 hover:bg-amber-100">
-          Schedule Measure
-        </button>
-        <button type="button" onClick={onScheduleInstallation} className="whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-medium text-emerald-800 hover:bg-emerald-100">
-          Schedule Install
-        </button>
-
         <button
           type="button"
           onClick={onNewAppointment}
           className="inline-flex w-fit items-center justify-center gap-2 rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
         >
           <Plus className="h-4 w-4" />
-          New Appointment
+          Appointment
         </button>
       </div>
     </div>
