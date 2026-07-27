@@ -68,7 +68,9 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
             initialDate={initialDate}
             initialMode={initialMode}
             initialView={initialView}
+            initialDefaultView={currentEmployee.default_calendar_view}
             rememberLastView={currentEmployee.remember_last_calendar_view}
+            currentEmployeeId={currentEmployee.id}
           />
         )}
       </div>

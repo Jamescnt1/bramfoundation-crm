@@ -1,27 +1,27 @@
 import {
   ChevronLeft,
   ChevronRight,
+  SlidersHorizontal,
   Plus,
 } from "lucide-react";
-import type { CalendarView } from "@/components/calendar/types";
 
 type CalendarToolbarProps = {
   heading: string;
-  view: CalendarView;
-  onViewChange: (view: CalendarView) => void;
+  activeFilterCount: number;
   onPrevious: () => void;
   onNext: () => void;
   onToday: () => void;
+  onViewOptions: () => void;
   onNewAppointment: () => void;
 };
 
 export default function CalendarToolbar({
   heading,
-  view,
-  onViewChange,
+  activeFilterCount,
   onPrevious,
   onNext,
   onToday,
+  onViewOptions,
   onNewAppointment,
 }: CalendarToolbarProps) {
   return (
@@ -58,30 +58,24 @@ export default function CalendarToolbar({
         </h2>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex overflow-x-auto rounded-lg border border-gray-200 bg-gray-50 p-1">
-          {([
-            ["month", "Month"],
-            ["week", "Week"],
-            ["three_day", "3 Day"],
-            ["day", "Day"],
-            ["list", "List"],
-          ] as const).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => onViewChange(value)}
-              className={`whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                view === value
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-900"
-              }`}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={onViewOptions}
+          className="relative inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          <span className="hidden sm:inline">View Options</span>
+          <span className="sm:hidden">View</span>
+          {activeFilterCount > 0 ? (
+            <span
+              className="inline-flex min-w-5 items-center justify-center rounded-full bg-black px-1.5 py-0.5 text-[10px] font-bold text-white"
+              aria-label={`${activeFilterCount} active filters`}
             >
-              {label}
-            </button>
-          ))}
-        </div>
-
+              {activeFilterCount}
+            </span>
+          ) : null}
+        </button>
         <button
           type="button"
           onClick={onNewAppointment}

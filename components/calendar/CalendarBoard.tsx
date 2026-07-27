@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AppointmentDetailsPanel from "@/components/calendar/AppointmentDetailsPanel";
@@ -9,6 +9,11 @@ import CalendarGrid from "@/components/calendar/CalendarGrid";
 import CalendarListView from "@/components/calendar/CalendarListView";
 import CalendarScheduleView from "@/components/calendar/CalendarScheduleView";
 import CalendarToolbar from "@/components/calendar/CalendarToolbar";
+import CalendarViewOptions, {
+  createEmptyCalendarFilters,
+  type CalendarFilterValues,
+  type CalendarViewOptionsValue,
+} from "@/components/calendar/CalendarViewOptions";
 import CalendarModeTabs, { type CalendarMode } from "@/components/calendar/CalendarModeTabs";
 import DeleteAppointmentDialog from "@/components/calendar/DeleteAppointmentDialog";
 import InstallScheduleView from "@/components/calendar/InstallScheduleView";
@@ -23,14 +28,19 @@ import {
   startOfMonth,
   startOfWeek,
 } from "@/components/calendar/calendar-utils";
-import type { AppointmentType } from "@/components/calendar/constants";
+import {
+  APPOINTMENT_TYPES,
+  type AppointmentType,
+} from "@/components/calendar/constants";
 import type { CalendarAppointment, CalendarView } from "@/components/calendar/types";
 import { completeAppointment } from "@/lib/services/appointments";
 import type { Employee } from "@/lib/services/employees";
 import type { Job } from "@/lib/services/jobs";
 import type { InstallerCrew } from "@/lib/services/installer-crews";
-import CalendarFilters, { type CalendarFilterValues } from "@/components/calendar/CalendarFilters";
-import { rememberCalendarViewAction } from "@/app/settings/calendar/actions";
+import {
+  rememberCalendarViewAction,
+  updateCalendarPreferencesAction,
+} from "@/app/settings/calendar/actions";
 
 type CalendarBoardProps = {
   initialAppointments?: CalendarAppointment[];
@@ -41,7 +51,9 @@ type CalendarBoardProps = {
   initialDate?: string;
   initialMode?: CalendarMode;
   initialView?: CalendarView;
+  initialDefaultView?: Exclude<CalendarView, "list">;
   rememberLastView?: boolean;
+  currentEmployeeId: string;
 };
 
 function getHeading(view: CalendarView, date: Date) {
@@ -73,7 +85,9 @@ export default function CalendarBoard({
   initialDate,
   initialMode = "installs",
   initialView = "month",
+  initialDefaultView = "month",
   rememberLastView = false,
+  currentEmployeeId,
 }: CalendarBoardProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -97,9 +111,12 @@ export default function CalendarBoard({
   const [appointmentBeingDeleted, setAppointmentBeingDeleted] = useState<CalendarAppointment | null>(null);
   const [isCompleting, setIsCompleting] = useState(false);
   const [actionError, setActionError] = useState("");
-  const [filters, setFilters] = useState<CalendarFilterValues>({
-    employeeIds: [], eventType: "", status: "", customerId: "", jobId: "",
-  });
+  const [filters, setFilters] = useState<CalendarFilterValues>(
+    createEmptyCalendarFilters,
+  );
+  const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
+  const [defaultView, setDefaultView] = useState(initialDefaultView);
+  const [rememberView, setRememberView] = useState(rememberLastView);
   const [defaultAppointmentType, setDefaultAppointmentType] = useState<AppointmentType>("appointment");
   const [installRangeDays, setInstallRangeDays] = useState(14);
   const [installerCrewId, setInstallerCrewId] = useState("");
@@ -110,12 +127,46 @@ export default function CalendarBoard({
       (!appointment.assigned_employee_id ||
         !filters.employeeIds.includes(appointment.assigned_employee_id))
     ) return false;
-    if (filters.eventType && appointment.appointment_type !== filters.eventType) return false;
+    if (
+      filters.appointmentTypes.length &&
+      (!appointment.appointment_type ||
+        !filters.appointmentTypes.includes(appointment.appointment_type))
+    ) return false;
     if (filters.status && appointment.status !== filters.status) return false;
     if (filters.customerId && appointment.job?.customer_id !== filters.customerId) return false;
     if (filters.jobId && appointment.job_id !== filters.jobId) return false;
     return true;
   }), [initialAppointments, filters]);
+
+  const filterStorageKey = `foundation-calendar-filters:${currentEmployeeId}`;
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(filterStorageKey);
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as Partial<CalendarFilterValues>;
+      const frame = window.requestAnimationFrame(() => {
+        setFilters({
+          employeeIds: Array.isArray(parsed.employeeIds)
+            ? parsed.employeeIds.filter((id) =>
+                employees.some((employee) => employee.id === id),
+              )
+            : [],
+          appointmentTypes: Array.isArray(parsed.appointmentTypes)
+            ? parsed.appointmentTypes.filter((type) =>
+                APPOINTMENT_TYPES.includes(type),
+              )
+            : [],
+          status: parsed.status ?? "",
+          customerId: parsed.customerId ?? "",
+          jobId: parsed.jobId ?? "",
+        });
+      });
+      return () => window.cancelAnimationFrame(frame);
+    } catch {
+      window.localStorage.removeItem(filterStorageKey);
+    }
+  }, [employees, filterStorageKey]);
 
   const timedAppointments = useMemo(
     () => filteredAppointments.filter(
@@ -169,16 +220,45 @@ export default function CalendarBoard({
     setSelectedAppointment(null);
   }
 
-  function handleViewChange(nextView: CalendarView) {
+  function handleViewChange(
+    nextView: CalendarView,
+    shouldRemember = rememberView,
+  ) {
     setView(nextView);
     updateUrl("appointments", nextView);
     if (selectedDate) setAnchorDate(selectedDate);
-    if (rememberLastView && nextView !== "list") {
+    if (shouldRemember && nextView !== "list") {
       void rememberCalendarViewAction(nextView).catch(() => {
         // View switching should remain responsive if preference persistence fails.
       });
     }
   }
+
+  async function handleApplyViewOptions(next: CalendarViewOptionsValue) {
+    const preferencesChanged =
+      next.defaultView !== defaultView ||
+      next.rememberLastView !== rememberView;
+
+    if (preferencesChanged) {
+      await updateCalendarPreferencesAction({
+        defaultView: next.defaultView,
+        rememberLastView: next.rememberLastView,
+      });
+      setDefaultView(next.defaultView);
+      setRememberView(next.rememberLastView);
+    }
+
+    setFilters(next.filters);
+    window.localStorage.setItem(filterStorageKey, JSON.stringify(next.filters));
+    if (next.view !== view) handleViewChange(next.view, next.rememberLastView);
+  }
+
+  const activeFilterCount =
+    filters.employeeIds.length +
+    filters.appointmentTypes.length +
+    Number(Boolean(filters.status)) +
+    Number(Boolean(filters.customerId)) +
+    Number(Boolean(filters.jobId));
 
   function handleModeChange(nextMode: CalendarMode) {
     setMode(nextMode);
@@ -252,24 +332,16 @@ export default function CalendarBoard({
             <>
               <CalendarToolbar
                 heading={getHeading(view, anchorDate)}
-                view={view}
-                onViewChange={handleViewChange}
+                activeFilterCount={activeFilterCount}
                 onPrevious={() => move(-1)}
                 onNext={() => move(1)}
                 onToday={handleToday}
+                onViewOptions={() => setViewOptionsOpen(true)}
                 onNewAppointment={() => {
                   setDefaultAppointmentType("appointment");
                   setAppointmentBeingEdited(null);
                   setAppointmentDialogOpen(true);
                 }}
-              />
-
-              <CalendarFilters
-                value={filters}
-                employees={employees}
-                jobs={jobs}
-                includeInstallations={false}
-                onChange={setFilters}
               />
 
               {view === "month" ? (
@@ -378,6 +450,22 @@ export default function CalendarBoard({
         jobs={jobs}
         defaultAppointmentType={defaultAppointmentType}
       />
+
+      {viewOptionsOpen ? (
+        <CalendarViewOptions
+          open
+          value={{
+            filters,
+            view,
+            defaultView,
+            rememberLastView: rememberView,
+          }}
+          employees={employees}
+          jobs={jobs}
+          onOpenChange={setViewOptionsOpen}
+          onApply={handleApplyViewOptions}
+        />
+      ) : null}
 
       <DeleteAppointmentDialog
         open={deleteDialogOpen}

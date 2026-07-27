@@ -117,3 +117,76 @@ Interactive browser and device checks require
 `202607270002_calendar_refinements.sql` to be applied to the connected
 Supabase project first. Complete the checklist above in the deployed beta
 environment after the migration is applied.
+
+## View Options refactor
+
+### Pre-change baseline
+
+- Git commit: `d2f00f7`
+- Commit label: `Refine calendar scheduling views and preferences`
+- Recorded: July 26, 2026
+- Database changes: none
+
+This refactor replaces the persistent Appointments filter strip and view
+selector with a responsive `View Options` dialog. It does not alter calendar
+queries, appointment permission checks, appointment records, employee colors,
+or install-schedule behavior.
+
+### Files introduced or changed
+
+- `app/calendar/page.tsx`
+- `components/calendar/CalendarBoard.tsx`
+- `components/calendar/CalendarToolbar.tsx`
+- `components/calendar/CalendarViewOptions.tsx`
+- `docs/calendar-refinements-rollback.md`
+
+`components/calendar/CalendarFilters.tsx` is superseded by
+`CalendarViewOptions.tsx` and may be restored if this refactor is rolled back.
+
+### Preference storage
+
+- Default view and remember-last-view continue to use the existing employee
+  columns in Supabase.
+- Applied employee, appointment-type, status, customer, and job filters are
+  stored in browser local storage under a key scoped to the signed-in employee.
+- Local filter storage never expands server-side visibility. The calendar can
+  only filter the appointment records already returned by the authorized
+  server query.
+
+### Refactor rollback
+
+1. Revert the application commit containing the View Options refactor.
+2. Redeploy the reverted application.
+3. No database rollback is required.
+4. Stale browser preference keys may remain safely; the prior application does
+   not read them. They may optionally be removed from browser site data.
+
+### Refactor verification
+
+- Appointments opens with all permitted employees and types visible by default.
+- View Options opens, scrolls, applies, and resets on desktop.
+- View Options behaves as a bottom sheet and remains scrollable in mobile
+  Safari and iPad Safari.
+- Applied filters survive navigation and reload for the same employee.
+- Active filters produce a subtle toolbar count.
+- Month, Week, 3 Day, Day, and List views remain usable.
+- Default-view and remember-last-view preferences still persist per employee.
+- Appointment creation, navigation, time positioning, employee colors,
+  appointment-type icons, hover details, and tap details are unchanged.
+
+### Refactor verification record
+
+July 26, 2026:
+
+- `npm run lint` completed with no errors. The two pre-existing
+  `next/image` warnings remain in
+  `components/attachments/AttachmentManager.tsx`.
+- `npm run build` completed successfully, including TypeScript validation and
+  production route generation.
+- `git diff --check` completed successfully.
+- The local application server responded and enforced the expected
+  authentication redirect for `/calendar`.
+- Automated in-app browser device checks could not reach the host-local
+  development server from its isolated browser environment. Complete the
+  desktop, iPad, and iPhone interaction items above in the signed-in beta
+  environment before deployment sign-off.
