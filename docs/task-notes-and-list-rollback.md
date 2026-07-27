@@ -19,6 +19,7 @@ historical note. New notes are stored only in `task_notes`.
 - `lib/services/task-notes.ts`
 - `app/actions/task-notes.ts`
 - `components/tasks/TaskNotesPanel.tsx`
+- `components/tasks/TaskViewOptions.tsx`
 
 ## Files Modified
 
@@ -49,6 +50,14 @@ The migration also:
 - Adds a trigger that maintains `updated_at`.
 
 The old `job_tasks.description` values are not removed or overwritten.
+
+## Task View Options
+
+Search, assignee, status, priority, category, and due-date controls are
+contained in a compact View Options dialog opened beside New Task. The dialog
+uses a bottom sheet on phones and a centered dialog on larger screens. Removing
+`TaskViewOptions.tsx` and restoring the previous inline controls in
+`TaskManager.tsx` rolls back this UI without changing task data.
 
 ## Application Rollback
 

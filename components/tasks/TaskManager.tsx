@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Pencil, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import type { Customer } from "@/components/customers/types";
 import type { Employee } from "@/lib/services/employees";
 import type { Job } from "@/lib/services/jobs";
@@ -10,10 +10,13 @@ import { setTaskStatus } from "@/lib/services/tasks";
 import { deleteTaskPermanentlyAction } from "@/app/actions/beta-delete";
 import { formatJobDisplayName } from "@/lib/job-display";
 import TaskDialog from "./TaskDialog";
-import { TASK_PRIORITIES, TASK_STATUSES, type TaskNote, type TaskStatus, type TaskType, type UniversalTask } from "./types";
+import TaskViewOptions, {
+  defaultTaskViewOptions,
+  type TaskDueFilter,
+  type TaskViewOptionsValue,
+} from "./TaskViewOptions";
+import { type TaskNote, type TaskStatus, type TaskType, type UniversalTask } from "./types";
 
-type DueFilter = "all" | "overdue" | "today" | "upcoming" | "no_due";
-type StatusFilter = "active" | "all" | TaskStatus;
 type Props = {
   initialTasks: UniversalTask[];
   customers: Customer[];
@@ -50,13 +53,10 @@ export default function TaskManager({
   const [dialogOpen, setDialogOpen] = useState(Boolean(initialTask) || initialNewTask);
   const [editing, setEditing] = useState<UniversalTask | null>(initialTask);
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
-  const [assignee, setAssignee] = useState("all");
-  const [status, setStatus] = useState<StatusFilter>("active");
-  const [priority, setPriority] = useState("all");
-  const [category, setCategory] = useState("all");
-  const [due, setDue] = useState<DueFilter>("all");
+  const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
+  const [viewOptions, setViewOptions] = useState<TaskViewOptionsValue>(defaultTaskViewOptions);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const { search, assignee, status, priority, category, due } = viewOptions;
 
   const resetVisible = () => setVisibleCount(PAGE_SIZE);
   const filtered = useMemo(() => tasks
@@ -148,12 +148,7 @@ export default function TaskManager({
   }, []);
 
   function resetFilters() {
-    setSearch("");
-    setAssignee("all");
-    setStatus("active");
-    setPriority("all");
-    setCategory("all");
-    setDue("all");
+    setViewOptions(defaultTaskViewOptions);
     resetVisible();
   }
 
@@ -168,68 +163,44 @@ export default function TaskManager({
             </>
           ) : null}
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setEditing(null);
-            setDialogOpen(true);
-          }}
-          className="inline-flex w-fit items-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
-        >
-          <Plus className="h-4 w-4" /> New Task
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {!fixedCustomerId && !fixedJobId ? (
+            <button
+              type="button"
+              onClick={() => setViewOptionsOpen(true)}
+              className="relative inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              <span className="hidden sm:inline">View Options</span>
+              <span className="sm:hidden">View</span>
+              {activeFilterCount ? (
+                <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-black px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {activeFilterCount}
+                </span>
+              ) : null}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(null);
+              setDialogOpen(true);
+            }}
+            className="inline-flex w-fit items-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            <Plus className="h-4 w-4" /> New Task
+          </button>
+        </div>
       </div>
 
       {!fixedCustomerId && !fixedJobId ? (
-        <div className="sticky top-0 z-20 mt-5 rounded-xl border border-gray-200 bg-white/95 p-3 shadow-sm backdrop-blur">
-          <div className="grid gap-2 md:grid-cols-[minmax(220px,1fr)_repeat(2,minmax(130px,auto))] xl:grid-cols-[minmax(240px,1fr)_repeat(5,minmax(120px,auto))]">
-            <label className="relative">
-              <span className="sr-only">Search tasks</span>
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  resetVisible();
-                }}
-                placeholder="Search tasks, jobs, notes…"
-                className={`${controlClass} pl-9`}
-              />
-            </label>
-            <FilterSelect label="Assignee" value={assignee} onChange={(value) => { setAssignee(value); resetVisible(); }}>
-              <option value="all">All assignees</option>
-              <option value="mine">My tasks</option>
-              {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}
-            </FilterSelect>
-            <FilterSelect label="Status" value={status} onChange={(value) => { setStatus(value as StatusFilter); resetVisible(); }}>
-              <option value="active">Open tasks</option>
-              <option value="all">All statuses</option>
-              {TASK_STATUSES.map((value) => <option key={value} value={value}>{label(value)}</option>)}
-            </FilterSelect>
-            <FilterSelect label="Priority" value={priority} onChange={(value) => { setPriority(value); resetVisible(); }}>
-              <option value="all">All priorities</option>
-              {TASK_PRIORITIES.map((value) => <option key={value} value={value}>{label(value)}</option>)}
-            </FilterSelect>
-            <FilterSelect label="Category" value={category} onChange={(value) => { setCategory(value); resetVisible(); }}>
-              <option value="all">All categories</option>
-              {taskTypes.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
-            </FilterSelect>
-            <FilterSelect label="Due date" value={due} onChange={(value) => { setDue(value as DueFilter); resetVisible(); }}>
-              <option value="all">Any due date</option>
-              <option value="overdue">Overdue</option>
-              <option value="today">Due today</option>
-              <option value="upcoming">Upcoming</option>
-              <option value="no_due">No due date</option>
-            </FilterSelect>
-          </div>
-          <div className="mt-2 flex items-center justify-between gap-3 text-xs text-gray-500">
-            <span>{filtered.length} {filtered.length === 1 ? "task" : "tasks"} · overdue and due-today work sorts first</span>
-            {activeFilterCount ? (
-              <button type="button" onClick={resetFilters} className="font-semibold text-gray-700 hover:text-black">
-                Reset {activeFilterCount} {activeFilterCount === 1 ? "filter" : "filters"}
-              </button>
-            ) : null}
-          </div>
+        <div className="mt-3 flex items-center justify-between gap-3 text-xs text-gray-500">
+          <span>{filtered.length} {filtered.length === 1 ? "task" : "tasks"} · overdue and due-today work sorts first</span>
+          {activeFilterCount ? (
+            <button type="button" onClick={resetFilters} className="shrink-0 font-semibold text-gray-700 hover:text-black">
+              Reset view
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -286,6 +257,19 @@ export default function TaskManager({
         currentEmployeeRole={currentEmployeeRole}
         onLatestNoteChange={latestNoteChanged}
       />
+      {viewOptionsOpen ? (
+        <TaskViewOptions
+          open={viewOptionsOpen}
+          value={viewOptions}
+          employees={employees}
+          taskTypes={taskTypes}
+          onOpenChange={setViewOptionsOpen}
+          onApply={(next) => {
+            setViewOptions(next);
+            resetVisible();
+          }}
+        />
+      ) : null}
     </section>
   );
 }
@@ -370,27 +354,6 @@ function TaskRow({
   );
 }
 
-function FilterSelect({
-  label: text,
-  value,
-  onChange,
-  children,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <label>
-      <span className="sr-only">{text}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className={controlClass}>
-        {children}
-      </select>
-    </label>
-  );
-}
-
 function StatusBadge({ status }: { status: TaskStatus }) {
   const styles: Record<TaskStatus, string> = {
     open: "bg-blue-50 text-blue-700",
@@ -423,14 +386,14 @@ function Badge({
   );
 }
 
-function matchesDueFilter(task: UniversalTask, filter: DueFilter) {
+function matchesDueFilter(task: UniversalTask, filter: TaskDueFilter) {
   if (filter === "all") return true;
   const state = getDueState(task);
   if (filter === "no_due") return state === "no_due";
   return state === filter;
 }
 
-function getDueState(task: UniversalTask): DueFilter {
+function getDueState(task: UniversalTask): TaskDueFilter {
   if (!task.due_at) return "no_due";
   const due = new Date(task.due_at);
   const now = new Date();
@@ -440,7 +403,7 @@ function getDueState(task: UniversalTask): DueFilter {
 }
 
 function sortTasks(a: UniversalTask, b: UniversalTask) {
-  const dueRank: Record<DueFilter, number> = {
+  const dueRank: Record<TaskDueFilter, number> = {
     overdue: 0,
     today: 1,
     upcoming: 2,
@@ -493,5 +456,3 @@ function label(value: string) {
 function message(error: unknown) {
   return error instanceof Error ? error.message : "Unable to update task.";
 }
-
-const controlClass = "h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 outline-none focus:border-black focus:ring-2 focus:ring-gray-200";

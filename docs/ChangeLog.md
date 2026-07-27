@@ -4,6 +4,8 @@
 
 - Added compact status pills to task rows.
 - Added sticky search and task filters.
+- Moved task search and filters into a compact View Options button beside New Task.
+- Added a mobile-safe bottom sheet for task view controls.
 - Prioritized overdue and due-today work in the default Open Tasks view.
 - Added 30-item incremental rendering for large task lists.
 - Added employee/timestamped task-note history with edit markers.
