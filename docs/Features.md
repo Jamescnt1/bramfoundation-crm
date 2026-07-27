@@ -85,6 +85,19 @@ Base dashboard created.
 
 ---
 
+### Tasks
+
+- Compact status, priority, and category pills
+- Sticky search and filters for assignee, status, priority, category, and due date
+- Overdue and due-today work sorted before upcoming and undated tasks
+- Incremental 30-task rendering
+- Employee/timestamped task-note history
+- Author-owned note editing/deletion with administrator override
+- Latest-note preview limited to two lines in the main list
+- Existing task descriptions preserved as legacy notes
+
+---
+
 ### Sales Pipeline
 
 - Six-stage Kanban board

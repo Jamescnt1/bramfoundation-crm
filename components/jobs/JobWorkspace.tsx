@@ -392,7 +392,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
           <section>
             <WorkspaceCard title="Tasks" count={openTasks.length}>
               {taskError ? <WorkspaceError text={taskError} /> : (
-                <TaskManager compact initialTasks={tasks} customers={customer ? [customer] : []} jobs={[job]} employees={employees} taskTypes={taskTypes} fixedCustomerId={customer?.id ?? null} fixedJobId={job.id} />
+                <TaskManager compact initialTasks={tasks} customers={customer ? [customer] : []} jobs={[job]} employees={employees} taskTypes={taskTypes} currentEmployeeId={currentEmployee?.id ?? null} currentEmployeeRole={currentEmployee?.role ?? null} fixedCustomerId={customer?.id ?? null} fixedJobId={job.id} />
               )}
             </WorkspaceCard>
           </section>

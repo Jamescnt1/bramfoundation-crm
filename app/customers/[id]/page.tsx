@@ -7,7 +7,7 @@ import {
   getJobsByCustomerId,
   type Job,
 } from "@/lib/services/jobs";
-import { getActiveEmployees } from "@/lib/services/employees";
+import { getActiveEmployees, requireEmployee } from "@/lib/services/employees";
 import { getTasks, getTaskTypes } from "@/lib/services/tasks";
 import type { Employee } from "@/lib/services/employees";
 import type { TaskType, UniversalTask } from "@/components/tasks/types";
@@ -34,10 +34,11 @@ export default async function CustomerPage({
   let contacts: CustomerContact[] = [];
   let canManageContacts = false;
   let canArchiveContacts = false;
+  let currentEmployee: Employee | null = null;
   let errorMessage = "";
 
   try {
-    [customer, jobs, tasks, employees, taskTypes, contacts, canManageContacts, canArchiveContacts] = await Promise.all([
+    [customer, jobs, tasks, employees, taskTypes, contacts, canManageContacts, canArchiveContacts, currentEmployee] = await Promise.all([
       getCustomerById(id),
       getJobsByCustomerId(id),
       getTasks({ customerId: id }),
@@ -46,6 +47,7 @@ export default async function CustomerPage({
       getCustomerContacts(id),
       hasPermission("customers.manage"),
       hasPermission("delete_customers"),
+      requireEmployee(),
     ]);
     contacts = await Promise.all(contacts.map(async (contact) => ({
       ...contact,
@@ -86,6 +88,9 @@ export default async function CustomerPage({
   if (!customer) {
     notFound();
   }
+  if (!currentEmployee) {
+    notFound();
+  }
 
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-8">
@@ -107,6 +112,7 @@ export default async function CustomerPage({
             contacts={contacts}
             canManageContacts={canManageContacts}
             canArchiveContacts={canArchiveContacts}
+            currentEmployee={currentEmployee}
           />
         </div>
       </div>

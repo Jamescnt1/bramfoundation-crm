@@ -220,6 +220,22 @@ historical tasks.
 
 Changes to company settings, lead sources, and task types are recorded
 in `admin_audit_log` by database triggers.
+
+---
+
+## task_notes
+
+Timestamped note history for `job_tasks`.
+
+- `task_id` links the note to its task.
+- `author_employee_id` records the employee who wrote it.
+- `created_at` and `updated_at` support created and edited timestamps.
+- `deleted_at` and `deleted_by_employee_id` preserve soft-delete history.
+- `source = legacy_description` identifies descriptions migrated from
+  `job_tasks.description`.
+
+`task_latest_notes` exposes only the newest active note per task for the
+compact task-list preview. Full history is loaded only when Edit Task opens.
     
 # Internal Messaging
 

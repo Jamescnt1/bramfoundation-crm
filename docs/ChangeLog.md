@@ -1,5 +1,17 @@
 # Change Log
 
+## Task Notes and Scalable Task List
+
+- Added compact status pills to task rows.
+- Added sticky search and task filters.
+- Prioritized overdue and due-today work in the default Open Tasks view.
+- Added 30-item incremental rendering for large task lists.
+- Added employee/timestamped task-note history with edit markers.
+- Added permission-aware note editing and soft deletion.
+- Added a two-line latest-note preview to task rows.
+- Preserved existing descriptions as legacy historical notes.
+- Added rollback documentation in `docs/task-notes-and-list-rollback.md`.
+
 ## Job Attachments
 
 - Activated the existing Job Workspace Documents and Photos sections.

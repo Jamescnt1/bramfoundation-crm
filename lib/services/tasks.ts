@@ -19,7 +19,37 @@ export async function getTasks(filters?: { jobId?: string; customerId?: string }
   else if (filters?.customerId) query = query.eq("customer_id", filters.customerId);
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data ?? []).map(normalizeTask) as UniversalTask[];
+  const tasks = (data ?? []).map(normalizeTask) as UniversalTask[];
+  if (!tasks.length) return tasks;
+
+  const { data: notes, error: notesError } = await supabase
+    .from("task_latest_notes")
+    .select("id, task_id, author_employee_id, body, source, created_at, updated_at, author_name")
+    .in("task_id", tasks.map((task) => task.id))
+    .order("created_at", { ascending: false });
+  if (notesError) throw new Error(notesError.message);
+
+  const latestByTask = new Map<string, UniversalTask["latest_note"]>();
+  for (const rawNote of notes ?? []) {
+    if (latestByTask.has(rawNote.task_id)) continue;
+    latestByTask.set(rawNote.task_id, {
+      id: rawNote.id,
+      task_id: rawNote.task_id,
+      author_employee_id: rawNote.author_employee_id,
+      body: rawNote.body,
+      source: rawNote.source,
+      created_at: rawNote.created_at,
+      updated_at: rawNote.updated_at,
+      author: rawNote.author_employee_id
+        ? { id: rawNote.author_employee_id, name: rawNote.author_name ?? "Former employee" }
+        : null,
+    });
+  }
+
+  return tasks.map((task) => ({
+    ...task,
+    latest_note: latestByTask.get(task.id) ?? null,
+  }));
 }
 
 export async function getTaskTypes(activeOnly = true): Promise<TaskType[]> {
@@ -91,5 +121,5 @@ function normalizeTask(task: Record<string, unknown>) {
       (job as Record<string, unknown>).customer = customer[0] ?? null;
     }
   }
-  return task;
+  return { ...task, latest_note: null };
 }

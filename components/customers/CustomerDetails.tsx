@@ -18,6 +18,7 @@ type CustomerDetailsProps = {
   contacts: CustomerContact[];
   canManageContacts: boolean;
   canArchiveContacts: boolean;
+  currentEmployee: Employee;
 };
 
 export default function CustomerDetails({
@@ -29,6 +30,7 @@ export default function CustomerDetails({
   contacts,
   canManageContacts,
   canArchiveContacts,
+  currentEmployee,
 }: CustomerDetailsProps) {
   return (
     <div className="space-y-8">
@@ -156,7 +158,7 @@ export default function CustomerDetails({
       </section>
 
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
-        <TaskManager compact initialTasks={tasks} customers={[customer]} jobs={jobs} employees={employees} taskTypes={taskTypes} fixedCustomerId={customer.id} />
+        <TaskManager compact initialTasks={tasks} customers={[customer]} jobs={jobs} employees={employees} taskTypes={taskTypes} currentEmployeeId={currentEmployee.id} currentEmployeeRole={currentEmployee.role} fixedCustomerId={customer.id} />
       </section>
     </div>
   );

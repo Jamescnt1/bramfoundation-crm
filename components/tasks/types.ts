@@ -12,6 +12,17 @@ export type TaskRelation = {
   customer?: { id: string; full_name: string } | null;
 };
 
+export type TaskNote = {
+  id: string;
+  task_id: string;
+  author_employee_id: string | null;
+  body: string;
+  source: "employee_note" | "legacy_description";
+  created_at: string;
+  updated_at: string;
+  author: { id: string; name: string } | null;
+};
+
 export type UniversalTask = {
   id: string;
   job_id: string | null;
@@ -33,4 +44,5 @@ export type UniversalTask = {
   jobs: TaskRelation | null;
   employees: { id: string; name: string } | null;
   task_types: TaskType | null;
+  latest_note: TaskNote | null;
 };
