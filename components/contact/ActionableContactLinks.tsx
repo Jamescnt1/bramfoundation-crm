@@ -35,7 +35,7 @@ export function normalizeEmailHref(value: string | null | undefined) {
 export function normalizeMapsHref(value: string | null | undefined) {
   const address = value?.trim();
   if (!address) return null;
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  return `https://maps.apple.com/?q=${encodeURIComponent(address)}`;
 }
 
 export function PhoneLink({
