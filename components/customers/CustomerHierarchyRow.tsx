@@ -6,6 +6,7 @@ import PipelineStatusBadge from "@/components/pipeline/PipelineStatusBadge";
 import { getPipelineStage, isQfNumberRequired } from "@/components/pipeline/constants";
 import type { Job } from "@/lib/services/jobs";
 import type { Customer } from "./types";
+import { EmailLink, PhoneLink } from "@/components/contact/ActionableContactLinks";
 
 type CustomerHierarchyRowProps = {
   customer: Customer;
@@ -51,9 +52,11 @@ export default function CustomerHierarchyRow({
               {customer.full_name}
             </Link>
 
-            <p className="mt-1 truncate text-sm text-gray-500">
-              {customer.phone ?? customer.email ?? "No contact information"}
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-gray-500">
+              <PhoneLink value={customer.phone} label={customer.full_name} className="min-h-7" />
+              <EmailLink value={customer.email} label={customer.full_name} className="min-h-7" />
+              {!customer.phone && !customer.email ? <span>No contact information</span> : null}
+            </div>
           </div>
         </div>
 

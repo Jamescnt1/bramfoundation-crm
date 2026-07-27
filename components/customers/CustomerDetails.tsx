@@ -7,6 +7,7 @@ import type { TaskType, UniversalTask } from "@/components/tasks/types";
 import TaskManager from "@/components/tasks/TaskManager";
 import CustomerContactsManager from "@/components/contacts/CustomerContactsManager";
 import type { CustomerContact } from "@/lib/services/customer-contacts";
+import { AddressLink, EmailLink, PhoneLink } from "@/components/contact/ActionableContactLinks";
 
 type CustomerDetailsProps = {
   customer: Customer;
@@ -58,12 +59,7 @@ export default function CustomerDetails({
             </p>
 
             {customer.phone ? (
-              <a
-                href={`tel:${customer.phone}`}
-                className="mt-1 block font-medium text-gray-900 hover:underline"
-              >
-                {customer.phone}
-              </a>
+              <PhoneLink value={customer.phone} label={customer.full_name} className="mt-1 font-medium text-gray-900" />
             ) : (
               <p className="mt-1 text-gray-500">
                 Not provided
@@ -77,12 +73,7 @@ export default function CustomerDetails({
             </p>
 
             {customer.email ? (
-              <a
-                href={`mailto:${customer.email}`}
-                className="mt-1 block break-all font-medium text-gray-900 hover:underline"
-              >
-                {customer.email}
-              </a>
+              <EmailLink value={customer.email} label={customer.full_name} className="mt-1 font-medium text-gray-900" />
             ) : (
               <p className="mt-1 text-gray-500">
                 Not provided
@@ -95,9 +86,9 @@ export default function CustomerDetails({
               Customer Address
             </p>
 
-            <p className="mt-1 whitespace-pre-line text-gray-900">
-              {customer.address ?? "Not provided"}
-            </p>
+            {customer.address ? (
+              <AddressLink value={customer.address} className="mt-1 text-gray-900" />
+            ) : <p className="mt-1 text-gray-500">Not provided</p>}
           </div>
         </div>
 

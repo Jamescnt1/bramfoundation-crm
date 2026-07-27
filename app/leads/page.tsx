@@ -7,6 +7,7 @@ import {
   PIPELINE_COLOR_STYLES,
 } from "@/components/pipeline/constants";
 import { formatJobDisplayName } from "@/lib/job-display";
+import { AddressLink, EmailLink, PhoneLink } from "@/components/contact/ActionableContactLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -112,12 +113,12 @@ export default async function LeadsPage() {
                               qfNumber: job.qfloors_job_number,
                             })}
                           </Link>
-                          <p className="mt-1 text-sm text-gray-500">
-                            {job.address ??
-                              job.phone ??
-                              job.email ??
-                              "No project details"}
-                          </p>
+                          <div className="mt-1 text-sm text-gray-500">
+                            {job.address ? <AddressLink value={job.address} className="min-h-7" /> :
+                              job.phone ? <PhoneLink value={job.phone} label={job.customer?.full_name ?? job.customer_name} className="min-h-7" /> :
+                              job.email ? <EmailLink value={job.email} label={job.customer?.full_name ?? job.customer_name} className="min-h-7" /> :
+                              <span>No project details</span>}
+                          </div>
                         </td>
                         <td className="px-5 py-4">
                           <StageBadge stage={job.pipeline_stage} colorKey={job.pipeline_color_key} />

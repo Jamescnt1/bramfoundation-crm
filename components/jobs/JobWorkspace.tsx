@@ -24,6 +24,7 @@ import { formatJobDisplayName } from "@/lib/job-display";
 import InternalMessagePanel from "@/components/messaging/InternalMessagePanel";
 import type { InternalConversation, MessagingEmployee } from "@/components/messaging/types";
 import CustomerEmailPanel from "@/components/email/CustomerEmailPanel";
+import { AddressLink, EmailLink, PhoneLink } from "@/components/contact/ActionableContactLinks";
 import type { CustomerEmail, EmailTemplate } from "@/components/email/types";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { WorkspaceCard, WorkspaceEmpty, WorkspaceError, WorkspaceSectionHeader } from "@/components/jobs/WorkspacePrimitives";
@@ -237,7 +238,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
         {statusError ? <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{statusError}</div> : null}
         <dl className="mt-3 grid gap-x-5 gap-y-2 border-t border-gray-100 pt-3 sm:grid-cols-2 lg:grid-cols-4">
           <Fact label="Customer" value={customer?.full_name ?? job.customer_name} />
-          <Fact label="Project address" value={job.address ?? "Not provided"} />
+          <Fact label="Project address" value={job.address ? <AddressLink value={job.address} className="min-h-0" /> : "Not provided"} />
           <Fact label="Created" value={formatDate(job.created_at)} />
           <Fact label="Next action due" value={job.next_action_due ? formatDate(job.next_action_due) : "No due date"} />
         </dl>
@@ -280,7 +281,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                     <ContactFact label="Job Site Contact" contact={job.job_site_contact} />
                     <Fact label="Created" value={formatDate(job.created_at)} />
                     <Fact label="Next action due" value={job.next_action_due ? formatDate(job.next_action_due) : "No due date"} />
-                    <Fact label="Project address" value={job.address ?? "Not provided"} />
+                    <Fact label="Project address" value={job.address ? <AddressLink value={job.address} className="min-h-0" /> : "Not provided"} />
                   </div>
                 </WorkspaceCard>
 
@@ -336,7 +337,11 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-gray-950">{customer.full_name}</p>
-                        <p className="mt-0.5 truncate text-xs text-gray-500">{customer.phone ?? "No phone"} · {customer.email ?? "No email"}</p>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-500">
+                          <PhoneLink value={customer.phone} label={customer.full_name} className="min-h-7" />
+                          <EmailLink value={customer.email} label={customer.full_name} className="min-h-7" />
+                          {!customer.phone && !customer.email ? <span>No contact information</span> : null}
+                        </div>
                       </div>
                       <Link href={`/customers/${customer.id}`} className="shrink-0 rounded-md bg-black px-3 py-2 text-xs font-medium text-white hover:bg-gray-800">Open</Link>
                     </div>
@@ -492,7 +497,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
 }
 
 function QuickButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) { return <button type="button" onClick={onClick} className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 [&_svg]:h-3.5 [&_svg]:w-3.5">{children}</button>; }
-function Fact({ label, value }: { label: string; value: string }) { return <div className="min-w-0"><dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{label}</dt><dd className="mt-0.5 break-words text-sm font-medium leading-5 text-gray-900" title={value}>{value}</dd></div>; }
+function Fact({ label, value }: { label: string; value: React.ReactNode }) { return <div className="min-w-0"><dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{label}</dt><dd className="mt-0.5 break-words text-sm font-medium leading-5 text-gray-900" title={typeof value === "string" ? value : undefined}>{value}</dd></div>; }
 function ContactFact({ label, contact }: { label: string; contact: JobContactSummary | null }) {
   if (!contact) return <Fact label={label} value="Not selected" />;
   const name = `${contact.first_name} ${contact.last_name}`.trim();
@@ -501,8 +506,8 @@ function ContactFact({ label, contact }: { label: string; contact: JobContactSum
     <div className="min-w-0">
       <dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{label}</dt>
       <dd className="mt-0.5 text-sm font-medium leading-5 text-gray-900">{name}</dd>
-      {phone ? <a className="block truncate text-xs text-gray-600 hover:underline" href={`tel:${phone}`}>{phone}</a> : null}
-      {contact.email ? <a className="block truncate text-xs text-gray-600 hover:underline" href={`mailto:${contact.email}`}>{contact.email}</a> : null}
+      <PhoneLink value={phone} label={name} className="min-h-7 text-xs text-gray-600" />
+      <EmailLink value={contact.email} label={name} className="min-h-7 text-xs text-gray-600" />
     </div>
   );
 }

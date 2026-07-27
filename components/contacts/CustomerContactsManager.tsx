@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Mail, Pencil, Phone, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import {
   archiveCustomerContactAction,
 } from "@/app/actions/customer-contacts";
@@ -13,6 +13,7 @@ import {
   formatContactName,
   type CustomerContact,
 } from "@/lib/services/customer-contacts";
+import { EmailLink, PhoneLink } from "@/components/contact/ActionableContactLinks";
 
 type Props = {
   customer: Customer;
@@ -81,8 +82,9 @@ export default function CustomerContactsManager({
                 </div>
               </div>
               <div className="mt-3 space-y-1.5 text-sm">
-                {contact.mobile_phone || contact.office_phone ? <a href={`tel:${contact.mobile_phone ?? contact.office_phone}`} className="flex items-center gap-2 text-gray-700 hover:underline"><Phone className="h-3.5 w-3.5 text-gray-400" /> {contact.mobile_phone ?? contact.office_phone}</a> : null}
-                {contact.email ? <a href={`mailto:${contact.email}`} className="flex items-center gap-2 break-all text-gray-700 hover:underline"><Mail className="h-3.5 w-3.5 text-gray-400" /> {contact.email}</a> : null}
+                <PhoneLink value={contact.mobile_phone} label={formatContactName(contact)} showIcon className="text-gray-700" />
+                <PhoneLink value={contact.office_phone} label={`${formatContactName(contact)} office`} showIcon className="text-gray-700" />
+                <EmailLink value={contact.email} label={formatContactName(contact)} showIcon className="text-gray-700" />
               </div>
               {contact.jobs?.length ? (
                 <div className="mt-3 border-t border-gray-100 pt-3">
