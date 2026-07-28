@@ -1,15 +1,13 @@
 import Link from "next/link";
 import { requireEmployee } from "@/lib/services/employees";
 import { getEmployeeWorkspace } from "@/lib/services/workspace";
-import {
-  getStageStyles,
-  resolveConfiguredStage,
-} from "@/components/pipeline/constants";
+import { resolveConfiguredStage } from "@/components/pipeline/constants";
 import { formatJobDisplayName } from "@/lib/job-display";
 import { getPipelineStages } from "@/lib/services/pipeline-stages";
 import InternalMessagesDashboard from "@/components/messaging/InternalMessagesDashboard";
 import { getEmployeeConversations, getMessagingEmployees } from "@/lib/services/internal-messaging";
 import { formatAppointmentDisplayName } from "@/lib/appointment-display";
+import CompactPipelineOverview from "@/components/dashboard/CompactPipelineOverview";
 
 export const dynamic = "force-dynamic";
 
@@ -73,31 +71,20 @@ export default async function MyDashboardPage() {
 
           <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm xl:col-span-3">
             <div className="flex items-center justify-between gap-4">
-              <div><h2 className="text-base font-semibold">My Jobs &amp; Pipeline</h2><p className="mt-0.5 text-xs text-gray-500">Assigned jobs grouped by their current pipeline stage.</p></div>
+              <div><h2 className="text-base font-semibold">My Jobs &amp; Pipeline</h2><p className="mt-0.5 text-xs text-gray-500">Hover, focus, or tap a stage to see its assigned jobs.</p></div>
               <Link href="/pipeline" className="shrink-0 text-sm font-medium text-gray-500 hover:text-black">Open pipeline →</Link>
             </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {stages.map((stage) => {
-                const jobs = workspace.jobs.filter((job) => resolveConfiguredStage(job.status, stages)?.slug === stage.slug);
-                const styles = getStageStyles(stage);
-                return (
-                  <div key={stage.slug} className={`overflow-hidden rounded-xl border bg-white ${styles.border}`}>
-                    <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-3 py-2">
-                      <h3 className={`text-sm font-semibold ${styles.badge}`.split(" ").find((name) => name.startsWith("text-"))}>{stage.label}</h3>
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${styles.badge}`}>{jobs.length}</span>
-                    </div>
-                    <div className="divide-y divide-gray-100">
-                      {jobs.length ? jobs.slice(0, 4).map((job) => (
-                        <Link key={job.id} href={`/leads/${job.id}`} className="block px-3 py-2 text-xs transition hover:bg-gray-50">
-                          <p className="font-medium text-gray-900">{formatJobDisplayName({ customerName: job.customer?.full_name, jobName: job.customer_name, qfNumber: job.qfloors_job_number })}</p>
-                          {job.next_action ? <p className="mt-1 truncate text-xs text-gray-500">Next: {job.next_action}</p> : null}
-                        </Link>
-                      )) : <p className="px-3 py-4 text-xs text-gray-400">No assigned jobs</p>}
-                      {jobs.length > 4 ? <Link href="/pipeline" className="block px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50">+{jobs.length - 4} more</Link> : null}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="mt-3">
+              <CompactPipelineOverview
+                groups={stages.map((stage) => ({
+                  stage,
+                  jobs: workspace.jobs.filter(
+                    (job) =>
+                      resolveConfiguredStage(job.status, stages)?.slug ===
+                      stage.slug,
+                  ),
+                }))}
+              />
             </div>
           </section>
         </div>
