@@ -10,7 +10,17 @@ import GlobalSearch from "@/components/search/GlobalSearch";
 import type { Employee } from "@/lib/services/employees";
 import { getRoleLabel } from "@/lib/auth/roles";
 
-export default function AppShell({ children, employee }: { children: React.ReactNode; employee: Employee | null }) {
+type AppShellProps = {
+  children: React.ReactNode;
+  employee: Employee | null;
+  companyName: string | null;
+};
+
+export default function AppShell({
+  children,
+  employee,
+  companyName,
+}: AppShellProps) {
   const pathname = usePathname();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
@@ -46,7 +56,7 @@ export default function AppShell({ children, employee }: { children: React.React
             <div className="flex h-16 items-center justify-between border-b border-gray-200 px-5">
               <div>
                 <p className="font-bold text-gray-900">Foundation CRM</p>
-                <p className="text-xs text-gray-500">Bram Flooring</p>
+                <p className="text-xs text-gray-500">Flooring Sales Management</p>
               </div>
               <button
                 type="button"
@@ -96,8 +106,12 @@ export default function AppShell({ children, employee }: { children: React.React
               <Menu className="h-5 w-5" />
             </button>
             <div className="min-w-0">
-            <p className="font-semibold text-gray-900">Foundation Flooring</p>
-            <p className="hidden text-sm text-gray-500 sm:block">Sales Operations</p>
+              <p className="truncate font-semibold text-gray-900">
+                {companyName ?? "Company"}
+              </p>
+              <p className="hidden text-sm text-gray-500 sm:block">
+                Sales Operations
+              </p>
             </div>
           </div>
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">

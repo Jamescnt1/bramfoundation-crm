@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
+import { getCompanySettings } from "@/lib/services/company-settings";
 import { getCurrentEmployee } from "@/lib/services/employees";
 
 export const metadata: Metadata = {
@@ -13,10 +14,17 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const employee = await getCurrentEmployee();
+  const companyName = employee
+    ? (await getCompanySettings()).company_name
+    : null;
+
   return (
     <html lang="en">
       <body className="bg-gray-50 text-gray-900 antialiased">
-        <AppShell employee={await getCurrentEmployee()}>{children}</AppShell>
+        <AppShell employee={employee} companyName={companyName}>
+          {children}
+        </AppShell>
       </body>
     </html>
   );
