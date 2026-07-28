@@ -1,5 +1,16 @@
 # Database
 
+## report_favorites
+
+Employee-scoped shortcuts for the Reports Center.
+
+- employee_id
+- report_id
+- created_at
+
+The composite primary key prevents duplicate favorites. RLS allows each active
+employee to read, add, and remove only their own favorites.
+
 ## job_attachments
 
 - id

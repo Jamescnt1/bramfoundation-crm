@@ -1,4 +1,35 @@
 @import "tailwindcss";
+
+@media print {
+  @page {
+    margin: 0.55in;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  aside,
+  body > div > div > header {
+    display: none !important;
+  }
+
+  main {
+    min-height: auto !important;
+    padding: 0 !important;
+  }
+
+  .print-report-header {
+    break-after: avoid;
+  }
+
+  article,
+  section,
+  table,
+  tr {
+    break-inside: avoid;
+  }
+}
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 

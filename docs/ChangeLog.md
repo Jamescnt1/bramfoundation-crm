@@ -1,5 +1,16 @@
 # Change Log
 
+## Reports Center
+
+- Replaced the single Reports page with a categorized report library.
+- Preserved the Operational Dollars calculation rules and added date ranges.
+- Added reusable report filters, summary metrics, tables, simple charts, CSV
+  export, and print layouts.
+- Added employee-scoped favorite reports.
+- Added initial executive, sales, operations, employee, customer, pipeline,
+  task, calendar, file, and communications reporting.
+- Added rollback documentation and targeted reporting indexes.
+
 ## Task Notes and Scalable Task List
 
 - Added compact status pills to task rows.
