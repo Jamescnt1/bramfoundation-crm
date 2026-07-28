@@ -130,7 +130,7 @@ export default function GlobalSearch() {
 
   return (
     <div ref={rootRef} className="relative min-w-0">
-      <div className="flex h-9 w-36 items-center gap-2 rounded-full border border-gray-300 bg-white px-3 shadow-sm transition focus-within:w-52 focus-within:border-gray-500 sm:w-44 sm:focus-within:w-64">
+      <div className="flex h-9 w-36 items-center gap-2 rounded-md border border-gray-700 bg-gray-800 px-3 shadow-sm transition focus-within:w-52 focus-within:border-blue-400 sm:w-44 sm:focus-within:w-64">
         <Search className="h-4 w-4 shrink-0 text-gray-400" />
         <input
           ref={inputRef}
@@ -151,9 +151,9 @@ export default function GlobalSearch() {
           placeholder="Search..."
           aria-label="Search Foundation CRM"
           aria-controls="global-search-results"
-          className="min-w-0 flex-1 bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400"
+          className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-400"
         />
-        <kbd className="hidden rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] text-gray-500 md:block">⌘K</kbd>
+        <kbd className="hidden rounded border border-gray-600 bg-gray-700 px-1.5 py-0.5 text-[10px] text-gray-300 md:block">⌘K</kbd>
       </div>
 
       {open && query.trim().length >= 2 ? (

@@ -22,9 +22,11 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className="bg-gray-50 text-gray-900 antialiased">
-        <AppShell employee={employee} companyName={companyName}>
-          {children}
-        </AppShell>
+        <div className="foundation-app">
+          <AppShell employee={employee} companyName={companyName}>
+            {children}
+          </AppShell>
+        </div>
       </body>
     </html>
   );

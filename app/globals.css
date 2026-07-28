@@ -36,6 +36,57 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --color-gray-50: #f5f6f6;
+  --color-gray-100: #eaeced;
+  --color-gray-200: #d4d6d8;
+  --color-gray-300: #bdc1c4;
+  --color-gray-400: #8f969c;
+  --color-gray-500: #667078;
+  --color-gray-600: #4a5258;
+  --color-gray-700: #343a3f;
+  --color-gray-800: #292d31;
+  --color-gray-900: #232629;
+  --color-gray-950: #17191b;
+  --color-blue-50: #edf4f8;
+  --color-blue-100: #d7e7f0;
+  --color-blue-200: #b4d1e0;
+  --color-blue-300: #86b3ca;
+  --color-blue-400: #5e91ad;
+  --color-blue-500: #4b7f9c;
+  --color-blue-600: #3f6e8c;
+  --color-blue-700: #365b73;
+  --color-blue-800: #314d60;
+  --color-blue-900: #2c4251;
+  --color-green-50: #f1f6ef;
+  --color-green-100: #dfecdb;
+  --color-green-200: #c1dab9;
+  --color-green-300: #97c08c;
+  --color-green-400: #72a568;
+  --color-green-500: #5d8a52;
+  --color-green-600: #4d7344;
+  --color-green-700: #405c39;
+  --color-green-800: #354b31;
+  --color-green-900: #2d3f2a;
+  --color-amber-50: #fbf7ec;
+  --color-amber-100: #f5ebcc;
+  --color-amber-200: #ead699;
+  --color-amber-300: #ddbc62;
+  --color-amber-400: #c89c45;
+  --color-amber-500: #b98434;
+  --color-amber-600: #9d682c;
+  --color-amber-700: #7f4f28;
+  --color-amber-800: #694027;
+  --color-amber-900: #593723;
+  --color-red-50: #faf1f1;
+  --color-red-100: #f4dfdf;
+  --color-red-200: #e9c3c3;
+  --color-red-300: #d99d9d;
+  --color-red-400: #c67272;
+  --color-red-500: #b14e4e;
+  --color-red-600: #983d3d;
+  --color-red-700: #7f3434;
+  --color-red-800: #6a3030;
+  --color-red-900: #5a2d2d;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
@@ -80,38 +131,45 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --foundation-graphite: #232629;
+  --foundation-concrete: #d4d6d8;
+  --foundation-steel: #8f969c;
+  --foundation-blue: #3f6e8c;
+  --foundation-green: #5d8a52;
+  --foundation-amber: #c89c45;
+  --foundation-red: #b14e4e;
+  --background: #f5f6f6;
+  --foreground: #232629;
+  --card: #ffffff;
+  --card-foreground: #232629;
+  --popover: #ffffff;
+  --popover-foreground: #232629;
+  --primary: #3f6e8c;
+  --primary-foreground: #ffffff;
+  --secondary: #eaeced;
+  --secondary-foreground: #232629;
+  --muted: #eaeced;
+  --muted-foreground: #667078;
+  --accent: #edf4f8;
+  --accent-foreground: #314d60;
+  --destructive: #b14e4e;
+  --border: #d4d6d8;
+  --input: #bdc1c4;
+  --ring: #3f6e8c;
+  --chart-1: #3f6e8c;
+  --chart-2: #5d8a52;
+  --chart-3: #c89c45;
+  --chart-4: #8f969c;
+  --chart-5: #b14e4e;
+  --radius: 0.5rem;
+  --sidebar: #232629;
+  --sidebar-foreground: #f5f6f6;
+  --sidebar-primary: #3f6e8c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #343a3f;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #343a3f;
+  --sidebar-ring: #86b3ca;
 }
 
 .dark {
@@ -154,8 +212,33 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-image:
+      linear-gradient(135deg, rgb(255 255 255 / 55%), transparent 42%),
+      linear-gradient(rgb(35 38 41 / 2%) 1px, transparent 1px);
+    background-size: auto, 100% 4px;
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer components {
+  .foundation-app main h1 {
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
+  }
+
+  .foundation-app main :is(a, button).bg-black {
+    background-color: var(--foundation-blue);
+  }
+
+  .foundation-app main :is(a, button).bg-black:hover {
+    background-color: #365b73;
+  }
+
+  .foundation-app main :is(section, article).shadow-sm {
+    box-shadow:
+      0 1px 2px rgb(35 38 41 / 7%),
+      0 8px 22px rgb(35 38 41 / 4%);
   }
 }
