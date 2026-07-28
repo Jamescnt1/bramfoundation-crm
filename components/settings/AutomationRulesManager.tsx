@@ -5,20 +5,24 @@ import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from "lucide-react";
 import AutomationRuleDialog, { AUTOMATION_EVENTS } from "@/components/settings/AutomationRuleDialog";
 import { Button } from "@/components/ui/button";
 import {
-  createAutomationRule,
-  deleteAutomationRule,
-  orderAutomationRules,
-  setAutomationRuleEnabled,
-  updateAutomationRule,
   type AutomationEmployee,
+  type AutomationRole,
   type AutomationRule,
   type AutomationRuleValues,
 } from "@/lib/services/task-automation";
+import {
+  createAutomationRuleAction,
+  deleteAutomationRuleAction,
+  orderAutomationRulesAction,
+  setAutomationRuleEnabledAction,
+  updateAutomationRuleAction,
+} from "@/app/settings/automation-rules/actions";
 import type { PipelineStageView } from "@/components/pipeline/constants";
 
 type AutomationRulesManagerProps = {
   initialRules: AutomationRule[];
   employees: AutomationEmployee[];
+  roles: AutomationRole[];
   stages: PipelineStageView[];
   emailTemplates: { id: string; name: string }[];
 };
@@ -26,6 +30,7 @@ type AutomationRulesManagerProps = {
 export default function AutomationRulesManager({
   initialRules,
   employees,
+  roles,
   stages,
   emailTemplates,
 }: AutomationRulesManagerProps) {
@@ -57,8 +62,8 @@ export default function AutomationRulesManager({
 
   async function saveRule(values: AutomationRuleValues) {
     const savedRule = editingRule
-      ? await updateAutomationRule(editingRule.id, values)
-      : await createAutomationRule(values);
+      ? await updateAutomationRuleAction(editingRule.id, values)
+      : await createAutomationRuleAction(values);
 
     setRules((currentRules) =>
       editingRule
@@ -72,7 +77,7 @@ export default function AutomationRulesManager({
     setErrorMessage("");
 
     try {
-      await setAutomationRuleEnabled(rule.id, !rule.active);
+      await setAutomationRuleEnabledAction(rule.id, !rule.active);
       setRules((currentRules) =>
         currentRules.map((item) =>
           item.id === rule.id ? { ...item, active: !item.active } : item,
@@ -92,7 +97,7 @@ export default function AutomationRulesManager({
     setErrorMessage("");
 
     try {
-      await deleteAutomationRule(rule.id);
+      await deleteAutomationRuleAction(rule.id);
       setRules((currentRules) => currentRules.filter((item) => item.id !== rule.id));
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
@@ -126,7 +131,7 @@ export default function AutomationRulesManager({
     setErrorMessage("");
 
     try {
-      await orderAutomationRules(reordered.map((item) => item.id));
+      await orderAutomationRulesAction(reordered.map((item) => item.id));
     } catch (error) {
       setRules(previousRules);
       setErrorMessage(getErrorMessage(error));
@@ -258,6 +263,7 @@ export default function AutomationRulesManager({
           open
           rule={editingRule}
           employees={employees}
+          roles={roles}
           stages={stages}
           emailTemplates={emailTemplates}
           onOpenChange={setDialogOpen}
@@ -276,6 +282,16 @@ function formatDueTiming(days: number) {
 function formatAssignment(rule: AutomationRule) {
   if (rule.action_type !== "create_task") return "Pipeline update";
   if (rule.assignment_type === "job_salesperson") return "Assign to job salesperson";
+  const recipients = rule.automation_rule_recipients ?? [];
+  if (recipients.length) {
+    const employees = recipients.filter((item) => item.recipient_type === "employee").length;
+    const roles = recipients.filter((item) => item.recipient_type === "role").length;
+    const parts = [
+      employees ? `${employees} employee${employees === 1 ? "" : "s"}` : "",
+      roles ? `${roles} role${roles === 1 ? "" : "s"}` : "",
+    ].filter(Boolean);
+    return `Assign to ${parts.join(" and ")}`;
+  }
   const relation = Array.isArray(rule.employees) ? rule.employees[0] : rule.employees;
   return `Assign to ${relation?.name ?? "selected employee"}`;
 }

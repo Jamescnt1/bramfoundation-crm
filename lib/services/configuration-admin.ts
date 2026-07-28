@@ -20,7 +20,7 @@ export async function getAllTaskTypes(): Promise<TaskType[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("task_types")
-    .select("id, name, active, sort_order, color")
+    .select("id, name, active, sort_order")
     .order("sort_order")
     .order("name");
   if (error) throw new Error(error.message);

@@ -6,10 +6,10 @@ import type { PipelineStage, PipelineStageView } from "@/components/pipeline/con
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { AutomationActionType, AutomationAssignmentType, AutomationEmployee, AutomationRule, AutomationRuleValues, AutomationTriggerEvent } from "@/lib/services/task-automation";
+import type { AutomationActionType, AutomationAssignmentType, AutomationEmployee, AutomationRole, AutomationRule, AutomationRuleValues, AutomationTriggerEvent } from "@/lib/services/task-automation";
 import { formatAppointmentType } from "@/lib/appointment-display";
 
-type Props = { open: boolean; rule: AutomationRule | null; employees: AutomationEmployee[]; stages: PipelineStageView[];
+type Props = { open: boolean; rule: AutomationRule | null; employees: AutomationEmployee[]; roles: AutomationRole[]; stages: PipelineStageView[];
   emailTemplates: { id: string; name: string }[];
   onOpenChange: (open: boolean) => void; onSave: (values: AutomationRuleValues) => Promise<void> };
 
@@ -22,7 +22,7 @@ export const AUTOMATION_EVENTS: { value: AutomationTriggerEvent; label: string }
   { value: "task_completed", label: "Task is completed" },
 ];
 
-export default function AutomationRuleDialog({ open, rule, employees, stages, emailTemplates, onOpenChange, onSave }: Props) {
+export default function AutomationRuleDialog({ open, rule, employees, roles, stages, emailTemplates, onOpenChange, onSave }: Props) {
   const [name, setName] = useState(rule?.name ?? "");
   const [triggerEvent, setTriggerEvent] = useState<AutomationTriggerEvent>(rule?.trigger_event ?? "job_status_changed");
   const [triggerValue, setTriggerValue] = useState(rule?.trigger_value ?? stages[0]?.slug ?? "new_lead");
@@ -32,6 +32,20 @@ export default function AutomationRuleDialog({ open, rule, employees, stages, em
   const [dueOffsetDays, setDueOffsetDays] = useState(rule?.due_offset_days ?? 0);
   const [assignmentType, setAssignmentType] = useState<AutomationAssignmentType>(rule?.assignment_type ?? "job_salesperson");
   const [assignedEmployeeId, setAssignedEmployeeId] = useState(rule?.assigned_employee_id ?? "");
+  const [employeeIds, setEmployeeIds] = useState<string[]>(() => {
+    const ids = (rule?.automation_rule_recipients ?? [])
+      .filter((recipient) => recipient.recipient_type === "employee")
+      .map((recipient) => recipient.employee_id)
+      .filter((id): id is string => Boolean(id));
+    if (!ids.length && rule?.assigned_employee_id) ids.push(rule.assigned_employee_id);
+    return ids;
+  });
+  const [roleKeys, setRoleKeys] = useState<string[]>(() =>
+    (rule?.automation_rule_recipients ?? [])
+      .filter((recipient) => recipient.recipient_type === "role")
+      .map((recipient) => recipient.role_key)
+      .filter((key): key is string => Boolean(key)),
+  );
   const [active, setActive] = useState(rule?.active ?? true);
   const [emailTemplateId, setEmailTemplateId] = useState(rule?.email_template_id ?? "");
   const [saving, setSaving] = useState(false); const [error, setError] = useState("");
@@ -43,14 +57,16 @@ export default function AutomationRuleDialog({ open, rule, employees, stages, em
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!name.trim() || (actionType === "create_task" && !taskTitle.trim()) || (actionType === "send_email" && !emailTemplateId)) { setError("Rule name and action details are required."); return; }
-    if (actionType === "create_task" && assignmentType === "specific_employee" && !assignedEmployeeId) { setError("Choose an employee."); return; }
+    if (actionType === "create_task" && assignmentType === "specific_employee" && !employeeIds.length && !roleKeys.length) { setError("Choose at least one employee or role."); return; }
     setSaving(true); setError("");
     try {
       await onSave({ name, trigger_event: triggerEvent, trigger_value: valueOptions.length ? triggerValue : null,
         action_type: actionType, target_status: actionType === "update_job_status" ? targetStatus : null,
         task_title: actionType === "create_task" ? taskTitle : null, due_offset_days: dueOffsetDays,
         assignment_type: assignmentType, assigned_employee_id: assignedEmployeeId || null, active,
-        email_template_id: actionType === "send_email" ? emailTemplateId : null });
+        email_template_id: actionType === "send_email" ? emailTemplateId : null,
+        employee_ids: assignmentType === "specific_employee" ? employeeIds : [],
+        role_keys: assignmentType === "specific_employee" ? roleKeys : [] });
       onOpenChange(false);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to save rule."); }
     finally { setSaving(false); }
@@ -67,7 +83,7 @@ export default function AutomationRuleDialog({ open, rule, employees, stages, em
         <Field label="Task title"><Input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="Follow up with customer" /></Field>
         <Field label="Due timing"><div className="flex items-center gap-3"><Input type="number" min={0} value={dueOffsetDays} onChange={(e) => setDueOffsetDays(Math.max(0, Number(e.target.value) || 0))} className="max-w-28"/><span className="text-sm text-gray-600">{dueOffsetDays ? `${dueOffsetDays} day(s) later` : "Immediately"}</span></div></Field>
         <Field label="Assign task to"><select value={assignmentType} onChange={(e) => setAssignmentType(e.target.value as AutomationAssignmentType)} className={selectClass}><option value="job_salesperson">Related job salesperson / event employee</option><option value="specific_employee">Specific employee</option></select></Field>
-        {assignmentType === "specific_employee" ? <Field label="Employee"><select value={assignedEmployeeId} onChange={(e) => setAssignedEmployeeId(e.target.value)} className={selectClass}><option value="">Select employee</option>{employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}</select></Field> : null}
+        {assignmentType === "specific_employee" ? <Field label="Recipients"><div className="grid gap-4 rounded-lg border border-gray-200 p-4 sm:grid-cols-2"><RecipientGroup label="Employees" options={employees.map((employee) => ({ value: employee.id, label: employee.name }))} selected={employeeIds} onChange={(next) => { setEmployeeIds(next); setAssignedEmployeeId(next[0] ?? ""); }} /><RecipientGroup label="Roles" options={roles.map((role) => ({ value: role.key, label: role.name }))} selected={roleKeys} onChange={setRoleKeys} /></div><span className="text-xs font-normal text-gray-500">Role membership is resolved when the automation runs. Duplicate employees receive only one task.</span></Field> : null}
       </> : actionType === "update_job_status" ? <Field label="Move related job to"><select value={targetStatus} onChange={(e) => setTargetStatus(e.target.value as PipelineStage)} className={selectClass}>{stages.map((stage) => <option key={stage.slug} value={stage.slug}>{stage.label}</option>)}</select></Field> : <Field label="Email template"><select value={emailTemplateId} onChange={(e) => setEmailTemplateId(e.target.value)} className={selectClass}><option value="">Choose a template</option>{emailTemplates.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}</select></Field>}
       <label className="flex items-center gap-3 rounded-lg border p-3"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)}/><span><strong className="block">Rule enabled</strong><span className="text-sm text-gray-500">Disabled rules remain saved but do not run.</span></span></label>
       {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">{error}</div> : null}
@@ -81,4 +97,7 @@ function getTriggerValues(event: AutomationTriggerEvent, stages: PipelineStageVi
   return [];
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="grid gap-2 text-sm font-medium text-gray-800"><span>{label}</span>{children}</label>; }
+function RecipientGroup({ label, options, selected, onChange }: { label: string; options: { value: string; label: string }[]; selected: string[]; onChange: (selected: string[]) => void }) {
+  return <fieldset><legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</legend><div className="max-h-44 space-y-1 overflow-y-auto">{options.map((option) => <label key={option.value} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-normal hover:bg-gray-50"><input type="checkbox" checked={selected.includes(option.value)} onChange={(event) => onChange(event.target.checked ? [...selected, option.value] : selected.filter((value) => value !== option.value))} />{option.label}</label>)}</div></fieldset>;
+}
 const selectClass = "h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm";

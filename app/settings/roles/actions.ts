@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   createRoleDefinition,
   setRolePermissions,
+  updateRoleDefinition,
 } from "@/lib/services/roles-admin";
 
 export async function createRoleAction(input: {
@@ -24,6 +25,24 @@ export async function createRoleAction(input: {
   });
   revalidatePath("/settings/roles");
   return role;
+}
+
+export async function updateRoleAction(input: {
+  key: string;
+  name: string;
+  description: string;
+  active: boolean;
+}) {
+  const name = input.name.trim();
+  if (name.length < 2) throw new Error("Role name is required.");
+  const updated = await updateRoleDefinition(input.key, {
+    name,
+    description: input.description.trim() || null,
+    active: input.active,
+  });
+  revalidatePath("/settings/roles");
+  revalidatePath("/settings/employees");
+  return updated;
 }
 
 export async function updateRolePermissionsAction(

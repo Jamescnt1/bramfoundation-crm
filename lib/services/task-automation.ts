@@ -8,6 +8,13 @@ export type AutomationTriggerEvent =
 export type AutomationActionType = "create_task" | "update_job_status" | "send_email";
 
 export type AutomationEmployee = { id: string; name: string };
+export type AutomationRole = { key: string; name: string };
+export type AutomationRecipient = {
+  id: string;
+  recipient_type: "employee" | "role";
+  employee_id: string | null;
+  role_key: string | null;
+};
 export type AutomationRule = {
   id: string; name: string; trigger_event: AutomationTriggerEvent; trigger_value: string | null;
   action_type: AutomationActionType; target_status: PipelineStage | null;
@@ -17,6 +24,7 @@ export type AutomationRule = {
   employees: AutomationEmployee | AutomationEmployee[] | null;
   email_template_id: string | null;
   email_templates: { id: string; name: string } | { id: string; name: string }[] | null;
+  automation_rule_recipients: AutomationRecipient[];
 };
 export type AutomationRuleValues = {
   name: string; trigger_event: AutomationTriggerEvent; trigger_value: string | null;
@@ -24,12 +32,15 @@ export type AutomationRuleValues = {
   task_title: string | null; due_offset_days: number; assignment_type: AutomationAssignmentType;
   assigned_employee_id: string | null; active: boolean;
   email_template_id: string | null;
+  employee_ids: string[];
+  role_keys: string[];
 };
 
 const ruleColumns = `id, name, trigger_event, trigger_value, action_type, target_status,
   trigger_status, task_title, due_offset_days, assignment_type, assigned_employee_id,
   active, sort_order, created_at, updated_at, email_template_id,
-  employees (id, name), email_templates (id, name)`;
+  employees (id, name), email_templates (id, name),
+  automation_rule_recipients (id, recipient_type, employee_id, role_key)`;
 
 export async function getAutomationRules(): Promise<AutomationRule[]> {
   const { data, error } = await supabase.from("automation_rules").select(ruleColumns)
@@ -43,6 +54,13 @@ export async function getAutomationEmployees(): Promise<AutomationEmployee[]> {
     .eq("active", true).order("name");
   if (error) throw new Error(error.message);
   return (data ?? []) as AutomationEmployee[];
+}
+
+export async function getAutomationRoles(): Promise<AutomationRole[]> {
+  const { data, error } = await supabase.from("role_definitions")
+    .select("key, name").eq("active", true).order("name");
+  if (error) throw new Error(error.message);
+  return (data ?? []) as AutomationRole[];
 }
 
 export async function createAutomationRule(values: AutomationRuleValues): Promise<AutomationRule> {

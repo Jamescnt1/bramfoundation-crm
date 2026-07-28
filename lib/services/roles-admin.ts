@@ -61,9 +61,45 @@ export async function createRoleDefinition(values: {
   return { ...data, permissions: [] } as RoleDefinition;
 }
 
+export async function updateRoleDefinition(
+  roleKey: string,
+  values: { name: string; description: string | null; active: boolean },
+) {
+  await requireAdministrator();
+  const admin = createAdminClient();
+  const { data: existing, error: existingError } = await admin
+    .from("role_definitions")
+    .select("key, system")
+    .eq("key", roleKey)
+    .single();
+  if (existingError) throw new Error(existingError.message);
+  if (existing.key === "administrator" && !values.active) {
+    throw new Error("The Administrator role cannot be deactivated.");
+  }
+  if (existing.system && !values.active) {
+    throw new Error("System roles cannot be deactivated.");
+  }
+  const { data, error } = await admin
+    .from("role_definitions")
+    .update({
+      name: values.name,
+      description: values.description,
+      active: existing.system ? true : values.active,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("key", roleKey)
+    .select("key, name, description, system, active")
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 export async function setRolePermissions(roleKey: string, permissionKeys: string[]) {
   await requireAdministrator();
   const admin = createAdminClient();
+  if (roleKey === "administrator") {
+    throw new Error("Administrator permissions are protected.");
+  }
   const { error: deleteError } = await admin
     .from("role_permissions")
     .delete()

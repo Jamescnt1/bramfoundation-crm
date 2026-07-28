@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   createRoleAction,
+  updateRoleAction,
   updateRolePermissionsAction,
 } from "@/app/settings/roles/actions";
 import type {
@@ -26,7 +27,40 @@ export default function RolesManager({
   const [description, setDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [editName, setEditName] = useState(initialRoles[0]?.name ?? "");
+  const [editDescription, setEditDescription] = useState(initialRoles[0]?.description ?? "");
+  const [editActive, setEditActive] = useState(initialRoles[0]?.active ?? true);
   const selectedRole = roles.find((role) => role.key === selectedKey) ?? null;
+
+  function selectRole(role: RoleDefinition) {
+    setSelectedKey(role.key);
+    setEditName(role.name);
+    setEditDescription(role.description ?? "");
+    setEditActive(role.active);
+    setMessage("");
+  }
+
+  async function saveRoleDetails() {
+    if (!selectedRole) return;
+    setIsSaving(true);
+    setMessage("");
+    try {
+      const updated = await updateRoleAction({
+        key: selectedRole.key,
+        name: editName,
+        description: editDescription,
+        active: editActive,
+      });
+      setRoles((current) => current.map((role) =>
+        role.key === selectedRole.key ? { ...role, ...updated } : role,
+      ));
+      setMessage("Role details saved.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to save role.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   const groupedPermissions = useMemo(() => {
     return permissions.reduce<Map<string, PermissionDefinition[]>>((groups, permission) => {
@@ -44,6 +78,9 @@ export default function RolesManager({
       const role = await createRoleAction({ key, name, description });
       setRoles((current) => [...current, role].sort((a, b) => a.name.localeCompare(b.name)));
       setSelectedKey(role.key);
+      setEditName(role.name);
+      setEditDescription(role.description ?? "");
+      setEditActive(role.active);
       setName("");
       setKey("");
       setDescription("");
@@ -81,7 +118,7 @@ export default function RolesManager({
         <h2 className="font-semibold text-gray-900">Roles</h2>
         <div className="mt-3 space-y-1">
           {roles.map((role) => (
-            <button key={role.key} type="button" onClick={() => setSelectedKey(role.key)}
+            <button key={role.key} type="button" onClick={() => selectRole(role)}
               className={`w-full rounded-lg px-3 py-2 text-left text-sm ${selectedKey === role.key ? "bg-black text-white" : "hover:bg-gray-100"}`}>
               {role.name}
             </button>
@@ -99,8 +136,28 @@ export default function RolesManager({
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         {selectedRole ? (
           <>
-            <h2 className="text-xl font-semibold text-gray-900">{selectedRole.name}</h2>
-            <p className="mt-1 text-sm text-gray-500">{selectedRole.description ?? "No description."}</p>
+            <div className="grid gap-4 border-b border-gray-200 pb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Role details</h2>
+                <p className="mt-1 text-sm text-gray-500">The role key is permanent: {selectedRole.key}</p>
+              </div>
+              <label className="grid gap-2 text-sm font-medium text-gray-700">
+                Role name
+                <Input value={editName} onChange={(event) => setEditName(event.target.value)} />
+              </label>
+              <label className="grid gap-2 text-sm font-medium text-gray-700">
+                Description
+                <Input value={editDescription} onChange={(event) => setEditDescription(event.target.value)} />
+              </label>
+              <label className="flex items-center gap-3 text-sm text-gray-700">
+                <input type="checkbox" checked={selectedRole.system ? true : editActive} disabled={selectedRole.system || isSaving} onChange={(event) => setEditActive(event.target.checked)} />
+                Active
+                {selectedRole.system ? <span className="text-xs text-gray-500">System role protected</span> : null}
+              </label>
+              <Button type="button" className="w-fit" disabled={isSaving} onClick={saveRoleDetails}>
+                {isSaving ? "Saving..." : "Save role"}
+              </Button>
+            </div>
             <div className="mt-6 space-y-6">
               {[...groupedPermissions.entries()].map(([category, items]) => (
                 <div key={category}>
