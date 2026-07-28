@@ -15,6 +15,12 @@ export default async function MyDashboardPage() {
   const employee = await requireEmployee();
   const [workspace, stages, conversations, messagingEmployees] = await Promise.all([getEmployeeWorkspace(employee), getPipelineStages(), getEmployeeConversations(), getMessagingEmployees()]);
   const openTasks = workspace.tasks.filter((task) => !task.completed);
+  const pipelineGroups = stages.map((stage) => ({
+    stage,
+    jobs: workspace.jobs.filter(
+      (job) => resolveConfiguredStage(job.status, stages)?.slug === stage.slug,
+    ),
+  }));
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 md:p-6">
@@ -27,7 +33,17 @@ export default async function MyDashboardPage() {
           </div>
         </header>
 
-        <div className="mt-5 grid gap-3 xl:grid-cols-3">
+        <section className="relative z-30 mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div><h2 className="text-base font-semibold">My Jobs &amp; Pipeline</h2><p className="mt-0.5 text-xs text-gray-500">Hover, focus, or tap a stage to see its assigned jobs.</p></div>
+            <Link href="/pipeline" className="shrink-0 text-sm font-medium text-gray-500 hover:text-black">Open pipeline →</Link>
+          </div>
+          <div className="mt-3">
+            <CompactPipelineOverview groups={pipelineGroups} />
+          </div>
+        </section>
+
+        <div className="mt-3 grid gap-3 xl:grid-cols-3">
           <WorkspaceSection title="My Tasks" href="/tasks?view=mine">
             {openTasks.length ? (
               <div className="divide-y divide-gray-100">
@@ -69,24 +85,6 @@ export default async function MyDashboardPage() {
 
           <InternalMessagesDashboard initialConversations={conversations} currentEmployee={{ id: employee.id, name: employee.name, avatar_url: employee.avatar_url, color: employee.color }} employees={messagingEmployees} />
 
-          <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm xl:col-span-3">
-            <div className="flex items-center justify-between gap-4">
-              <div><h2 className="text-base font-semibold">My Jobs &amp; Pipeline</h2><p className="mt-0.5 text-xs text-gray-500">Hover, focus, or tap a stage to see its assigned jobs.</p></div>
-              <Link href="/pipeline" className="shrink-0 text-sm font-medium text-gray-500 hover:text-black">Open pipeline →</Link>
-            </div>
-            <div className="mt-3">
-              <CompactPipelineOverview
-                groups={stages.map((stage) => ({
-                  stage,
-                  jobs: workspace.jobs.filter(
-                    (job) =>
-                      resolveConfiguredStage(job.status, stages)?.slug ===
-                      stage.slug,
-                  ),
-                }))}
-              />
-            </div>
-          </section>
         </div>
       </div>
     </main>
