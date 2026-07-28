@@ -111,6 +111,10 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
     jobName: job.customer_name,
     qfNumber: currentQfNumber,
   });
+  const workspaceTitle = formatJobDisplayName({
+    customerName: customer?.full_name ?? job.customer?.full_name,
+    jobName: job.customer_name,
+  });
   const nav: ReadonlyArray<readonly [JobWorkspaceTab, string]> = layoutsEnabled
     ? [...baseNav.slice(0, 6), ["layouts", "Layouts"], ...baseNav.slice(6)]
     : baseNav;
@@ -206,7 +210,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
           <div className="min-w-0">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Job Workspace</p>
-              <h1 className="min-w-0 text-xl font-bold text-gray-950 sm:text-2xl" title={jobDisplayName}>{jobDisplayName}</h1>
+              <h1 className="min-w-0 text-xl font-bold text-gray-950 sm:text-2xl" title={workspaceTitle}>{workspaceTitle}</h1>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <PipelineStatusControl status={currentStatus} disabled={statusSaving} canChange={canChangeStatus} stages={stages} onChange={(status) => void requestStatusChange(status)} />
@@ -236,10 +240,9 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
           </div>
         </div>
         {statusError ? <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{statusError}</div> : null}
-        <dl className="mt-3 grid gap-x-5 gap-y-2 border-t border-gray-100 pt-3 sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="mt-3 grid gap-x-5 gap-y-2 border-t border-gray-100 pt-3 sm:grid-cols-2 lg:grid-cols-3">
           <Fact label="Customer" value={customer?.full_name ?? job.customer_name} />
           <Fact label="Project address" value={job.address ? <AddressLink value={job.address} className="min-h-0" /> : "Not provided"} />
-          <Fact label="Created" value={formatDate(job.created_at)} />
           <Fact label="Next action due" value={job.next_action_due ? formatDate(job.next_action_due) : "No due date"} />
         </dl>
       </header>
@@ -269,19 +272,14 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
             <WorkspaceSectionHeader title="Overview" description="Operational summary and the next work requiring attention." />
             <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
               <div className="space-y-3">
-                <WorkspaceCard title="Job summary">
-                  <div className="grid gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <Fact label="Customer" value={customer?.full_name ?? job.customer_name} />
-                    <Fact label="Job" value={job.customer_name} />
-                    <Fact label="QF#" value={currentQfNumber || "Not required yet"} />
-                    <Fact label="Status" value={resolveConfiguredStage(currentStatus, stages)?.label ?? currentStatus} />
-                    <Fact label="Contract Amount" value={currentContractAmount ? formatCurrency(currentContractAmount) : "Not entered"} />
-                    <Fact label="Assigned employee" value={employeeName} />
+                <WorkspaceCard title="Contacts & Location">
+                  <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
                     <ContactFact label="Company Contact" contact={job.company_contact} />
                     <ContactFact label="Job Site Contact" contact={job.job_site_contact} />
-                    <Fact label="Created" value={formatDate(job.created_at)} />
-                    <Fact label="Next action due" value={job.next_action_due ? formatDate(job.next_action_due) : "No due date"} />
-                    <Fact label="Project address" value={job.address ? <AddressLink value={job.address} className="min-h-0" /> : "Not provided"} />
+                    <div className="space-y-3">
+                      <Fact label="Project location" value={job.address ? <AddressLink value={job.address} className="min-h-0" /> : "Not provided"} />
+                      <Fact label="Created" value={formatDate(job.created_at)} />
+                    </div>
                   </div>
                 </WorkspaceCard>
 
@@ -332,23 +330,6 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                   )}
                 </WorkspaceCard>
 
-                <WorkspaceCard title="Related customer">
-                  {customer ? (
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-gray-950">{customer.full_name}</p>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-500">
-                          <PhoneLink value={customer.phone} label={customer.full_name} className="min-h-7" />
-                          <EmailLink value={customer.email} label={customer.full_name} className="min-h-7" />
-                          {!customer.phone && !customer.email ? <span>No contact information</span> : null}
-                        </div>
-                      </div>
-                      <Link href={`/customers/${customer.id}`} className="shrink-0 rounded-md bg-black px-3 py-2 text-xs font-medium text-white hover:bg-gray-800">Open</Link>
-                    </div>
-                  ) : (
-                    <WorkspaceEmpty text="This job is not linked to a customer record yet." />
-                  )}
-                </WorkspaceCard>
               </div>
             </div>
           </section>
