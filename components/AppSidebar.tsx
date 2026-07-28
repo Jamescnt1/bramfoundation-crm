@@ -13,6 +13,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
+import FoundationBrand from "@/components/branding/FoundationBrand";
 import type { Employee } from "@/lib/services/employees";
 import { canViewCompanyDashboard } from "@/lib/auth/roles";
 
@@ -110,16 +111,8 @@ export default function AppSidebar({ employee }: { employee: Employee | null }) 
 
   return (
     <aside className="hidden min-h-screen w-64 flex-shrink-0 border-r border-gray-800 bg-gray-900 lg:block">
-      <div className="flex h-20 items-center border-b border-gray-800 px-6">
-        <div>
-          <p className="text-lg font-bold tracking-[0.08em] text-white">
-            Foundation CRM
-          </p>
-
-          <p className="text-xs uppercase tracking-[0.12em] text-gray-400">
-            Flooring Sales Management
-          </p>
-        </div>
+      <div className="flex h-20 items-center border-b border-gray-800 px-4">
+        <FoundationBrand />
       </div>
 
       <NavigationLinks employee={employee} pathname={pathname} />

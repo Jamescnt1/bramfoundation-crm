@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import AppSidebar, { NavigationLinks } from "@/components/AppSidebar";
 import SignOutButton from "@/components/auth/SignOutButton";
+import FoundationBrand from "@/components/branding/FoundationBrand";
 import GlobalSearch from "@/components/search/GlobalSearch";
 import type { Employee } from "@/lib/services/employees";
 import { getRoleLabel } from "@/lib/auth/roles";
@@ -54,10 +55,7 @@ export default function AppShell({
           />
           <aside className="relative h-full w-[min(20rem,88vw)] overflow-y-auto bg-gray-900 shadow-2xl">
             <div className="flex h-16 items-center justify-between border-b border-gray-800 px-5">
-              <div>
-                <p className="font-bold tracking-[0.08em] text-white">Foundation CRM</p>
-                <p className="text-xs uppercase tracking-[0.12em] text-gray-400">Flooring Sales Management</p>
-              </div>
+              <FoundationBrand compact onNavigate={() => setMobileNavigationOpen(false)} />
               <button
                 type="button"
                 onClick={() => setMobileNavigationOpen(false)}
