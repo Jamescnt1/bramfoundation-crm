@@ -8,6 +8,7 @@ import AppSidebar, { NavigationLinks } from "@/components/AppSidebar";
 import SignOutButton from "@/components/auth/SignOutButton";
 import FoundationBrand from "@/components/branding/FoundationBrand";
 import GlobalSearch from "@/components/search/GlobalSearch";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Employee } from "@/lib/services/employees";
 import { getRoleLabel } from "@/lib/auth/roles";
 
@@ -131,10 +132,21 @@ export default function AppShell({
               </Link>
             </div>
             <GlobalSearch key={pathname} />
-            <div className="hidden min-w-0 text-right lg:block">
-              <p className="max-w-36 truncate text-sm font-medium text-white">{employee?.name ?? "Foundation CRM"}</p>
-              <p className="text-xs text-gray-400">{employee ? getRoleLabel(employee.role) : "Employee"}</p>
-              {employee ? <SignOutButton /> : null}
+            <div className="flex min-w-0 items-center gap-2">
+              <Avatar size="lg" className="ring-1 ring-white/25">
+                <AvatarImage src={employee?.avatar_url ?? undefined} alt="" />
+                <AvatarFallback
+                  style={{ backgroundColor: employee?.color ?? "#3f6e8c" }}
+                  className="font-semibold text-white"
+                >
+                  {getInitials(employee?.name ?? "Foundation CRM")}
+                </AvatarFallback>
+              </Avatar>
+              <div className="hidden min-w-0 text-right lg:block">
+                <p className="max-w-36 truncate text-sm font-medium text-white">{employee?.name ?? "Foundation CRM"}</p>
+                <p className="text-xs text-gray-400">{employee ? getRoleLabel(employee.role) : "Employee"}</p>
+                {employee ? <SignOutButton /> : null}
+              </div>
             </div>
           </div>
         </header>
@@ -142,4 +154,13 @@ export default function AppShell({
       </div>
     </div>
   );
+}
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
 }

@@ -20,6 +20,12 @@ export type EmployeeAdminValues = {
 
 const employeeColumns =
   "id, auth_user_id, name, email, username, phone, role, active, avatar_url, color, default_calendar_view, remember_last_calendar_view, last_calendar_view, job_title, bio, created_at, updated_at";
+const avatarBucket = "employee-avatars";
+const avatarExtensions: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
 
 export type EmployeeAdminErrorCode =
   | "duplicate_email"
@@ -296,6 +302,93 @@ export async function updateManagedEmployee(
 
   if (error) throw new Error(error.message);
   return data as Employee;
+}
+
+export async function uploadManagedEmployeeAvatar(
+  employeeId: string,
+  file: File,
+) {
+  await requireAdministrator();
+  const extension = avatarExtensions[file.type];
+  if (!extension) throw new Error("Choose a JPG, PNG, or WebP image.");
+  if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
+    throw new Error("Employee photos must be smaller than 5 MB.");
+  }
+
+  const admin = createAdminClient();
+  const { data: existing, error: existingError } = await admin
+    .from("employees")
+    .select("avatar_url")
+    .eq("id", employeeId)
+    .single();
+  if (existingError) throw new Error(existingError.message);
+
+  const storagePath = `${employeeId}/${crypto.randomUUID()}.${extension}`;
+  const { error: uploadError } = await admin.storage
+    .from(avatarBucket)
+    .upload(storagePath, await file.arrayBuffer(), {
+      contentType: file.type,
+      cacheControl: "3600",
+      upsert: false,
+    });
+  if (uploadError) throw new Error(uploadError.message);
+
+  const { data: publicUrl } = admin.storage
+    .from(avatarBucket)
+    .getPublicUrl(storagePath);
+  const { data, error } = await admin
+    .from("employees")
+    .update({ avatar_url: publicUrl.publicUrl })
+    .eq("id", employeeId)
+    .select(employeeColumns)
+    .single();
+
+  if (error) {
+    await admin.storage.from(avatarBucket).remove([storagePath]);
+    throw new Error(error.message);
+  }
+
+  const previousPath = getManagedAvatarPath(existing.avatar_url);
+  if (previousPath) {
+    await admin.storage.from(avatarBucket).remove([previousPath]);
+  }
+
+  return data as Employee;
+}
+
+export async function removeManagedEmployeeAvatar(employeeId: string) {
+  await requireAdministrator();
+  const admin = createAdminClient();
+  const { data: existing, error: existingError } = await admin
+    .from("employees")
+    .select("avatar_url")
+    .eq("id", employeeId)
+    .single();
+  if (existingError) throw new Error(existingError.message);
+
+  const { data, error } = await admin
+    .from("employees")
+    .update({ avatar_url: null })
+    .eq("id", employeeId)
+    .select(employeeColumns)
+    .single();
+  if (error) throw new Error(error.message);
+
+  const storagePath = getManagedAvatarPath(existing.avatar_url);
+  if (storagePath) {
+    await admin.storage.from(avatarBucket).remove([storagePath]);
+  }
+
+  return data as Employee;
+}
+
+function getManagedAvatarPath(url: string | null) {
+  if (!url) return null;
+  const marker = `/storage/v1/object/public/${avatarBucket}/`;
+  const markerIndex = url.indexOf(marker);
+  return markerIndex === -1
+    ? null
+    : decodeURIComponent(url.slice(markerIndex + marker.length));
 }
 
 export async function resetManagedEmployeePassword(

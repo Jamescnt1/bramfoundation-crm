@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type ChangeEvent, type FormEvent, useState } from "react";
 import { type EmployeeRole } from "@/lib/auth/roles";
 import type { Employee } from "@/lib/services/employees";
 import type { RoleDefinition } from "@/lib/services/roles-admin";
@@ -14,13 +14,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { EmployeeActionInput } from "@/app/settings/employees/actions";
 
 type EmployeeDialogProps = {
   open: boolean;
   employee: Employee | null;
   onOpenChange: (open: boolean) => void;
-  onSave: (input: EmployeeActionInput, temporaryPassword: string) => Promise<void>;
+  onSave: (
+    input: EmployeeActionInput,
+    temporaryPassword: string,
+    photo: File | null,
+    removePhoto: boolean,
+  ) => Promise<void>;
   roles: RoleDefinition[];
   canDelete?: boolean;
   onRequestDelete?: (employee: Employee) => void;
@@ -45,6 +51,9 @@ export default function EmployeeDialog({
   const [active, setActive] = useState(employee?.active ?? true);
   const [color, setColor] = useState(employee?.color ?? "#111827");
   const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState(employee?.avatar_url ?? "");
+  const [removePhoto, setRemovePhoto] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -57,6 +66,8 @@ export default function EmployeeDialog({
       await onSave(
         { name, email, username, phone, jobTitle, bio, role, active, color },
         temporaryPassword,
+        photo,
+        removePhoto,
       );
       onOpenChange(false);
     } catch (error) {
@@ -64,6 +75,20 @@ export default function EmployeeDialog({
     } finally {
       setIsSaving(false);
     }
+  }
+
+  function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    const nextPhoto = event.target.files?.[0] ?? null;
+    setPhoto(nextPhoto);
+    setRemovePhoto(false);
+    if (!nextPhoto) {
+      setPhotoPreview(employee?.avatar_url ?? "");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(String(reader.result ?? ""));
+    reader.readAsDataURL(nextPhoto);
   }
 
   return (
@@ -80,6 +105,41 @@ export default function EmployeeDialog({
           </DialogHeader>
 
           <div className="grid gap-5 py-6">
+            <div className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center">
+              <Avatar className="size-20 shrink-0">
+                <AvatarImage src={photoPreview || undefined} alt="" />
+                <AvatarFallback style={{ backgroundColor: color }} className="text-lg font-semibold text-white">
+                  {getInitials(name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <label htmlFor="employee-photo" className="block text-sm font-medium text-gray-700">
+                  Employee photo
+                </label>
+                <Input
+                  id="employee-photo"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handlePhotoChange}
+                  className="mt-2 bg-white"
+                />
+                <p className="mt-2 text-xs text-gray-500">JPG, PNG, or WebP. Maximum 5 MB.</p>
+                {photoPreview ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhoto(null);
+                      setPhotoPreview("");
+                      setRemovePhoto(Boolean(employee?.avatar_url));
+                    }}
+                    className="mt-2 text-xs font-semibold text-red-700 hover:underline"
+                  >
+                    Remove photo
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
             <Field label="Name" id="employee-name">
               <Input id="employee-name" value={name} onChange={(event) => setName(event.target.value)} required />
             </Field>
@@ -202,4 +262,13 @@ function Field({ label, id, children }: { label: string; id: string; children: R
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "An unexpected error occurred.";
+}
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
 }

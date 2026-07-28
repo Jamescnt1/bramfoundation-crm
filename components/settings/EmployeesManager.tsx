@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { KeyRound, Pencil, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   createEmployeeAction,
@@ -27,6 +28,7 @@ export default function EmployeesManager({
   roles: RoleDefinition[];
   canDeleteEmployees: boolean;
 }) {
+  const router = useRouter();
   const [employees, setEmployees] = useState(initialEmployees);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [employeeDialogOpen, setEmployeeDialogOpen] = useState(false);
@@ -44,11 +46,22 @@ export default function EmployeesManager({
     setEmployeeDialogOpen(true);
   }
 
-  async function saveEmployee(input: EmployeeActionInput, temporaryPassword: string) {
+  async function saveEmployee(
+    input: EmployeeActionInput,
+    temporaryPassword: string,
+    photo: File | null,
+    removePhoto: boolean,
+  ) {
     const isEditing = Boolean(editingEmployee);
-    const saved = editingEmployee
+    let saved = editingEmployee
       ? await updateEmployeeAction(editingEmployee.id, input)
       : await createEmployee(input, temporaryPassword);
+
+    if (photo) {
+      saved = await updateEmployeePhoto(saved.id, photo, "POST");
+    } else if (removePhoto) {
+      saved = await updateEmployeePhoto(saved.id, null, "DELETE");
+    }
 
     setEmployees((current) =>
       isEditing
@@ -60,6 +73,28 @@ export default function EmployeesManager({
         ? `${saved.name}'s employee profile was updated.`
         : `${saved.name} was created. They can now sign in with the temporary password.`,
     );
+    router.refresh();
+  }
+
+  async function updateEmployeePhoto(
+    employeeId: string,
+    photo: File | null,
+    method: "POST" | "DELETE",
+  ) {
+    const body = photo ? new FormData() : undefined;
+    body?.append("file", photo as File);
+    const response = await fetch(`/api/employees/${employeeId}/avatar`, {
+      method,
+      body,
+    });
+    const result = (await response.json()) as {
+      employee?: Employee;
+      error?: string;
+    };
+    if (!response.ok || !result.employee) {
+      throw new Error(result.error ?? "Unable to update the employee photo.");
+    }
+    return result.employee;
   }
 
   async function createEmployee(
