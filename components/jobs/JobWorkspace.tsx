@@ -506,8 +506,10 @@ function ContactFact({ label, contact }: { label: string; contact: JobContactSum
     <div className="min-w-0">
       <dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{label}</dt>
       <dd className="mt-0.5 text-sm font-medium leading-5 text-gray-900">{name}</dd>
-      <PhoneLink value={phone} label={name} className="min-h-7 text-xs text-gray-600" />
-      <EmailLink value={contact.email} label={name} className="min-h-7 text-xs text-gray-600" />
+      <div className="mt-1 flex flex-col items-start gap-0.5">
+        <PhoneLink value={phone} label={name} className="min-h-7 text-xs text-gray-600" />
+        <EmailLink value={contact.email} label={name} className="min-h-7 text-xs text-gray-600" />
+      </div>
     </div>
   );
 }
