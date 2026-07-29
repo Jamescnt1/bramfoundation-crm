@@ -212,7 +212,7 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts }: 
             </Field>
           </div>
 
-          <Field label="Customer Contact Address" htmlFor="newCustomerAddress">
+          <Field label="Customer Address" htmlFor="newCustomerAddress">
             <input id="newCustomerAddress" type="text" autoComplete="street-address" disabled={isSaving} value={newCustomerAddress} onChange={(event) => setNewCustomerAddress(event.target.value)} className={inputClass} />
           </Field>
         </FormSection>

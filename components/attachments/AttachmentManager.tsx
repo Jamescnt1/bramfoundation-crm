@@ -122,7 +122,6 @@ export default function AttachmentManager({ jobId, kind, initialAttachments, can
                 type="file"
                 multiple
                 accept={kind === "photo" ? "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" : ".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,.doc,.docx,.xls,.xlsx"}
-                capture={kind === "photo" ? "environment" : undefined}
                 className="sr-only"
                 onChange={(event) => { if (event.target.files) void addFiles(event.target.files); event.target.value = ""; }}
               />

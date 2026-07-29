@@ -47,7 +47,7 @@ export default async function MyDashboardPage() {
           <WorkspaceSection title="My Tasks" href="/tasks?view=mine">
             {openTasks.length ? (
               <div className="divide-y divide-gray-100">
-                {openTasks.slice(0, 5).map((task) => (
+                {openTasks.slice(0, 8).map((task) => (
                   <Link key={task.id} href={`/tasks?task=${task.id}`} className="grid gap-1.5 py-2 transition hover:bg-gray-50 sm:grid-cols-[minmax(0,1fr)_auto] sm:px-1">
                     <div className="min-w-0">
                       <p className="truncate font-medium text-gray-900">{task.title}</p>
@@ -67,7 +67,7 @@ export default async function MyDashboardPage() {
           <WorkspaceSection title="Upcoming Appointments" href="/calendar">
             {workspace.appointments.length ? (
               <div className="divide-y divide-gray-100">
-                {workspace.appointments.slice(0, 5).map((appointment) => (
+                {workspace.appointments.slice(0, 8).map((appointment) => (
                   <Link key={appointment.id} href={`/calendar?appointment=${appointment.id}&date=${localDateKey(new Date(appointment.starts_at))}`} className="block py-2 transition hover:bg-gray-50 sm:px-1">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
