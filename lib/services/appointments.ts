@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { formatAppointmentDisplayName } from "@/lib/appointment-display";
 
 export type AppointmentValues = {
+  title: string | null;
   appointment_type: AppointmentType;
   starts_at: string;
   ends_at: string;
@@ -149,10 +150,12 @@ export async function completeAppointment(
 export async function createAppointment(
   values: CreateAppointmentValues,
 ) {
-  const title = await generatedAppointmentTitle(
-    values.job_id,
-    values.appointment_type,
-  );
+  const title =
+    values.title?.trim() ||
+    (await generatedAppointmentTitle(
+      values.job_id,
+      values.appointment_type,
+    ));
   const { data, error } = await supabase
     .from("appointments")
     .insert({
@@ -173,10 +176,12 @@ export async function updateAppointment(
   appointmentId: string,
   values: AppointmentValues,
 ) {
-  const title = await generatedAppointmentTitle(
-    values.job_id,
-    values.appointment_type,
-  );
+  const title =
+    values.title?.trim() ||
+    (await generatedAppointmentTitle(
+      values.job_id,
+      values.appointment_type,
+    ));
   const { data, error } = await supabase
     .from("appointments")
     .update({ ...values, title })

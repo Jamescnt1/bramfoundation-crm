@@ -53,9 +53,9 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6 md:p-8">
+    <main className="min-h-screen bg-gray-50 p-3 sm:p-5 md:p-8">
       <div className="mx-auto max-w-7xl">
-        <header><h1 className="text-3xl font-bold">Calendar</h1><p className="mt-2 text-gray-600">Appointment Scheduler</p></header>
+        <header><h1 className="text-2xl font-bold sm:text-3xl">Calendar</h1><p className="mt-1 text-sm text-gray-600 sm:mt-2 sm:text-base">Appointment Scheduler</p></header>
         {errorMessage ? (
           <div className="mt-6 rounded-lg bg-red-100 p-4 text-red-700">{errorMessage}</div>
         ) : (

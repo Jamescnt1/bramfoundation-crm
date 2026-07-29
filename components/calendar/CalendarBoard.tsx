@@ -139,6 +139,7 @@ export default function CalendarBoard({
   }), [initialAppointments, filters]);
 
   const filterStorageKey = `foundation-calendar-filters:${currentEmployeeId}`;
+  const viewStorageKey = `foundation-calendar-view:${currentEmployeeId}`;
 
   useEffect(() => {
     try {
@@ -167,6 +168,18 @@ export default function CalendarBoard({
       window.localStorage.removeItem(filterStorageKey);
     }
   }, [employees, filterStorageKey]);
+
+  useEffect(() => {
+    if (!rememberView) return;
+    const savedView = window.localStorage.getItem(viewStorageKey) as CalendarView | null;
+    if (
+      savedView &&
+      ["month", "week", "three_day", "day", "list"].includes(savedView)
+    ) {
+      const frame = window.requestAnimationFrame(() => setView(savedView));
+      return () => window.cancelAnimationFrame(frame);
+    }
+  }, [rememberView, viewStorageKey]);
 
   const timedAppointments = useMemo(
     () => filteredAppointments.filter(
@@ -225,6 +238,9 @@ export default function CalendarBoard({
     shouldRemember = rememberView,
   ) {
     setView(nextView);
+    if (shouldRemember) {
+      window.localStorage.setItem(viewStorageKey, nextView);
+    }
     updateUrl("appointments", nextView);
     if (selectedDate) setAnchorDate(selectedDate);
     if (shouldRemember && nextView !== "list") {
@@ -246,6 +262,14 @@ export default function CalendarBoard({
       });
       setDefaultView(next.defaultView);
       setRememberView(next.rememberLastView);
+      if (next.rememberLastView) {
+        window.localStorage.setItem(viewStorageKey, next.view);
+        if (next.view !== "list") {
+          await rememberCalendarViewAction(next.view);
+        }
+      } else {
+        window.localStorage.removeItem(viewStorageKey);
+      }
     }
 
     setFilters(next.filters);
@@ -287,6 +311,15 @@ export default function CalendarBoard({
     setActionError("");
   }
 
+  function handleCreateAppointmentAt(date: Date) {
+    setSelectedDate(date);
+    setAnchorDate(date);
+    setSelectedAppointment(null);
+    setAppointmentBeingEdited(null);
+    setDefaultAppointmentType("appointment");
+    setAppointmentDialogOpen(true);
+  }
+
   async function handleCompleteAppointment(appointment: CalendarAppointment) {
     setIsCompleting(true);
     setActionError("");
@@ -303,7 +336,7 @@ export default function CalendarBoard({
 
   return (
     <>
-      <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+      <div className="mt-4 grid gap-4 sm:mt-8 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
         <section className="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           <CalendarModeTabs value={mode} onChange={handleModeChange} />
 
@@ -353,6 +386,7 @@ export default function CalendarBoard({
                   appointmentsByDate={appointmentsByDate}
                   onSelectDate={handleSelectDate}
                   onSelectAppointment={handleSelectAppointment}
+                  onCreateAppointment={handleCreateAppointmentAt}
                 />
               ) : view === "list" ? (
                 <CalendarListView
@@ -367,6 +401,7 @@ export default function CalendarBoard({
                   selectedAppointmentId={selectedAppointment?.id ?? null}
                   onSelectDate={handleSelectDate}
                   onSelectAppointment={handleSelectAppointment}
+                  onCreateAppointment={handleCreateAppointmentAt}
                 />
               )}
             </>

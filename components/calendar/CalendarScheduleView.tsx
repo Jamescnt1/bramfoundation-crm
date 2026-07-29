@@ -11,6 +11,7 @@ type CalendarScheduleViewProps = {
   selectedAppointmentId: string | null;
   onSelectDate: (date: Date) => void;
   onSelectAppointment: (appointment: CalendarAppointment) => void;
+  onCreateAppointment: (date: Date) => void;
 };
 
 type PositionedAppointment = {
@@ -103,6 +104,7 @@ export default function CalendarScheduleView({
   selectedAppointmentId,
   onSelectDate,
   onSelectAppointment,
+  onCreateAppointment,
 }: CalendarScheduleViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const today = new Date();
@@ -130,10 +132,13 @@ export default function CalendarScheduleView({
       aria-label="Appointment time grid"
     >
       <div
-        className="relative"
-        style={{
-          minWidth: days.length === 7 ? "980px" : days.length === 3 ? "700px" : "480px",
-        }}
+        className={`relative ${
+          days.length === 7
+            ? "min-w-[700px] sm:min-w-[980px]"
+            : days.length === 3
+              ? "min-w-[520px] sm:min-w-[700px]"
+              : "min-w-[300px] sm:min-w-[480px]"
+        }`}
       >
         <div
           className="sticky top-0 z-30 grid border-b border-gray-200 bg-white shadow-sm"
@@ -146,7 +151,11 @@ export default function CalendarScheduleView({
               type="button"
               onClick={() => onSelectDate(day)}
               className={`border-r border-gray-200 px-3 py-2 text-center hover:bg-gray-50 ${
-                isSameDay(day, today) ? "bg-blue-50" : "bg-white"
+                isSameDay(day, today)
+                  ? "bg-blue-50"
+                  : day.getDay() === 0 || day.getDay() === 6
+                    ? "bg-gray-100"
+                    : "bg-white"
               }`}
             >
               <span className="block text-[10px] font-semibold uppercase tracking-wide text-gray-500">
@@ -183,9 +192,31 @@ export default function CalendarScheduleView({
             return (
               <div
                 key={key}
-                className="relative border-r border-gray-200 bg-[repeating-linear-gradient(to_bottom,#ffffff_0,#ffffff_31px,#f3f4f6_31px,#f3f4f6_32px,#ffffff_32px,#ffffff_63px,#d1d5db_63px,#d1d5db_64px)]"
+                className={`relative border-r border-gray-200 ${
+                  day.getDay() === 0 || day.getDay() === 6
+                    ? "bg-[repeating-linear-gradient(to_bottom,#f3f4f6_0,#f3f4f6_31px,#e5e7eb_31px,#e5e7eb_32px,#f3f4f6_32px,#f3f4f6_63px,#c9cdd1_63px,#c9cdd1_64px)]"
+                    : "bg-[repeating-linear-gradient(to_bottom,#ffffff_0,#ffffff_31px,#f3f4f6_31px,#f3f4f6_32px,#ffffff_32px,#ffffff_63px,#d1d5db_63px,#d1d5db_64px)]"
+                }`}
                 style={{ height: DAY_HEIGHT }}
-                onDoubleClick={() => onSelectDate(day)}
+                onDoubleClick={(event) => {
+                  if ((event.target as HTMLElement).closest("button, a")) return;
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  const rawMinutes =
+                    ((event.clientY - rect.top) / DAY_HEIGHT) * 24 * 60;
+                  const roundedMinutes = Math.max(
+                    0,
+                    Math.min(23 * 60 + 45, Math.round(rawMinutes / 15) * 15),
+                  );
+                  const appointmentDate = new Date(day);
+                  appointmentDate.setHours(
+                    Math.floor(roundedMinutes / 60),
+                    roundedMinutes % 60,
+                    0,
+                    0,
+                  );
+                  onSelectDate(appointmentDate);
+                  onCreateAppointment(appointmentDate);
+                }}
               >
                 {appointments.map(
                   ({ appointment, startMinute, endMinute, lane, laneCount }) => {

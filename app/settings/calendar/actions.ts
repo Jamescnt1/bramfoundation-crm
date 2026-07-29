@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { CalendarView } from "@/components/calendar/types";
 import { requireEmployee } from "@/lib/services/employees";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type PreferredCalendarView = Exclude<CalendarView, "list">;
 
@@ -26,8 +26,8 @@ export async function updateCalendarPreferencesAction(input: {
   rememberLastView: boolean;
 }) {
   const employee = await requireEmployee();
-  const supabase = await createClient();
-  const { error } = await supabase
+  const admin = createAdminClient();
+  const { error } = await admin
     .from("employees")
     .update({
       default_calendar_view: validateView(input.defaultView),
@@ -44,8 +44,8 @@ export async function rememberCalendarViewAction(view: string) {
   const employee = await requireEmployee();
   if (!employee.remember_last_calendar_view) return;
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const admin = createAdminClient();
+  const { error } = await admin
     .from("employees")
     .update({ last_calendar_view: validateView(view) })
     .eq("id", employee.id);

@@ -95,6 +95,7 @@ export default function AppointmentDialog({
   const [assignedEmployeeId, setAssignedEmployeeId] = useState("");
   const [installerCrewId, setInstallerCrewId] = useState("");
   const [jobId, setJobId] = useState("");
+  const [customTitle, setCustomTitle] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(
@@ -133,19 +134,23 @@ export default function AppointmentDialog({
       setAssignedEmployeeId(appointment.assigned_employee_id ?? "");
       setInstallerCrewId(appointment.installer_crew_id ?? "");
       setJobId(appointment.job_id ?? "");
+      setCustomTitle(appointment.job_id ? "" : appointment.title ?? "");
     } else {
       const initialJob = jobs.find((job) => job.id === defaultJobId);
       setAppointmentType(defaultAppointmentType);
       setDate(formatDateInput(defaultDate ?? new Date()));
       setEndDate(formatDateInput(defaultDate ?? new Date()));
-      setStartTime("09:00");
-      setEndTime("10:00");
+      const initialStart = defaultDate ?? new Date();
+      const initialEnd = new Date(initialStart.getTime() + 60 * 60 * 1000);
+      setStartTime(formatTimeInput(initialStart));
+      setEndTime(formatTimeInput(initialEnd));
       setLocation(initialJob?.address ?? "");
       setLocationMode(initialJob?.address ? "job" : "custom");
       setNotes("");
       setAssignedEmployeeId("");
       setInstallerCrewId("");
       setJobId(defaultJobId ?? "");
+      setCustomTitle("");
     }
 
     setErrorMessage(null);
@@ -217,6 +222,7 @@ export default function AppointmentDialog({
     }
 
     const appointmentValues = {
+      title: jobId ? null : customTitle.trim() || null,
       appointment_type: appointmentType,
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
@@ -334,6 +340,14 @@ export default function AppointmentDialog({
                     </option>
                   ))}
                 </select>
+                {!jobId ? (
+                  <Input
+                    value={customTitle}
+                    onChange={(event) => setCustomTitle(event.target.value)}
+                    placeholder="Appointment name, meeting, or event"
+                    aria-label="General appointment name"
+                  />
+                ) : null}
                 {jobId ? (() => {
                   const selectedJob = jobs.find((job) => job.id === jobId);
                   if (!selectedJob) return null;

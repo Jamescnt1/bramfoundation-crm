@@ -26,6 +26,7 @@ type CalendarGridProps = {
   onSelectAppointment: (
     appointment: CalendarAppointment,
   ) => void;
+  onCreateAppointment: (date: Date) => void;
 };
 
 export default function CalendarGrid({
@@ -36,17 +37,20 @@ export default function CalendarGrid({
   appointmentsByDate,
   onSelectDate,
   onSelectAppointment,
+  onCreateAppointment,
 }: CalendarGridProps) {
   const today = new Date();
 
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[760px]">
+      <div className="min-w-0 sm:min-w-[760px]">
         <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
-          {weekDays.map((day) => (
+          {weekDays.map((day, index) => (
             <div
               key={day}
-              className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500"
+              className={`px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-gray-500 sm:px-3 sm:py-3 sm:text-xs ${
+                index === 0 || index === 6 ? "bg-gray-100" : ""
+              }`}
             >
               {day}
             </div>
@@ -73,6 +77,7 @@ export default function CalendarGrid({
             const isSelected = selectedDate
               ? isSameDay(date, selectedDate)
               : false;
+            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
             return (
               <div
@@ -80,6 +85,12 @@ export default function CalendarGrid({
                 role="button"
                 tabIndex={0}
                 onClick={() => onSelectDate(date)}
+                onDoubleClick={(event) => {
+                  if ((event.target as HTMLElement).closest("button, a")) return;
+                  const appointmentDate = new Date(date);
+                  appointmentDate.setHours(9, 0, 0, 0);
+                  onCreateAppointment(appointmentDate);
+                }}
                 onKeyDown={(event) => {
                   if (
                     event.key === "Enter" ||
@@ -89,9 +100,11 @@ export default function CalendarGrid({
                     onSelectDate(date);
                   }
                 }}
-                className={`min-h-36 cursor-pointer border-b border-r border-gray-200 p-3 text-left transition hover:bg-gray-50 ${
+                className={`min-h-20 cursor-pointer border-b border-r border-gray-200 p-1 text-left transition hover:bg-gray-50 sm:min-h-36 sm:p-3 ${
                   belongsToCurrentMonth
-                    ? "bg-white"
+                    ? isWeekend
+                      ? "bg-gray-100"
+                      : "bg-white"
                     : "bg-gray-50"
                 } ${
                   isSelected
@@ -100,7 +113,7 @@ export default function CalendarGrid({
                 }`}
               >
                 <span
-                  className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
+                  className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium sm:h-8 sm:w-8 sm:text-sm ${
                     isToday
                       ? "bg-black text-white"
                       : belongsToCurrentMonth
@@ -111,24 +124,33 @@ export default function CalendarGrid({
                   {date.getDate()}
                 </span>
 
-                <div className="mt-3 space-y-2">
-                  {visibleAppointments.map((appointment) => (
-                    <AppointmentCard
-                      key={appointment.id}
-                      appointment={appointment}
-                      compact
-                      selected={
-                        selectedAppointmentId === appointment.id
-                      }
-                      onSelect={onSelectAppointment}
-                    />
-                  ))}
+                <div className="mt-1 sm:mt-3">
+                  <div className="sm:hidden">
+                    {appointments.length ? (
+                      <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-blue-600 px-1 py-0.5 text-[9px] font-bold text-white">
+                        {appointments.length}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="hidden space-y-2 sm:block">
+                    {visibleAppointments.map((appointment) => (
+                      <AppointmentCard
+                        key={appointment.id}
+                        appointment={appointment}
+                        compact
+                        selected={
+                          selectedAppointmentId === appointment.id
+                        }
+                        onSelect={onSelectAppointment}
+                      />
+                    ))}
 
-                  {remainingAppointments > 0 ? (
-                    <p className="text-xs font-medium text-gray-500">
-                      +{remainingAppointments} more
-                    </p>
-                  ) : null}
+                    {remainingAppointments > 0 ? (
+                      <p className="text-xs font-medium text-gray-500">
+                        +{remainingAppointments} more
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             );
