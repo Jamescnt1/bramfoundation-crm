@@ -4,7 +4,8 @@ import { supabase } from "@/lib/supabase";
 export type AutomationAssignmentType = "job_salesperson" | "specific_employee";
 export type AutomationTriggerEvent =
   | "job_created" | "job_status_changed" | "customer_created"
-  | "appointment_scheduled" | "appointment_completed" | "task_completed";
+  | "appointment_scheduled" | "appointment_completed" | "task_completed"
+  | "lead_untouched_daily";
 export type AutomationActionType = "create_task" | "update_job_status" | "send_email";
 
 export type AutomationEmployee = { id: string; name: string };

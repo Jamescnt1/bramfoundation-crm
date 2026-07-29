@@ -141,7 +141,7 @@ export default function ConfigurableListManager({
           placeholder={`New ${itemLabel.toLowerCase()}`}
           disabled={busy}
         />
-        <Button disabled={busy} className="gap-2">
+        <Button type="submit" disabled={busy} className="gap-2">
           <Plus className="h-4 w-4" /> Add {itemLabel}
         </Button>
       </form>

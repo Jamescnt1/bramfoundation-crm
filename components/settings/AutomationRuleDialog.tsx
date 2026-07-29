@@ -20,6 +20,7 @@ export const AUTOMATION_EVENTS: { value: AutomationTriggerEvent; label: string }
   { value: "appointment_scheduled", label: "Appointment is scheduled" },
   { value: "appointment_completed", label: "Appointment is completed" },
   { value: "task_completed", label: "Task is completed" },
+  { value: "lead_untouched_daily", label: "Lead has been untouched for 24 hours" },
 ];
 
 export default function AutomationRuleDialog({ open, rule, employees, roles, stages, emailTemplates, onOpenChange, onSave }: Props) {
@@ -87,7 +88,7 @@ export default function AutomationRuleDialog({ open, rule, employees, roles, sta
       </> : actionType === "update_job_status" ? <Field label="Move related job to"><select value={targetStatus} onChange={(e) => setTargetStatus(e.target.value as PipelineStage)} className={selectClass}>{stages.map((stage) => <option key={stage.slug} value={stage.slug}>{stage.label}</option>)}</select></Field> : <Field label="Email template"><select value={emailTemplateId} onChange={(e) => setEmailTemplateId(e.target.value)} className={selectClass}><option value="">Choose a template</option>{emailTemplates.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}</select></Field>}
       <label className="flex items-center gap-3 rounded-lg border p-3"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)}/><span><strong className="block">Rule enabled</strong><span className="text-sm text-gray-500">Disabled rules remain saved but do not run.</span></span></label>
       {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">{error}</div> : null}
-    </div><DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button><Button disabled={saving}>{saving ? "Saving..." : "Save automation"}</Button></DialogFooter>
+    </div><DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save automation"}</Button></DialogFooter>
   </form></DialogContent></Dialog>;
 }
 

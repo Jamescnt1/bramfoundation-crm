@@ -45,22 +45,28 @@ export async function updateAutomationRuleAction(
   await requirePermission("automations.manage");
   validate(values);
   const admin = createAdminClient();
-  const { error } = await admin
+  const { data, error } = await admin
     .from("automation_rules")
     .update(normalize(values))
-    .eq("id", ruleId);
+    .eq("id", ruleId)
+    .select("id")
+    .single();
   if (error) throw new Error(error.message);
+  if (!data) throw new Error("The automation rule was not updated.");
   await replaceRecipients(ruleId, values.employee_ids, values.role_keys);
   return await loadRule(ruleId);
 }
 
 export async function deleteAutomationRuleAction(ruleId: string) {
   await requirePermission("automations.manage");
-  const { error } = await createAdminClient()
+  const { data, error } = await createAdminClient()
     .from("automation_rules")
     .delete()
-    .eq("id", ruleId);
+    .eq("id", ruleId)
+    .select("id")
+    .single();
   if (error) throw new Error(error.message);
+  if (!data) throw new Error("The automation rule was not deleted.");
   refresh();
 }
 

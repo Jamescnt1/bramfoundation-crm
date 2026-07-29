@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { LeadSource } from "@/lib/services/lead-sources";
 import type { TaskType } from "@/components/tasks/types";
 import type { InstallerCrew } from "@/lib/services/installer-crews";
@@ -39,7 +40,7 @@ export async function getAllInstallerCrews(): Promise<InstallerCrew[]> {
 }
 
 export async function createConfigurationItem(table: ConfigurationTable, name: string) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const normalized = validateName(name);
   const { data: last, error: orderError } = await supabase
     .from(table)
@@ -60,7 +61,7 @@ export async function updateConfigurationItem(
   id: string,
   values: { name: string; active: boolean; sort_order: number; color?: string },
 ) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { error } = await supabase
     .from(table)
     .update({
@@ -75,7 +76,7 @@ export async function updateConfigurationItem(
 }
 
 export async function removeInstallerCrew(id: string): Promise<"deleted" | "retired"> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { count, error: countError } = await supabase
     .from("appointments")
     .select("id", { count: "exact", head: true })
@@ -94,7 +95,7 @@ export async function removeInstallerCrew(id: string): Promise<"deleted" | "reti
 }
 
 export async function removeLeadSource(id: string): Promise<"deleted" | "retired"> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: source, error: sourceError } = await supabase
     .from("lead_sources")
     .select("name")
@@ -120,7 +121,7 @@ export async function removeLeadSource(id: string): Promise<"deleted" | "retired
 }
 
 export async function removeTaskType(id: string): Promise<"deleted" | "retired"> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { count, error: countError } = await supabase
     .from("job_tasks")
     .select("id", { count: "exact", head: true })
