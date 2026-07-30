@@ -5,6 +5,7 @@ import { requireEmployee } from "@/lib/services/employees";
 import { createClient } from "@/lib/supabase/server";
 
 export type CreateLeadInput = {
+  copySourceJobId?: string | null;
   customerMode: "existing" | "new";
   customerId: string;
   newCustomer: {
@@ -15,6 +16,7 @@ export type CreateLeadInput = {
   };
   job: {
     name: string;
+    qfNumber?: string;
     phone: string;
     email: string;
     address: string;
@@ -33,6 +35,7 @@ export async function createLeadAction(input: CreateLeadInput) {
   await requireEmployee();
   const supabase = await createClient();
   const jobName = cleanRequired(input.job.name, "Project / lead name is required.");
+  const qfNumber = clean(input.job.qfNumber ?? "");
   let customerId = input.customerId.trim();
   let createdCustomerId: string | null = null;
 
@@ -55,6 +58,30 @@ export async function createLeadAction(input: CreateLeadInput) {
   }
 
   if (!customerId) throw new Error("Please select the existing customer for this job.");
+
+  if (input.copySourceJobId) {
+    if (!qfNumber) throw new Error("A new QF# is required when copying a job.");
+
+    const { data: sourceJob, error: sourceError } = await supabase
+      .from("jobs")
+      .select("id, customer_id")
+      .eq("id", input.copySourceJobId)
+      .is("archived_at", null)
+      .single();
+    if (sourceError || !sourceJob) throw new Error("The job being copied is unavailable.");
+    if (sourceJob.customer_id !== customerId) {
+      throw new Error("The copied job must remain connected to its original customer.");
+    }
+
+    const { data: duplicateQf, error: duplicateQfError } = await supabase
+      .from("jobs")
+      .select("id")
+      .eq("qfloors_job_number", qfNumber)
+      .limit(1)
+      .maybeSingle();
+    if (duplicateQfError) throw new Error(duplicateQfError.message);
+    if (duplicateQf) throw new Error("That QF# is already assigned to another job.");
+  }
 
   const { data: customer, error: customerError } = await supabase
     .from("customers")
@@ -95,6 +122,7 @@ export async function createLeadAction(input: CreateLeadInput) {
       customer_id: customerId,
       assigned_employee_id: assignedEmployeeId,
       customer_name: jobName,
+      qfloors_job_number: qfNumber,
       phone: clean(input.job.phone) ?? customer.phone,
       email: clean(input.job.email) ?? customer.email,
       address: clean(input.job.address) ?? customer.address,

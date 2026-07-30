@@ -18,34 +18,37 @@ type NewLeadFormProps = {
   jobs: Job[];
   leadSources: LeadSource[];
   contacts: CustomerContact[];
+  copySource?: Job | null;
 };
 
-export default function NewLeadForm({ customers, jobs, leadSources, contacts }: NewLeadFormProps) {
+export default function NewLeadForm({ customers, jobs, leadSources, contacts, copySource = null }: NewLeadFormProps) {
   const router = useRouter();
+  const isCopy = Boolean(copySource);
 
   const [customerMode, setCustomerMode] =
     useState<CustomerSelectionMode>("existing");
-  const [customerId, setCustomerId] = useState("");
+  const [customerId, setCustomerId] = useState(copySource?.customer_id ?? "");
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
   const [newCustomerEmail, setNewCustomerEmail] = useState("");
   const [newCustomerAddress, setNewCustomerAddress] = useState("");
 
   const [projectName, setProjectName] = useState("");
-  const [projectPhone, setProjectPhone] = useState("");
-  const [projectEmail, setProjectEmail] = useState("");
-  const [projectAddress, setProjectAddress] = useState("");
-  const [leadSource, setLeadSource] = useState("");
-  const [salesperson, setSalesperson] = useState("");
+  const [qfNumber, setQfNumber] = useState("");
+  const [projectPhone, setProjectPhone] = useState(copySource?.phone ?? "");
+  const [projectEmail, setProjectEmail] = useState(copySource?.email ?? "");
+  const [projectAddress, setProjectAddress] = useState(copySource?.address ?? "");
+  const [leadSource, setLeadSource] = useState(copySource?.lead_source ?? "");
+  const [salesperson, setSalesperson] = useState(copySource?.salesperson ?? "");
   const [nextAction, setNextAction] = useState("");
   const [nextActionDue, setNextActionDue] = useState("");
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(copySource?.notes ?? "");
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [companyContactId, setCompanyContactId] = useState("");
-  const [jobSiteContactId, setJobSiteContactId] = useState("");
+  const [companyContactId, setCompanyContactId] = useState(copySource?.company_contact_id ?? "");
+  const [jobSiteContactId, setJobSiteContactId] = useState(copySource?.job_site_contact_id ?? "");
   const [availableContacts, setAvailableContacts] = useState(contacts);
-  const [installationRequired, setInstallationRequired] = useState(true);
+  const [installationRequired, setInstallationRequired] = useState(copySource?.installation_required ?? true);
 
   const selectedCustomer =
     customers.find((customer) => customer.id === customerId) ?? null;
@@ -106,6 +109,11 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts }: 
       return;
     }
 
+    if (isCopy && !qfNumber.trim()) {
+      setErrorMessage("A new QF# is required when copying a job.");
+      return;
+    }
+
     setIsSaving(true);
     setErrorMessage("");
 
@@ -121,6 +129,7 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts }: 
         },
         job: {
           name: trimmedProjectName,
+          qfNumber,
           phone: projectPhone,
           email: projectEmail,
           address: projectAddress,
@@ -133,6 +142,7 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts }: 
           jobSiteContactId,
           installationRequired,
         },
+        copySourceJobId: copySource?.id ?? null,
       });
 
       router.push(`/leads/${job.id}`);
@@ -155,15 +165,27 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts }: 
         </div>
       ) : null}
 
-      <CustomerSelector
-        mode={customerMode}
-        customers={customers}
-        jobs={jobs}
-        selectedCustomerId={customerId}
-        disabled={isSaving}
-        onModeChange={handleCustomerModeChange}
-        onCustomerSelect={handleCustomerSelect}
-      />
+      {isCopy ? (
+        <section className="rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
+          <p className="text-sm font-semibold text-gray-950">Customer</p>
+          <p className="mt-1 text-lg font-semibold text-gray-950">
+            {selectedCustomer?.full_name ?? copySource?.customer?.full_name ?? "Existing customer"}
+          </p>
+          <p className="mt-1 text-sm text-gray-500">
+            This copied job remains connected to the same customer. Contacts can be adjusted below.
+          </p>
+        </section>
+      ) : (
+        <CustomerSelector
+          mode={customerMode}
+          customers={customers}
+          jobs={jobs}
+          selectedCustomerId={customerId}
+          disabled={isSaving}
+          onModeChange={handleCustomerModeChange}
+          onCustomerSelect={handleCustomerSelect}
+        />
+      )}
 
       {customerMode === "new" ? (
         <FormSection
@@ -219,8 +241,8 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts }: 
       ) : null}
 
       <FormSection
-        title="Create New Job"
-        description="Enter the details for this new flooring opportunity. These fields belong to the job, not the customer record."
+        title={isCopy ? "Create Copied Job" : "Create New Job"}
+        description={isCopy ? "Review the copied details, then enter a unique job name and QF#." : "Enter the details for this new flooring opportunity. These fields belong to the job, not the customer record."}
       >
         <Field label="Project / Lead Name" htmlFor="projectName" required>
           <input
@@ -234,6 +256,21 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts }: 
             className={inputClass}
           />
         </Field>
+
+        {isCopy ? (
+          <Field label="QF#" htmlFor="qfNumber" required>
+            <input
+              id="qfNumber"
+              type="text"
+              required
+              disabled={isSaving}
+              value={qfNumber}
+              onChange={(event) => setQfNumber(event.target.value)}
+              placeholder="Enter the new QFloors reference"
+              className={inputClass}
+            />
+          </Field>
+        ) : null}
 
         <div className="grid gap-6 sm:col-span-2 sm:grid-cols-2">
           <Field label="Project Contact Phone" htmlFor="projectPhone">
@@ -326,9 +363,9 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts }: 
 
       <div className="flex flex-col gap-3 border-t border-gray-200 pt-6 sm:flex-row">
         <button type="submit" disabled={isSaving} className="rounded-lg bg-black px-5 py-2.5 font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60">
-          {isSaving ? "Creating..." : "Create New Job Lead"}
+          {isSaving ? "Creating..." : isCopy ? "Create Copied Job" : "Create New Job Lead"}
         </button>
-        <button type="button" disabled={isSaving} onClick={() => router.push("/leads")} className="rounded-lg border border-gray-300 px-5 py-2.5 font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60">
+        <button type="button" disabled={isSaving} onClick={() => router.push(copySource ? `/leads/${copySource.id}` : "/leads")} className="rounded-lg border border-gray-300 px-5 py-2.5 font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60">
           Cancel
         </button>
       </div>

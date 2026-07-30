@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CalendarPlus, CheckSquare, MoreHorizontal, Pencil, UserRound } from "lucide-react";
+import { CalendarPlus, CheckSquare, Copy, MoreHorizontal, Pencil, UserRound } from "lucide-react";
 import AttachmentManager from "@/components/attachments/AttachmentManager";
 import type { JobAttachment } from "@/components/attachments/types";
 import AppointmentCard from "@/components/calendar/AppointmentCard";
@@ -235,6 +235,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
               <DropdownMenuTrigger className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50" aria-label="More job actions"><MoreHorizontal className="h-4 w-4" /></DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {customer ? <DropdownMenuItem onClick={() => window.location.assign(`/customers/${customer.id}`)}><UserRound /> Open Customer</DropdownMenuItem> : null}
+                <DropdownMenuItem onClick={() => window.location.assign(`/leads/${job.id}/copy`)}><Copy /> Copy Job</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
