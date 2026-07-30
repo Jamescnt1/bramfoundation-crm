@@ -10,7 +10,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const ruleColumns = `id, name, trigger_event, trigger_value, action_type, target_status,
   trigger_status, task_title, due_offset_days, assignment_type, assigned_employee_id,
-  active, sort_order, created_at, updated_at, email_template_id,
+  cancel_on_pipeline_advance, active, sort_order, created_at, updated_at, email_template_id,
   employees (id, name), email_templates (id, name),
   automation_rule_recipients (id, recipient_type, employee_id, role_key)`;
 
@@ -206,6 +206,9 @@ function normalize(values: AutomationRuleValues) {
       values.assignment_type === "specific_employee"
         ? firstEmployee
         : null,
+    cancel_on_pipeline_advance:
+      values.action_type === "create_task" &&
+      values.cancel_on_pipeline_advance,
     email_template_id:
       values.action_type === "send_email"
         ? values.email_template_id

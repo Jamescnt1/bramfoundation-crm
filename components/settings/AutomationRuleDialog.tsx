@@ -47,6 +47,9 @@ export default function AutomationRuleDialog({ open, rule, employees, roles, sta
       .map((recipient) => recipient.role_key)
       .filter((key): key is string => Boolean(key)),
   );
+  const [cancelOnPipelineAdvance, setCancelOnPipelineAdvance] = useState(
+    rule?.cancel_on_pipeline_advance ?? false,
+  );
   const [active, setActive] = useState(rule?.active ?? true);
   const [emailTemplateId, setEmailTemplateId] = useState(rule?.email_template_id ?? "");
   const [saving, setSaving] = useState(false); const [error, setError] = useState("");
@@ -65,6 +68,7 @@ export default function AutomationRuleDialog({ open, rule, employees, roles, sta
         action_type: actionType, target_status: actionType === "update_job_status" ? targetStatus : null,
         task_title: actionType === "create_task" ? taskTitle : null, due_offset_days: dueOffsetDays,
         assignment_type: assignmentType, assigned_employee_id: assignedEmployeeId || null, active,
+        cancel_on_pipeline_advance: cancelOnPipelineAdvance,
         email_template_id: actionType === "send_email" ? emailTemplateId : null,
         employee_ids: assignmentType === "specific_employee" ? employeeIds : [],
         role_keys: assignmentType === "specific_employee" ? roleKeys : [] });
@@ -82,10 +86,11 @@ export default function AutomationRuleDialog({ open, rule, employees, roles, sta
       <Field label="Then do this"><select value={actionType} onChange={(e) => setActionType(e.target.value as AutomationActionType)} className={selectClass}><option value="create_task">Create a task</option><option value="update_job_status">Update the related job’s pipeline stage</option><option value="send_email">Send a customer email</option></select></Field>
       {actionType === "create_task" ? <>
         <Field label="Task title"><Input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="Follow up with customer" /></Field>
-        <Field label="Due timing"><div className="flex items-center gap-3"><Input type="number" min={0} value={dueOffsetDays} onChange={(e) => setDueOffsetDays(Math.max(0, Number(e.target.value) || 0))} className="max-w-28"/><span className="text-sm text-gray-600">{dueOffsetDays ? `${dueOffsetDays} day(s) later` : "Immediately"}</span></div></Field>
+        <Field label="Send task after"><div className="flex items-center gap-3"><Input type="number" min={0} value={dueOffsetDays} onChange={(e) => setDueOffsetDays(Math.max(0, Number(e.target.value) || 0))} className="max-w-28"/><span className="text-sm text-gray-600">{dueOffsetDays ? `${dueOffsetDays} day(s)` : "Immediately"}</span></div><span className="text-xs font-normal text-gray-500">{dueOffsetDays ? `The task stays hidden and appears in the task list ${dueOffsetDays} day${dueOffsetDays === 1 ? "" : "s"} after this automation runs.` : "The task appears as soon as this automation runs."}</span></Field>
         <Field label="Assign task to"><select value={assignmentType} onChange={(e) => setAssignmentType(e.target.value as AutomationAssignmentType)} className={selectClass}><option value="job_salesperson">Related job salesperson / event employee</option><option value="specific_employee">Specific employee</option></select></Field>
         {assignmentType === "specific_employee" ? <Field label="Recipients"><div className="grid gap-4 rounded-lg border border-gray-200 p-4 sm:grid-cols-2"><RecipientGroup label="Employees" options={employees.map((employee) => ({ value: employee.id, label: employee.name }))} selected={employeeIds} onChange={(next) => { setEmployeeIds(next); setAssignedEmployeeId(next[0] ?? ""); }} /><RecipientGroup label="Roles" options={roles.map((role) => ({ value: role.key, label: role.name }))} selected={roleKeys} onChange={setRoleKeys} /></div><span className="text-xs font-normal text-gray-500">Role membership is resolved when the automation runs. Duplicate employees receive only one task.</span></Field> : null}
       </> : actionType === "update_job_status" ? <Field label="Move related job to"><select value={targetStatus} onChange={(e) => setTargetStatus(e.target.value as PipelineStage)} className={selectClass}>{stages.map((stage) => <option key={stage.slug} value={stage.slug}>{stage.label}</option>)}</select></Field> : <Field label="Email template"><select value={emailTemplateId} onChange={(e) => setEmailTemplateId(e.target.value)} className={selectClass}><option value="">Choose a template</option>{emailTemplates.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}</select></Field>}
+      <label className={`flex items-start gap-3 rounded-lg border p-3 ${actionType !== "create_task" ? "bg-gray-50 opacity-60" : ""}`}><input type="checkbox" checked={cancelOnPipelineAdvance} onChange={(e) => setCancelOnPipelineAdvance(e.target.checked)} disabled={actionType !== "create_task"} className="mt-1"/><span><strong className="block">Override this task when advanced in pipeline</strong><span className="text-sm text-gray-500">Cancel unfinished tasks created by this automation after the job moves to a later pipeline stage.</span></span></label>
       <label className="flex items-center gap-3 rounded-lg border p-3"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)}/><span><strong className="block">Rule enabled</strong><span className="text-sm text-gray-500">Disabled rules remain saved but do not run.</span></span></label>
       {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">{error}</div> : null}
     </div><DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save automation"}</Button></DialogFooter>

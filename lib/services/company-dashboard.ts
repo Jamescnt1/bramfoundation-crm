@@ -166,6 +166,7 @@ export async function getCompanyDashboardData(
       supabase
         .from("job_tasks")
         .select("id, title, assigned_employee_id, assigned_to, due_at, due_date, completed, status, created_at")
+        .or(`automation_rule_id.is.null,due_at.is.null,due_at.lte.${now.toISOString()}`)
         .order("created_at", { ascending: false }),
       supabase
         .from("appointments")

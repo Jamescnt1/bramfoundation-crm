@@ -432,6 +432,7 @@ export async function getJobTasks(
       `,
     )
     .eq("job_id", jobId)
+    .or(`automation_rule_id.is.null,due_at.is.null,due_at.lte.${new Date().toISOString()}`)
     .order("completed", {
       ascending: true,
     })

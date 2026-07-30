@@ -21,6 +21,7 @@ export type AutomationRule = {
   action_type: AutomationActionType; target_status: PipelineStage | null;
   trigger_status: PipelineStage | null; task_title: string | null; due_offset_days: number;
   assignment_type: AutomationAssignmentType; assigned_employee_id: string | null;
+  cancel_on_pipeline_advance: boolean;
   active: boolean; sort_order: number; created_at: string; updated_at: string;
   employees: AutomationEmployee | AutomationEmployee[] | null;
   email_template_id: string | null;
@@ -31,7 +32,7 @@ export type AutomationRuleValues = {
   name: string; trigger_event: AutomationTriggerEvent; trigger_value: string | null;
   action_type: AutomationActionType; target_status: PipelineStage | null;
   task_title: string | null; due_offset_days: number; assignment_type: AutomationAssignmentType;
-  assigned_employee_id: string | null; active: boolean;
+  assigned_employee_id: string | null; cancel_on_pipeline_advance: boolean; active: boolean;
   email_template_id: string | null;
   employee_ids: string[];
   role_keys: string[];
@@ -39,7 +40,7 @@ export type AutomationRuleValues = {
 
 const ruleColumns = `id, name, trigger_event, trigger_value, action_type, target_status,
   trigger_status, task_title, due_offset_days, assignment_type, assigned_employee_id,
-  active, sort_order, created_at, updated_at, email_template_id,
+  cancel_on_pipeline_advance, active, sort_order, created_at, updated_at, email_template_id,
   employees (id, name), email_templates (id, name),
   automation_rule_recipients (id, recipient_type, employee_id, role_key)`;
 
@@ -116,6 +117,8 @@ function normalize(values: AutomationRuleValues) {
     assignment_type: values.assignment_type,
     assigned_employee_id: values.action_type === "create_task" && values.assignment_type === "specific_employee"
       ? values.assigned_employee_id : null,
+    cancel_on_pipeline_advance:
+      values.action_type === "create_task" && values.cancel_on_pipeline_advance,
     email_template_id: values.action_type === "send_email" ? values.email_template_id : null,
     active: values.active,
   };
