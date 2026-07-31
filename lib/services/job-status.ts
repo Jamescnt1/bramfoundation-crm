@@ -25,6 +25,7 @@ export async function updateJobPipelineStatus(
   status: PipelineStage,
   qfNumber?: string,
   contractAmount?: string,
+  installationRequired?: boolean,
 ): Promise<JobStatusUpdate> {
   await requirePermission("pipeline.manage");
 
@@ -60,7 +61,9 @@ export async function updateJobPipelineStatus(
   if (targetStage.contract_amount_required && !resultingContractAmount) {
     throw new ContractAmountRequiredError();
   }
-  if (targetStage.slug === "install_scheduled" && currentJob.installation_required) {
+  const resultingInstallationRequired =
+    installationRequired ?? currentJob.installation_required;
+  if (targetStage.slug === "install_scheduled" && resultingInstallationRequired) {
     const { count, error: appointmentError } = await supabase
       .from("appointments")
       .select("id", { count: "exact", head: true })
@@ -71,17 +74,43 @@ export async function updateJobPipelineStatus(
     if (appointmentError) throw new Error(appointmentError.message);
     if (!count) throw new InstallAppointmentRequiredError();
   }
+  if (isWorkOrderSentStage(targetStage.slug, targetStage.label) && resultingInstallationRequired) {
+    const { data: workOrders, error: workOrderError } = await supabase
+      .from("appointments")
+      .select("work_order_status")
+      .eq("job_id", jobId)
+      .eq("appointment_type", "installation")
+      .neq("status", "cancelled");
+
+    if (workOrderError) throw new Error(workOrderError.message);
+    if (
+      !workOrders?.length ||
+      workOrders.some(
+        (workOrder) =>
+          workOrder.work_order_status !== "sent" &&
+          workOrder.work_order_status !== "acknowledged",
+      )
+    ) {
+      throw new Error(
+        "All installation crew work orders must be marked sent before moving this job to Work Order Sent.",
+      );
+    }
+  }
 
   const updates: {
     status: PipelineStage;
     qfloors_job_number?: string | null;
     contract_amount?: string | null;
+    installation_required?: boolean;
   } = { status: targetStage.slug };
 
   if (qfNumber !== undefined) {
     updates.qfloors_job_number = resultingQfNumber;
   }
   if (contractAmount !== undefined) updates.contract_amount = resultingContractAmount;
+  if (installationRequired !== undefined) {
+    updates.installation_required = installationRequired;
+  }
 
   // Database triggers record old/new status activity and execute enabled
   // automation rules for this transition.
@@ -94,4 +123,12 @@ export async function updateJobPipelineStatus(
 
   if (error) throw new Error(error.message);
   return data as JobStatusUpdate;
+}
+
+function isWorkOrderSentStage(slug: string, label: string) {
+  const normalized = `${slug} ${label}`
+    .toLowerCase()
+    .replaceAll("-", " ")
+    .replaceAll("_", " ");
+  return normalized.includes("work order") && normalized.includes("sent");
 }

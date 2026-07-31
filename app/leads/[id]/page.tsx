@@ -33,6 +33,7 @@ const tabs: JobWorkspaceTab[] = [
   "timeline",
   "tasks",
   "calendar",
+  "installations",
   "files",
   "photos",
   "layouts",
@@ -112,7 +113,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
       safe(getTasks({ jobId: job.id }), []),
       safe(getTaskTypes(), []),
     ]);
-  } else if (activeTab === "calendar") {
+  } else if (activeTab === "calendar" || activeTab === "installations") {
     appointmentsResult = await safe(getAppointmentsByJobId(job.id), []);
   } else if (activeTab === "files" || activeTab === "photos") {
     [attachmentsResult, manageAttachmentsResult, archiveAttachmentsResult] = await Promise.all([

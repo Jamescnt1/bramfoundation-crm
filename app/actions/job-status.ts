@@ -10,8 +10,15 @@ export async function changeJobPipelineStatus(
   status: PipelineStage,
   qfNumber?: string,
   contractAmount?: string,
+  installationRequired?: boolean,
 ) {
-  const updated = await updateJobPipelineStatus(jobId, status, qfNumber, contractAmount);
+  const updated = await updateJobPipelineStatus(
+    jobId,
+    status,
+    qfNumber,
+    contractAmount,
+    installationRequired,
+  );
   await deliverQueuedEmailsForJob(jobId);
 
   revalidatePath(`/leads/${jobId}`);

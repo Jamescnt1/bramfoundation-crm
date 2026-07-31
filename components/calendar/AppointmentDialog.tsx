@@ -94,6 +94,7 @@ export default function AppointmentDialog({
   const [notes, setNotes] = useState("");
   const [assignedEmployeeId, setAssignedEmployeeId] = useState("");
   const [installerCrewId, setInstallerCrewId] = useState("");
+  const [installationScope, setInstallationScope] = useState("");
   const [jobId, setJobId] = useState("");
   const [customTitle, setCustomTitle] = useState("");
 
@@ -133,6 +134,7 @@ export default function AppointmentDialog({
       setNotes(appointment.notes ?? "");
       setAssignedEmployeeId(appointment.assigned_employee_id ?? "");
       setInstallerCrewId(appointment.installer_crew_id ?? "");
+      setInstallationScope(appointment.installation_scope ?? "");
       setJobId(appointment.job_id ?? "");
       setCustomTitle(appointment.job_id ? "" : appointment.title ?? "");
     } else {
@@ -149,6 +151,7 @@ export default function AppointmentDialog({
       setNotes("");
       setAssignedEmployeeId("");
       setInstallerCrewId("");
+      setInstallationScope("");
       setJobId(defaultJobId ?? "");
       setCustomTitle("");
     }
@@ -231,6 +234,7 @@ export default function AppointmentDialog({
       notes: notes.trim() || null,
       assigned_employee_id: appointmentType === "installation" ? null : assignedEmployeeId || null,
       installer_crew_id: appointmentType === "installation" ? installerCrewId || null : null,
+      installation_scope: appointmentType === "installation" ? installationScope.trim() || null : null,
       job_id: jobId || null,
     };
 
@@ -415,18 +419,31 @@ export default function AppointmentDialog({
             </div>
 
             {appointmentType === "installation" ? (
-              <div className="grid gap-2">
-                <label htmlFor="appointment-end-date" className="text-sm font-medium text-gray-900">
-                  End date
-                </label>
-                <Input
-                  id="appointment-end-date"
-                  type="date"
-                  value={endDate}
-                  min={date}
-                  onChange={(event) => setEndDate(event.target.value)}
-                  required
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <label htmlFor="appointment-end-date" className="text-sm font-medium text-gray-900">
+                    End date
+                  </label>
+                  <Input
+                    id="appointment-end-date"
+                    type="date"
+                    value={endDate}
+                    min={date}
+                    onChange={(event) => setEndDate(event.target.value)}
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label htmlFor="appointment-installation-scope" className="text-sm font-medium text-gray-900">
+                    Crew scope
+                  </label>
+                  <Input
+                    id="appointment-installation-scope"
+                    value={installationScope}
+                    onChange={(event) => setInstallationScope(event.target.value)}
+                    placeholder="Carpet, tile, bedrooms, phase 2..."
+                  />
+                </div>
               </div>
             ) : null}
 

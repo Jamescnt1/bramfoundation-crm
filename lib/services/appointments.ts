@@ -14,6 +14,7 @@ export type AppointmentValues = {
   status: AppointmentStatus;
   location: string | null;
   notes: string | null;
+  installation_scope: string | null;
   assigned_employee_id: string | null;
   installer_crew_id: string | null;
   job_id: string | null;
@@ -66,6 +67,10 @@ export async function getAppointmentsByJobId(jobId: string) {
         name,
         color
       ),
+      work_order_sender:employees!appointments_work_order_sent_by_fkey (
+        id,
+        name
+      ),
       job:jobs!appointments_job_id_fkey (
         id,
         customer_id,
@@ -102,6 +107,33 @@ export async function getInstallationJobIds(): Promise<string[]> {
   return [...new Set((data ?? []).flatMap((row) => row.job_id ? [row.job_id] : []))];
 }
 
+export async function getWorkOrderReadyJobIds(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("job_id, work_order_status")
+    .eq("appointment_type", "installation")
+    .neq("status", "cancelled")
+    .not("job_id", "is", null);
+
+  if (error) throw new Error(error.message);
+
+  const grouped = new Map<string, string[]>();
+  for (const row of data ?? []) {
+    if (!row.job_id) continue;
+    grouped.set(row.job_id, [
+      ...(grouped.get(row.job_id) ?? []),
+      row.work_order_status,
+    ]);
+  }
+
+  return [...grouped.entries()]
+    .filter(([, statuses]) =>
+      statuses.length > 0 &&
+      statuses.every((status) => status === "sent" || status === "acknowledged"),
+    )
+    .map(([jobId]) => jobId);
+}
+
 export async function completeAppointment(
   appointmentId: string,
 ) {
@@ -120,6 +152,10 @@ export async function completeAppointment(
         id,
         name,
         color
+      ),
+      work_order_sender:employees!appointments_work_order_sent_by_fkey (
+        id,
+        name
       ),
       job:jobs!appointments_job_id_fkey (
         id,

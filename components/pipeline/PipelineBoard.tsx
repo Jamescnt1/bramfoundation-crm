@@ -21,9 +21,10 @@ type PipelineBoardProps = {
   canChangeStatus: boolean;
   stages: PipelineStageView[];
   installationJobIds: string[];
+  workOrderReadyJobIds: string[];
 };
 
-export default function PipelineBoard({ initialJobs, canChangeStatus, stages, installationJobIds }: PipelineBoardProps) {
+export default function PipelineBoard({ initialJobs, canChangeStatus, stages, installationJobIds, workOrderReadyJobIds }: PipelineBoardProps) {
   const router = useRouter();
   const [jobs, setJobs] = useState(initialJobs);
   const [movingJobId, setMovingJobId] = useState<string | null>(null);
@@ -72,6 +73,12 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
     }
 
     if (
+      shouldReviewInstallation(currentJob.status, newStatus, stages) ||
+      (
+        isWorkOrderSentStage(newStatus, stages) &&
+        currentJob.installation_required &&
+        !workOrderReadyJobIds.includes(currentJob.id)
+      ) ||
       (isConfiguredQfNumberRequired(newStatus, stages) && !currentJob.qfloors_job_number?.trim()) ||
       (isConfiguredContractAmountRequired(newStatus, stages) && !currentJob.contract_amount)
       || (
@@ -93,6 +100,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
     newStatus: PipelineStage,
     qfNumber?: string,
     contractAmount?: string,
+    installationRequired?: boolean,
   ) {
     const currentJob = jobs.find((job) => job.id === jobId);
 
@@ -101,6 +109,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
     const previousStatus = currentJob.status;
     const previousQfNumber = currentJob.qfloors_job_number;
     const previousContractAmount = currentJob.contract_amount;
+    const previousInstallationRequired = currentJob.installation_required;
 
     setErrorMessage("");
     setMovingJobId(jobId);
@@ -112,6 +121,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
               status: newStatus,
               qfloors_job_number: qfNumber ?? job.qfloors_job_number,
               contract_amount: contractAmount ?? job.contract_amount,
+              installation_required: installationRequired ?? job.installation_required,
             }
           : job,
       ),
@@ -119,7 +129,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
     clearDragState();
 
     try {
-      await changeJobPipelineStatus(jobId, newStatus, qfNumber, contractAmount);
+      await changeJobPipelineStatus(jobId, newStatus, qfNumber, contractAmount, installationRequired);
       setPendingMove(null);
       router.refresh();
     } catch (error) {
@@ -131,6 +141,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
                 status: previousStatus,
                 qfloors_job_number: previousQfNumber,
                 contract_amount: previousContractAmount,
+                installation_required: previousInstallationRequired,
               }
             : job,
         ),
@@ -209,9 +220,27 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
           Boolean(jobs.find((job) => job.id === pendingMove.jobId)?.installation_required) &&
           !installationJobIds.includes(pendingMove.jobId)
         }
+        requireWorkOrdersSent={
+          isWorkOrderSentStage(pendingMove.status, stages) &&
+          Boolean(jobs.find((job) => job.id === pendingMove.jobId)?.installation_required) &&
+          !workOrderReadyJobIds.includes(pendingMove.jobId)
+        }
+        installationsHref={`/leads/${pendingMove.jobId}?tab=installations`}
         scheduleInstallHref={`/leads/${pendingMove.jobId}?tab=calendar&schedule=installation`}
         initialQfNumber={jobs.find((job) => job.id === pendingMove.jobId)?.qfloors_job_number}
         initialContractAmount={jobs.find((job) => job.id === pendingMove.jobId)?.contract_amount}
+        showInstallationQuestion={
+          shouldReviewInstallation(
+            jobs.find((job) => job.id === pendingMove.jobId)?.status ?? "",
+            pendingMove.status,
+            stages,
+          ) ||
+          (
+            isWorkOrderSentStage(pendingMove.status, stages) &&
+            !installationJobIds.includes(pendingMove.jobId)
+          )
+        }
+        initialInstallationRequired={jobs.find((job) => job.id === pendingMove.jobId)?.installation_required}
         isSaving={Boolean(movingJobId)}
         errorMessage={errorMessage}
         onOpenChange={(open) => {
@@ -220,13 +249,45 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
             setErrorMessage("");
           }
         }}
-        onConfirm={({ qfNumber, contractAmount }) => {
+        onConfirm={({ qfNumber, contractAmount, installationRequired }) => {
           if (pendingMove) {
-            void completeMove(pendingMove.jobId, pendingMove.status, qfNumber, contractAmount);
+            void completeMove(
+              pendingMove.jobId,
+              pendingMove.status,
+              qfNumber,
+              contractAmount,
+              installationRequired,
+            );
           }
         }}
       />
       ) : null}
     </>
   );
+}
+
+function shouldReviewInstallation(
+  currentStatus: string,
+  nextStatus: string,
+  stages: PipelineStageView[],
+) {
+  const approvedStage = stages.find((stage) => stage.slug === "approved");
+  const currentStage = resolveConfiguredStage(currentStatus, stages);
+  const nextStage = resolveConfiguredStage(nextStatus, stages);
+  return Boolean(
+    approvedStage &&
+    currentStage &&
+    nextStage &&
+    currentStage.sort_order < approvedStage.sort_order &&
+    nextStage.sort_order >= approvedStage.sort_order,
+  );
+}
+
+function isWorkOrderSentStage(status: string, stages: PipelineStageView[]) {
+  const stage = resolveConfiguredStage(status, stages);
+  const normalized = `${stage?.slug ?? ""} ${stage?.label ?? ""}`
+    .toLowerCase()
+    .replaceAll("-", " ")
+    .replaceAll("_", " ");
+  return normalized.includes("work order") && normalized.includes("sent");
 }

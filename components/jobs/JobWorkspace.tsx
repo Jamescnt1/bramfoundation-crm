@@ -32,6 +32,7 @@ import LayoutWorkspace from "@/components/layouts/LayoutWorkspace";
 import type { JobLayout } from "@/components/layouts/types";
 import JobNotesPanel from "@/components/jobs/JobNotesPanel";
 import type { JobNote } from "@/lib/services/job-notes";
+import JobInstallationsPanel from "@/components/jobs/JobInstallationsPanel";
 
 type Props = {
   activeTab: JobWorkspaceTab;
@@ -77,6 +78,7 @@ export type JobWorkspaceTab =
   | "timeline"
   | "tasks"
   | "calendar"
+  | "installations"
   | "files"
   | "photos"
   | "layouts"
@@ -84,7 +86,7 @@ export type JobWorkspaceTab =
 
 const baseNav = [
   ["overview", "Overview"], ["notes", "Notes"], ["timeline", "Timeline"], ["tasks", "Tasks"],
-  ["calendar", "Calendar"], ["files", "Files"], ["photos", "Photos"],
+  ["calendar", "Calendar"], ["installations", "Installations"], ["files", "Files"], ["photos", "Photos"],
   ["communications", "Communications"],
 ] as const;
 
@@ -97,12 +99,27 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
   const [currentStatus, setCurrentStatus] = useState(job.status);
   const [currentQfNumber, setCurrentQfNumber] = useState(job.qfloors_job_number);
   const [currentContractAmount, setCurrentContractAmount] = useState(job.contract_amount);
+  const [currentInstallationRequired, setCurrentInstallationRequired] = useState(job.installation_required);
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusError, setStatusError] = useState("");
   const [pendingStatus, setPendingStatus] = useState<PipelineStage | null>(null);
   const openTasks = tasks.filter((task) => !task.completed);
   const overdueTasks = openTasks.filter((task) => task.due_date && new Date(`${task.due_date}T23:59:59`) < new Date());
-  const upcoming = appointments.filter((appointment) => new Date(appointment.starts_at) >= new Date()).slice(0, 4);
+  const upcoming = appointments
+    .filter((appointment) => appointment.status !== "cancelled" && new Date(appointment.starts_at) >= new Date())
+    .sort((first, second) => new Date(first.starts_at).getTime() - new Date(second.starts_at).getTime());
+  const installationAppointments = appointments.filter(
+    (appointment) =>
+      appointment.appointment_type === "installation" &&
+      appointment.status !== "cancelled",
+  );
+  const workOrdersReady =
+    installationAppointments.length > 0 &&
+    installationAppointments.every(
+      (appointment) =>
+        appointment.work_order_status === "sent" ||
+        appointment.work_order_status === "acknowledged",
+    );
   const employeeName = assignedEmployee?.name ?? job.salesperson ?? "Unassigned";
   const missingRequiredQfNumber = isConfiguredQfNumberRequired(currentStatus, stages) && !currentQfNumber?.trim();
   const missingRequiredContractAmount = isConfiguredContractAmountRequired(currentStatus, stages) && !currentContractAmount;
@@ -116,22 +133,32 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
     jobName: job.customer_name,
   });
   const nav: ReadonlyArray<readonly [JobWorkspaceTab, string]> = layoutsEnabled
-    ? [...baseNav.slice(0, 6), ["layouts", "Layouts"], ...baseNav.slice(6)]
+    ? [...baseNav.slice(0, 7), ["layouts", "Layouts"], ...baseNav.slice(7)]
     : baseNav;
 
   async function requestStatusChange(nextStatus: PipelineStage) {
     if (resolveConfiguredStage(currentStatus, stages)?.slug === nextStatus) return;
+    const approvedStage = stages.find((stage) => stage.slug === "approved");
+    const currentStage = resolveConfiguredStage(currentStatus, stages);
+    const nextStage = resolveConfiguredStage(nextStatus, stages);
+    const crossesApproval =
+      Boolean(approvedStage && currentStage && nextStage) &&
+      currentStage.sort_order < approvedStage!.sort_order &&
+      nextStage.sort_order >= approvedStage!.sort_order;
+
     if (
+      crossesApproval ||
       (isConfiguredQfNumberRequired(nextStatus, stages) && !currentQfNumber?.trim()) ||
       (isConfiguredContractAmountRequired(nextStatus, stages) && !currentContractAmount)
       || (
         isInstallScheduledStage(nextStatus, stages) &&
-        job.installation_required &&
-        !appointments.some(
-          (appointment) =>
-            appointment.appointment_type === "installation" &&
-            appointment.status !== "cancelled",
-        )
+        currentInstallationRequired &&
+        installationAppointments.length === 0
+      )
+      || (
+        isWorkOrderSentStage(nextStatus, stages) &&
+        currentInstallationRequired &&
+        !workOrdersReady
       )
     ) {
       setPendingStatus(nextStatus);
@@ -140,27 +167,31 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
     await saveStatus(nextStatus);
   }
 
-  async function saveStatus(nextStatus: PipelineStage, qfNumber?: string, contractAmount?: string) {
+  async function saveStatus(nextStatus: PipelineStage, qfNumber?: string, contractAmount?: string, installationRequired?: boolean) {
     const previousStatus = currentStatus;
     const previousQfNumber = currentQfNumber;
     const previousContractAmount = currentContractAmount;
+    const previousInstallationRequired = currentInstallationRequired;
     setStatusError("");
     setStatusSaving(true);
     setCurrentStatus(nextStatus);
     if (qfNumber !== undefined) setCurrentQfNumber(qfNumber);
     if (contractAmount !== undefined) setCurrentContractAmount(contractAmount);
+    if (installationRequired !== undefined) setCurrentInstallationRequired(installationRequired);
 
     try {
-      const updated = await changeJobPipelineStatus(job.id, nextStatus, qfNumber, contractAmount);
+      const updated = await changeJobPipelineStatus(job.id, nextStatus, qfNumber, contractAmount, installationRequired);
       setCurrentStatus(updated.status);
       setCurrentQfNumber(updated.qfloors_job_number);
       setCurrentContractAmount(updated.contract_amount);
+      setCurrentInstallationRequired(updated.installation_required);
       setPendingStatus(null);
       router.refresh();
     } catch (error) {
       setCurrentStatus(previousStatus);
       setCurrentQfNumber(previousQfNumber);
       setCurrentContractAmount(previousContractAmount);
+      setCurrentInstallationRequired(previousInstallationRequired);
       setStatusError(error instanceof Error ? error.message : "Unable to change status.");
     } finally {
       setStatusSaving(false);
@@ -306,6 +337,17 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
               </div>
 
               <div className="space-y-3">
+                <WorkspaceCard title="Installation work orders">
+                  <JobInstallationsPanel
+                    jobId={job.id}
+                    appointments={appointments}
+                    installationRequired={currentInstallationRequired}
+                    compact
+                    onSchedule={() => schedule("installation")}
+                    onOpenInstallations={() => selectTab("installations")}
+                  />
+                </WorkspaceCard>
+
                 <WorkspaceCard title="Work at a glance">
                   <div className="grid grid-cols-2 gap-2">
                     <Metric label="Open tasks" value={openTasks.length} />
@@ -320,9 +362,18 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                   </div>
                 </WorkspaceCard>
 
-                <WorkspaceCard title="Next appointment" count={upcoming.length}>
+                <WorkspaceCard title="Upcoming appointments" count={upcoming.length}>
                   {upcoming.length ? (
-                    <AppointmentCard appointment={upcoming[0]} compact />
+                    <div className="space-y-2">
+                      {upcoming.map((appointment) => (
+                        <div key={appointment.id}>
+                          <p className="mb-1 text-[11px] font-semibold text-gray-500">
+                            {formatDateTime(appointment.starts_at)}
+                          </p>
+                          <AppointmentCard appointment={appointment} compact showTime={false} />
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <WorkspaceEmpty
                       text="No upcoming appointments."
@@ -395,6 +446,25 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
           </section>
         ) : null}
 
+        {activeTab === "installations" ? (
+          <section>
+            <WorkspaceSectionHeader
+              title="Installations"
+              description="Track each crew, flooring scope, schedule, and work order independently."
+            />
+            <div className="mt-2">
+              <WorkspaceCard title="Installation planning" count={appointments.filter((appointment) => appointment.appointment_type === "installation" && appointment.status !== "cancelled").length}>
+                <JobInstallationsPanel
+                  jobId={job.id}
+                  appointments={appointments}
+                  installationRequired={currentInstallationRequired}
+                  onSchedule={() => schedule("installation")}
+                />
+              </WorkspaceCard>
+            </div>
+          </section>
+        ) : null}
+
         {activeTab === "files" ? (
           <section>
             <WorkspaceCard title="Files" count={attachments.filter((item) => item.attachment_kind === "file").length}>
@@ -450,19 +520,39 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
           requireContractAmount={isConfiguredContractAmountRequired(pendingStatus, stages) && !currentContractAmount}
           requireInstallAppointment={
             isInstallScheduledStage(pendingStatus, stages) &&
-            job.installation_required &&
-            !appointments.some(
-              (appointment) =>
-                appointment.appointment_type === "installation" &&
-                appointment.status !== "cancelled",
-            )
+            currentInstallationRequired &&
+            installationAppointments.length === 0
           }
+          requireWorkOrdersSent={
+            isWorkOrderSentStage(pendingStatus, stages) &&
+            currentInstallationRequired &&
+            !workOrdersReady
+          }
+          installationsHref={`/leads/${job.id}?tab=installations`}
           onScheduleInstall={() => {
             setPendingStatus(null);
             schedule("installation");
           }}
           initialQfNumber={currentQfNumber}
           initialContractAmount={currentContractAmount}
+          showInstallationQuestion={(() => {
+            const approvedStage = stages.find((stage) => stage.slug === "approved");
+            const currentStage = resolveConfiguredStage(currentStatus, stages);
+            const targetStage = resolveConfiguredStage(pendingStatus, stages);
+            const crossesApproval = Boolean(
+              approvedStage &&
+              currentStage &&
+              targetStage &&
+              currentStage.sort_order < approvedStage.sort_order &&
+              targetStage.sort_order >= approvedStage.sort_order
+            );
+            return (
+              crossesApproval ||
+              (isWorkOrderSentStage(pendingStatus, stages) &&
+                installationAppointments.length === 0)
+            );
+          })()}
+          initialInstallationRequired={currentInstallationRequired}
           isSaving={statusSaving}
           errorMessage={statusError}
           onOpenChange={(open) => {
@@ -471,7 +561,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
               setStatusError("");
             }
           }}
-          onConfirm={({ qfNumber, contractAmount }) => void saveStatus(pendingStatus, qfNumber, contractAmount)}
+          onConfirm={({ qfNumber, contractAmount, installationRequired }) => void saveStatus(pendingStatus, qfNumber, contractAmount, installationRequired)}
         />
       ) : null}
     </>
@@ -499,3 +589,11 @@ function Metric({ label, value, danger = false }: { label: string; value: number
 function formatDate(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value.length === 10 ? `${value}T00:00:00` : value)); }
 function formatDateTime(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value)); }
 function formatCurrency(value: string) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value)); }
+function isWorkOrderSentStage(status: PipelineStage, stages: PipelineStageView[]) {
+  const stage = resolveConfiguredStage(status, stages);
+  const normalized = `${stage?.slug ?? status} ${stage?.label ?? ""}`
+    .toLowerCase()
+    .replaceAll("-", " ")
+    .replaceAll("_", " ");
+  return normalized.includes("work order") && normalized.includes("sent");
+}

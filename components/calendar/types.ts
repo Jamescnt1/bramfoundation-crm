@@ -20,6 +20,10 @@ export type CalendarAppointment = {
 
   location: string | null;
   notes: string | null;
+  installation_scope: string | null;
+  work_order_status: "not_sent" | "sent" | "acknowledged";
+  work_order_sent_at: string | null;
+  work_order_sent_by: string | null;
 
   created_at?: string | null;
   updated_at?: string | null;
@@ -34,6 +38,11 @@ export type CalendarAppointment = {
     id: string;
     name: string;
     color: string;
+  } | null;
+
+  work_order_sender?: {
+    id: string;
+    name: string;
   } | null;
 
   job?: {

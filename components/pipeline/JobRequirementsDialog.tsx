@@ -15,19 +15,26 @@ type Props = {
   requireQfNumber: boolean;
   requireContractAmount: boolean;
   requireInstallAppointment?: boolean;
+  requireWorkOrdersSent?: boolean;
+  installationsHref?: string;
   scheduleInstallHref?: string;
   onScheduleInstall?: () => void;
   initialQfNumber?: string | null;
   initialContractAmount?: string | null;
+  showInstallationQuestion?: boolean;
+  initialInstallationRequired?: boolean;
   isSaving: boolean;
   errorMessage?: string;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (values: { qfNumber?: string; contractAmount?: string }) => void;
+  onConfirm: (values: { qfNumber?: string; contractAmount?: string; installationRequired?: boolean }) => void;
 };
 
 export default function JobRequirementsDialog(props: Props) {
   const [qfNumber, setQfNumber] = useState(props.initialQfNumber ?? "");
   const [contractAmount, setContractAmount] = useState(props.initialContractAmount ?? "");
+  const [installationRequired, setInstallationRequired] = useState(
+    props.initialInstallationRequired ?? true,
+  );
   const [validationError, setValidationError] = useState("");
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -45,6 +52,7 @@ export default function JobRequirementsDialog(props: Props) {
     props.onConfirm({
       ...(props.requireQfNumber ? { qfNumber: qfNumber.trim() } : {}),
       ...(props.requireContractAmount ? { contractAmount: amount.toFixed(2) } : {}),
+      ...(props.showInstallationQuestion ? { installationRequired } : {}),
     });
   }
 
@@ -75,7 +83,42 @@ export default function JobRequirementsDialog(props: Props) {
                 <span className="mt-1 block text-xs font-normal text-gray-500">Used for CRM pipeline reporting only. QFloors remains the accounting system.</span>
               </label>
             ) : null}
-            {props.requireInstallAppointment ? (
+            {props.showInstallationQuestion ? (
+              <fieldset className="rounded-lg border border-gray-200 p-3">
+                <legend className="px-1 text-sm font-semibold text-gray-950">Installation planning</legend>
+                <p className="mt-1 text-xs leading-5 text-gray-600">
+                  Will this job require one or more Foundation-managed installation crews?
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setInstallationRequired(true)}
+                    className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
+                      installationRequired
+                        ? "border-gray-950 bg-gray-950 text-white"
+                        : "border-gray-300 bg-white text-gray-700"
+                    }`}
+                  >
+                    Yes, crews needed
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInstallationRequired(false)}
+                    className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
+                      !installationRequired
+                        ? "border-gray-950 bg-gray-950 text-white"
+                        : "border-gray-300 bg-white text-gray-700"
+                    }`}
+                  >
+                    No crews needed
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  Crew assignments and work orders can be managed from the job’s Installations tab.
+                </p>
+              </fieldset>
+            ) : null}
+            {props.requireInstallAppointment && installationRequired ? (
               <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3">
                 <p className="text-sm font-semibold text-indigo-950">Install date required</p>
                 <p className="mt-1 text-xs leading-5 text-indigo-800">
@@ -101,11 +144,34 @@ export default function JobRequirementsDialog(props: Props) {
                 ) : null}
               </div>
             ) : null}
+            {props.requireWorkOrdersSent && installationRequired ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <p className="text-sm font-semibold text-amber-950">Crew work orders still pending</p>
+                <p className="mt-1 text-xs leading-5 text-amber-800">
+                  Every active installation crew must have its work order marked sent before this pipeline stage can be used.
+                </p>
+                {props.installationsHref ? (
+                  <Link
+                    href={props.installationsHref}
+                    className="mt-3 inline-flex h-8 items-center justify-center rounded-lg border border-amber-300 bg-white px-2.5 text-sm font-medium text-amber-950 hover:bg-amber-100"
+                  >
+                    Open installations
+                  </Link>
+                ) : null}
+              </div>
+            ) : null}
             {validationError || props.errorMessage ? <p className="text-sm text-red-700">{validationError || props.errorMessage}</p> : null}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => props.onOpenChange(false)} disabled={props.isSaving}>Cancel</Button>
-            <Button type="submit" disabled={props.isSaving || props.requireInstallAppointment}>
+            <Button
+              type="submit"
+              disabled={
+                props.isSaving ||
+                (props.requireInstallAppointment && installationRequired) ||
+                (props.requireWorkOrdersSent && installationRequired)
+              }
+            >
               {props.isSaving ? "Saving..." : `Save and move to ${props.targetStatus}`}
             </Button>
           </DialogFooter>

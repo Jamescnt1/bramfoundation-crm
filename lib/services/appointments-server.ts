@@ -19,6 +19,10 @@ export async function getAppointmentsForCalendar(): Promise<CalendarAppointment[
         name,
         color
       ),
+      work_order_sender:employees!appointments_work_order_sent_by_fkey (
+        id,
+        name
+      ),
       job:jobs!appointments_job_id_fkey (
         id,
         customer_id,
