@@ -2,19 +2,20 @@ import Link from "next/link";
 import { requireEmployee } from "@/lib/services/employees";
 import { getEmployeeWorkspace } from "@/lib/services/workspace";
 import { resolveConfiguredStage } from "@/components/pipeline/constants";
-import { formatJobDisplayName } from "@/lib/job-display";
 import { getPipelineStages } from "@/lib/services/pipeline-stages";
 import InternalMessagesDashboard from "@/components/messaging/InternalMessagesDashboard";
 import { getEmployeeConversations, getMessagingEmployees } from "@/lib/services/internal-messaging";
 import { formatAppointmentDisplayName } from "@/lib/appointment-display";
 import CompactPipelineOverview from "@/components/dashboard/CompactPipelineOverview";
+import MyTaskPanel from "@/components/dashboard/MyTaskPanel";
+import { getCompanySettings } from "@/lib/services/company-settings";
+import { dateKeyInTimeZone, formatAppointmentDateTime } from "@/lib/date-time";
 
 export const dynamic = "force-dynamic";
 
 export default async function MyDashboardPage() {
   const employee = await requireEmployee();
-  const [workspace, stages, conversations, messagingEmployees] = await Promise.all([getEmployeeWorkspace(employee), getPipelineStages(), getEmployeeConversations(), getMessagingEmployees()]);
-  const openTasks = workspace.tasks.filter((task) => !task.completed);
+  const [workspace, stages, conversations, messagingEmployees, companySettings] = await Promise.all([getEmployeeWorkspace(employee), getPipelineStages(), getEmployeeConversations(), getMessagingEmployees(), getCompanySettings()]);
   const pipelineGroups = stages.map((stage) => ({
     stage,
     jobs: workspace.jobs.filter(
@@ -45,36 +46,20 @@ export default async function MyDashboardPage() {
 
         <div className="mt-3 grid gap-3 xl:grid-cols-3">
           <WorkspaceSection title="My Tasks" href="/tasks?view=mine">
-            {openTasks.length ? (
-              <div className="divide-y divide-gray-100">
-                {openTasks.slice(0, 8).map((task) => (
-                  <Link key={task.id} href={`/tasks?task=${task.id}`} className="grid gap-1.5 py-2 transition hover:bg-gray-50 sm:grid-cols-[minmax(0,1fr)_auto] sm:px-1">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-gray-900">{task.title}</p>
-                      <p className="mt-0.5 truncate text-xs text-gray-500">{task.jobs ? formatJobDisplayName({ customerName: task.jobs.customer?.full_name ?? task.customers?.full_name, jobName: task.jobs.customer_name, qfNumber: task.jobs.qfloors_job_number }) : task.customers?.full_name ?? "Business task"}</p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs sm:justify-end">
-                      <TaskBadge value={task.priority} priority />
-                      <TaskBadge value={task.status} />
-                      <span className="text-gray-500">{formatTaskDue(task.due_at, task.due_date)}</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : <EmptyText text="No open tasks assigned to you." />}
+            <MyTaskPanel initialTasks={workspace.tasks} timeZone={companySettings.timezone} />
           </WorkspaceSection>
 
           <WorkspaceSection title="Upcoming Appointments" href="/calendar">
             {workspace.appointments.length ? (
               <div className="divide-y divide-gray-100">
                 {workspace.appointments.slice(0, 8).map((appointment) => (
-                  <Link key={appointment.id} href={`/calendar?appointment=${appointment.id}&date=${localDateKey(new Date(appointment.starts_at))}`} className="block py-2 transition hover:bg-gray-50 sm:px-1">
+                  <Link key={appointment.id} href={`/calendar?appointment=${appointment.id}&date=${dateKeyInTimeZone(appointment.starts_at, companySettings.timezone)}`} className="block py-2 transition hover:bg-gray-50 sm:px-1">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <p className="truncate font-medium text-gray-900">{formatAppointmentDisplayName({ appointmentType: appointment.appointment_type, customerName: appointment.job?.customer?.full_name, jobName: appointment.job?.customer_name })}</p>
                         <p className="mt-0.5 text-xs text-gray-500">{appointment.job?.qfloors_job_number ? `QF# ${appointment.job.qfloors_job_number}` : ""}</p>
                       </div>
-                      <time className="shrink-0 text-right text-xs font-medium text-gray-600">{formatAppointmentDate(appointment.starts_at)}</time>
+                      <time className="shrink-0 text-right text-xs font-medium text-gray-600">{formatAppointmentDateTime(appointment.starts_at, companySettings.timezone)}</time>
                     </div>
                     <p className="mt-1 truncate text-xs text-gray-500">{appointment.location ?? "No location"}</p>
                   </Link>
@@ -96,17 +81,3 @@ function WorkspaceSection({ title, href, children }: { title: string; href: stri
 }
 
 function EmptyText({ text }: { text: string }) { return <p className="py-6 text-sm text-gray-500">{text}</p>; }
-function localDateKey(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
-function label(value: string) { return value.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" "); }
-function TaskBadge({ value, priority = false }: { value: string; priority?: boolean }) {
-  const color = priority && value === "urgent" ? "bg-red-50 text-red-700" : priority && value === "high" ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-600";
-  return <span className={`rounded-full px-2 py-0.5 font-semibold ${color}`}>{label(value)}</span>;
-}
-function formatTaskDue(dueAt: string | null, dueDate: string | null) {
-  if (dueAt) return new Date(dueAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-  if (dueDate) return new Date(`${dueDate}T00:00:00`).toLocaleDateString([], { month: "short", day: "numeric" });
-  return "No due date";
-}
-function formatAppointmentDate(value: string) {
-  return new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-}

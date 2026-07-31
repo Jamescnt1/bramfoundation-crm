@@ -9,6 +9,7 @@ import {
   formatAppointmentDisplayName,
   formatAppointmentType,
 } from "@/lib/appointment-display";
+import { formatAppointmentTime } from "@/lib/date-time";
 
 type AppointmentCardProps = {
   appointment: CalendarAppointment;
@@ -18,13 +19,6 @@ type AppointmentCardProps = {
   onSelect?: (appointment: CalendarAppointment) => void;
   className?: string;
 };
-
-function formatAppointmentTime(startsAt: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(startsAt));
-}
 
 export default function AppointmentCard({
   appointment,

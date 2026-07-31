@@ -12,6 +12,9 @@ export type WorkspaceTask = {
   priority: string;
   status: string;
   completed: boolean;
+  task_type_id: string | null;
+  task_types: { id: string; name: string } | null;
+  latest_note: { id: string; body: string; created_at: string } | null;
   jobs: { id: string; customer_name: string; qfloors_job_number: string | null; customer: { id: string; full_name: string } | null } | null;
   customers: { id: string; full_name: string } | null;
 };
@@ -58,7 +61,7 @@ export async function getEmployeeWorkspace(
   const [tasksResult, appointmentsResult, jobsResult] = await Promise.all([
     supabase
       .from("job_tasks")
-      .select("id, job_id, customer_id, title, due_at, due_date, priority, status, completed, jobs(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name)), customers(id, full_name)")
+      .select("id, job_id, customer_id, title, due_at, due_date, priority, status, completed, task_type_id, task_types(id, name), jobs(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name)), customers(id, full_name)")
       .or(`automation_rule_id.is.null,due_at.is.null,due_at.lte.${now.toISOString()}`)
       .or(`assigned_employee_id.eq.${employee.id},assigned_to.eq.${escapeFilterValue(employee.name)}`)
       .order("completed", { ascending: true })
@@ -80,13 +83,38 @@ export async function getEmployeeWorkspace(
   const error = tasksResult.error ?? appointmentsResult.error ?? jobsResult.error;
   if (error) throw new Error(error.message);
 
-  const tasks = (tasksResult.data ?? []).map((task) => ({
+  const normalizedTasks = (tasksResult.data ?? []).map((task) => ({
     ...task,
     jobs: normalizeWorkspaceJobRelation(
       Array.isArray(task.jobs) ? task.jobs[0] ?? null : task.jobs,
     ),
     customers: Array.isArray(task.customers) ? task.customers[0] ?? null : task.customers,
+    task_types: Array.isArray(task.task_types) ? task.task_types[0] ?? null : task.task_types,
+    latest_note: null,
   })) as WorkspaceTask[];
+
+  const latestNotesByTask = new Map<string, WorkspaceTask["latest_note"]>();
+  if (normalizedTasks.length) {
+    const { data: latestNotes, error: latestNotesError } = await supabase
+      .from("task_latest_notes")
+      .select("id, task_id, body, created_at")
+      .in("task_id", normalizedTasks.map((task) => task.id))
+      .order("created_at", { ascending: false });
+    if (latestNotesError) throw new Error(latestNotesError.message);
+    for (const note of latestNotes ?? []) {
+      if (!latestNotesByTask.has(note.task_id)) {
+        latestNotesByTask.set(note.task_id, {
+          id: note.id,
+          body: note.body,
+          created_at: note.created_at,
+        });
+      }
+    }
+  }
+  const tasks = normalizedTasks.map((task) => ({
+    ...task,
+    latest_note: latestNotesByTask.get(task.id) ?? null,
+  }));
 
   const appointments = (appointmentsResult.data ?? []).map((appointment) => ({
     ...appointment,

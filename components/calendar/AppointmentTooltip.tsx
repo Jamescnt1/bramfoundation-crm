@@ -14,6 +14,7 @@ import {
   formatAppointmentDisplayName,
   formatAppointmentType,
 } from "@/lib/appointment-display";
+import { dateKeyInTimeZone, formatAppointmentTime, formatDateTime } from "@/lib/date-time";
 
 type AppointmentTooltipProps = {
   appointment: CalendarAppointment;
@@ -40,30 +41,20 @@ function formatLabel(value: string | null, fallback: string) {
     .join(" ");
 }
 
-function formatTime(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
 function formatDateRange(appointment: CalendarAppointment) {
   const start = new Date(appointment.starts_at);
   const end = new Date(appointment.ends_at ?? appointment.starts_at);
-  const formatter = new Intl.DateTimeFormat("en-US", {
+  const format = (value: Date) => formatDateTime(value, {
     weekday: "short",
     month: "short",
     day: "numeric",
     year: "numeric",
   });
-  const sameDate =
-    start.getFullYear() === end.getFullYear() &&
-    start.getMonth() === end.getMonth() &&
-    start.getDate() === end.getDate();
+  const sameDate = dateKeyInTimeZone(start) === dateKeyInTimeZone(end);
 
   return sameDate
-    ? formatter.format(start)
-    : `${formatter.format(start)} – ${formatter.format(end)}`;
+    ? format(start)
+    : `${format(start)} – ${format(end)}`;
 }
 
 export default function AppointmentTooltip({
@@ -228,9 +219,9 @@ export default function AppointmentTooltip({
 
                 <dt className="font-medium text-gray-500">Time</dt>
                 <dd className="text-gray-900">
-                  {formatTime(appointment.starts_at)}
+                  {formatAppointmentTime(appointment.starts_at)}
                   {appointment.ends_at
-                    ? ` – ${formatTime(appointment.ends_at)}`
+                    ? ` – ${formatAppointmentTime(appointment.ends_at)}`
                     : ""}
                 </dd>
 

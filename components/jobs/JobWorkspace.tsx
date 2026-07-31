@@ -34,6 +34,7 @@ import type { JobLayout } from "@/components/layouts/types";
 import JobNotesPanel from "@/components/jobs/JobNotesPanel";
 import type { JobNote } from "@/lib/services/job-notes";
 import JobInstallationsPanel from "@/components/jobs/JobInstallationsPanel";
+import { formatDateTime as formatCompanyDateTime } from "@/lib/date-time";
 
 type Props = {
   activeTab: JobWorkspaceTab;
@@ -589,7 +590,7 @@ function ContactFact({ label, contact }: { label: string; contact: JobContactSum
 }
 function Metric({ label, value, danger = false }: { label: string; value: number; danger?: boolean }) { return <div className={`rounded-md px-3 py-2 ${danger ? "bg-red-50 text-red-800" : "bg-gray-50 text-gray-900"}`}><p className="text-[11px] font-medium opacity-70">{label}</p><p className="text-lg font-bold leading-6">{value}</p></div>; }
 function formatDate(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value.length === 10 ? `${value}T00:00:00` : value)); }
-function formatDateTime(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value)); }
+function formatDateTime(value: string) { return formatCompanyDateTime(value, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }); }
 function formatCurrency(value: string) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value)); }
 function isWorkOrderSentStage(status: PipelineStage, stages: PipelineStageView[]) {
   const stage = resolveConfiguredStage(status, stages);

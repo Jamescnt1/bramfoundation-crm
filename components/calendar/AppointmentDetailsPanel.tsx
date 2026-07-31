@@ -11,6 +11,7 @@ import {
   formatAppointmentType,
 } from "@/lib/appointment-display";
 import { AddressLink, EmailLink, PhoneLink } from "@/components/contact/ActionableContactLinks";
+import { formatAppointmentTime, formatDateTime } from "@/lib/date-time";
 
 type AppointmentDetailsPanelProps = {
   appointment: CalendarAppointment | null;
@@ -32,16 +33,12 @@ function label(value: string | null | undefined) {
 }
 
 function formatDate(value: string | Date) {
-  return new Intl.DateTimeFormat("en-US", {
+  return formatDateTime(value, {
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
-  }).format(typeof value === "string" ? new Date(value) : value);
-}
-
-function formatTime(value: string) {
-  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(value));
+  });
 }
 
 export default function AppointmentDetailsPanel({
@@ -82,7 +79,7 @@ export default function AppointmentDetailsPanel({
           </div>
 
           <div className="space-y-5 p-5 text-sm">
-            <div className="flex gap-3"><CalendarDays className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="font-medium text-gray-900">{formatDate(appointment.starts_at)}{appointment.appointment_type === "installation" && appointment.ends_at ? ` – ${formatDate(appointment.ends_at)}` : ""}</p><p className="mt-1 text-gray-500">{formatTime(appointment.starts_at)}{appointment.ends_at ? ` – ${formatTime(appointment.ends_at)}` : ""}</p></div></div>
+            <div className="flex gap-3"><CalendarDays className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="font-medium text-gray-900">{formatDate(appointment.starts_at)}{appointment.appointment_type === "installation" && appointment.ends_at ? ` – ${formatDate(appointment.ends_at)}` : ""}</p><p className="mt-1 text-gray-500">{formatAppointmentTime(appointment.starts_at)}{appointment.ends_at ? ` – ${formatAppointmentTime(appointment.ends_at)}` : ""}</p></div></div>
             <div className="flex gap-3"><UserRound className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="text-gray-500">{appointment.appointment_type === "installation" ? "Install crew" : "Assigned employee"}</p><p className="mt-1 font-medium text-gray-900">{appointment.appointment_type === "installation" ? installerCrew?.name ?? appointment.installer_crew?.name ?? "Unassigned crew" : employee?.name ?? "Unassigned"}</p></div></div>
             <div className="flex gap-3"><MapPin className="mt-2 h-4 w-4 text-gray-400" /><div><p className="text-gray-500">Location</p>{appointment.location || appointment.job?.address ? <AddressLink value={appointment.location || appointment.job?.address} className="mt-1 font-medium text-gray-900" /> : <p className="mt-1 text-gray-500">No location provided</p>}</div></div>
 
