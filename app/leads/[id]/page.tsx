@@ -21,6 +21,10 @@ import { getActiveInstallerCrews } from "@/lib/services/installer-crews";
 import { getJobLayouts } from "@/lib/services/job-layouts";
 import { LAYOUTS_BETA_ENABLED } from "@/lib/features/layouts-beta";
 import { getJobNotes, type JobNote } from "@/lib/services/job-notes";
+import {
+  getAppointmentTypes,
+  type AppointmentTypeDefinition,
+} from "@/lib/services/appointment-types";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -62,12 +66,14 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
     customerResult,
     statusPermissionResult,
     stagesResult,
+    appointmentTypesResult,
   ] = await Promise.all([
     safe(getActiveEmployees(), []),
     safe(getActiveInstallerCrews(), []),
     safe<Customer | null>(job.customer_id ? getCustomerById(job.customer_id) : Promise.resolve(null), null),
     safe(hasPermission("pipeline.manage"), false),
     safe(getPipelineStages(), []),
+    safe<AppointmentTypeDefinition[]>(getAppointmentTypes(), []),
   ]);
 
   let activitiesResult = emptyResult<JobActivity[]>([]);
@@ -165,6 +171,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
             assignedEmployee={employees.find((employee) => employee.id === job.assigned_employee_id) ?? null}
             employees={employees}
             installerCrews={installerCrewsResult.value}
+            appointmentTypes={appointmentTypesResult.value}
             activities={activitiesResult.value}
             tasks={tasksResult.value}
             taskTypes={taskTypesResult.value}

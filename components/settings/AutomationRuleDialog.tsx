@@ -1,16 +1,16 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
-import { APPOINTMENT_TYPES } from "@/components/calendar/constants";
 import type { PipelineStage, PipelineStageView } from "@/components/pipeline/constants";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { AutomationActionType, AutomationAssignmentType, AutomationEmployee, AutomationRole, AutomationRule, AutomationRuleValues, AutomationTriggerEvent } from "@/lib/services/task-automation";
-import { formatAppointmentType } from "@/lib/appointment-display";
+import type { AppointmentTypeDefinition } from "@/lib/services/appointment-types";
 
 type Props = { open: boolean; rule: AutomationRule | null; employees: AutomationEmployee[]; roles: AutomationRole[]; stages: PipelineStageView[];
   emailTemplates: { id: string; name: string }[];
+  appointmentTypes: AppointmentTypeDefinition[];
   onOpenChange: (open: boolean) => void; onSave: (values: AutomationRuleValues) => Promise<void> };
 
 export const AUTOMATION_EVENTS: { value: AutomationTriggerEvent; label: string }[] = [
@@ -23,7 +23,7 @@ export const AUTOMATION_EVENTS: { value: AutomationTriggerEvent; label: string }
   { value: "lead_untouched_daily", label: "Lead has been untouched for 24 hours" },
 ];
 
-export default function AutomationRuleDialog({ open, rule, employees, roles, stages, emailTemplates, onOpenChange, onSave }: Props) {
+export default function AutomationRuleDialog({ open, rule, employees, roles, stages, emailTemplates, appointmentTypes, onOpenChange, onSave }: Props) {
   const [name, setName] = useState(rule?.name ?? "");
   const [triggerEvent, setTriggerEvent] = useState<AutomationTriggerEvent>(rule?.trigger_event ?? "job_status_changed");
   const [triggerValue, setTriggerValue] = useState(rule?.trigger_value ?? stages[0]?.slug ?? "new_lead");
@@ -54,9 +54,9 @@ export default function AutomationRuleDialog({ open, rule, employees, roles, sta
   const [emailTemplateId, setEmailTemplateId] = useState(rule?.email_template_id ?? "");
   const [saving, setSaving] = useState(false); const [error, setError] = useState("");
 
-  const valueOptions = getTriggerValues(triggerEvent, stages);
+  const valueOptions = getTriggerValues(triggerEvent, stages, appointmentTypes);
   function changeEvent(next: AutomationTriggerEvent) {
-    setTriggerEvent(next); setTriggerValue(getTriggerValues(next, stages)[0]?.value ?? "");
+    setTriggerEvent(next); setTriggerValue(getTriggerValues(next, stages, appointmentTypes)[0]?.value ?? "");
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -97,9 +97,9 @@ export default function AutomationRuleDialog({ open, rule, employees, roles, sta
   </form></DialogContent></Dialog>;
 }
 
-function getTriggerValues(event: AutomationTriggerEvent, stages: PipelineStageView[]) {
+function getTriggerValues(event: AutomationTriggerEvent, stages: PipelineStageView[], appointmentTypes: AppointmentTypeDefinition[]) {
   if (event === "job_status_changed") return stages.map((stage) => ({ value: stage.slug, label: stage.label }));
-  if (event === "appointment_scheduled" || event === "appointment_completed") return APPOINTMENT_TYPES.map((value) => ({ value, label: formatAppointmentType(value) }));
+  if (event === "appointment_scheduled" || event === "appointment_completed") return appointmentTypes.map((type) => ({ value: type.key, label: type.name }));
   return [];
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="grid gap-2 text-sm font-medium text-gray-800"><span>{label}</span>{children}</label>; }

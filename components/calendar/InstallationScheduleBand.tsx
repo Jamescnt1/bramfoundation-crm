@@ -106,17 +106,17 @@ export default function InstallationScheduleBand({
   }).length;
 
   return (
-    <section className="bg-emerald-50/40">
-      <div className="flex items-center justify-between border-b border-emerald-200 px-3 py-2">
+    <section className="bg-slate-50">
+      <div className="flex items-center justify-between border-b border-slate-300 px-3 py-2">
         <div>
-          <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-950">
+          <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-900">
             Installation schedule
           </h3>
-          <p className="mt-0.5 text-[11px] text-emerald-800">
+          <p className="mt-0.5 text-[11px] text-slate-600">
             Multi-day installation work
           </p>
         </div>
-        <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-200">
+        <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-blue-800 ring-1 ring-blue-200">
           {visibleInstallCount} {visibleInstallCount === 1 ? "install" : "installs"}
         </span>
       </div>
@@ -124,13 +124,15 @@ export default function InstallationScheduleBand({
       <div className="overflow-x-auto">
         <div style={{ minWidth: `${Math.max(720, days.length * 96)}px` }}>
           <div
-            className="grid divide-x divide-emerald-100 border-b border-emerald-200 bg-white/60"
+            className="grid divide-x divide-slate-200 border-b border-slate-300 bg-white/70"
             style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
           >
             {days.map((day) => (
               <div
                 key={formatDateKey(day)}
-                className="px-2 py-2 text-center text-[10px] font-semibold text-emerald-900/70"
+                className={`px-2 py-2 text-center text-[10px] font-semibold text-slate-600 ${
+                  day.getDay() === 0 || day.getDay() === 6 ? "bg-slate-200/80" : ""
+                }`}
               >
                 {new Intl.DateTimeFormat("en-US", {
                   weekday: "short",
@@ -142,7 +144,7 @@ export default function InstallationScheduleBand({
           </div>
 
           <div
-            className="grid gap-y-1.5 bg-[linear-gradient(to_right,rgba(16,185,129,0.12)_1px,transparent_1px)] px-1 py-2"
+            className="grid gap-y-1.5 bg-[linear-gradient(to_right,rgba(100,116,139,0.18)_1px,transparent_1px)] px-1 py-2"
             style={{
               backgroundSize: `${100 / Math.max(days.length, 1)}% 100%`,
               gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
@@ -194,7 +196,7 @@ export default function InstallationScheduleBand({
                 </div>
               ))
             ) : (
-              <p className="col-span-full self-center px-3 text-xs text-emerald-800/70">
+              <p className="col-span-full self-center px-3 text-xs text-slate-600">
                 No installations scheduled in this range.
               </p>
             )}

@@ -7,6 +7,10 @@ import { getJobs, type Job } from "@/lib/services/jobs";
 import { getActiveInstallerCrews, type InstallerCrew } from "@/lib/services/installer-crews";
 import type { CalendarView } from "@/components/calendar/types";
 import type { CalendarMode } from "@/components/calendar/CalendarModeTabs";
+import {
+  getAppointmentTypes,
+  type AppointmentTypeDefinition,
+} from "@/lib/services/appointment-types";
 
 export const dynamic = "force-dynamic";
 
@@ -39,23 +43,25 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   let employees: Employee[] = [];
   let jobs: Job[] = [];
   let installerCrews: InstallerCrew[] = [];
+  let appointmentTypes: AppointmentTypeDefinition[] = [];
   let errorMessage = "";
 
   try {
-    [appointments, employees, jobs, installerCrews] = await Promise.all([
+    [appointments, employees, jobs, installerCrews, appointmentTypes] = await Promise.all([
       getAppointmentsForCalendar(),
       getActiveEmployees(),
       getJobs(),
       getActiveInstallerCrews(),
+      getAppointmentTypes(),
     ]);
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Unable to load calendar.";
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 p-3 sm:p-5 md:p-8">
+    <main className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-5">
       <div className="mx-auto max-w-7xl">
-        <header><h1 className="text-2xl font-bold sm:text-3xl">Calendar</h1><p className="mt-1 text-sm text-gray-600 sm:mt-2 sm:text-base">Appointment Scheduler</p></header>
+        <header><h1 className="text-2xl font-bold sm:text-3xl">Calendar</h1><p className="mt-1 text-sm text-gray-600">Appointment Scheduler</p></header>
         {errorMessage ? (
           <div className="mt-6 rounded-lg bg-red-100 p-4 text-red-700">{errorMessage}</div>
         ) : (
@@ -71,6 +77,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
             initialDefaultView={currentEmployee.default_calendar_view}
             rememberLastView={currentEmployee.remember_last_calendar_view}
             currentEmployeeId={currentEmployee.id}
+            appointmentTypes={appointmentTypes}
           />
         )}
       </div>

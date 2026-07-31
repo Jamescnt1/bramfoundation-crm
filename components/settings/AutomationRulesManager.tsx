@@ -18,6 +18,7 @@ import {
   updateAutomationRuleAction,
 } from "@/app/settings/automation-rules/actions";
 import type { PipelineStageView } from "@/components/pipeline/constants";
+import type { AppointmentTypeDefinition } from "@/lib/services/appointment-types";
 
 type AutomationRulesManagerProps = {
   initialRules: AutomationRule[];
@@ -25,6 +26,7 @@ type AutomationRulesManagerProps = {
   roles: AutomationRole[];
   stages: PipelineStageView[];
   emailTemplates: { id: string; name: string }[];
+  appointmentTypes: AppointmentTypeDefinition[];
 };
 
 export default function AutomationRulesManager({
@@ -33,6 +35,7 @@ export default function AutomationRulesManager({
   roles,
   stages,
   emailTemplates,
+  appointmentTypes,
 }: AutomationRulesManagerProps) {
   const [rules, setRules] = useState(initialRules);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -258,7 +261,7 @@ export default function AutomationRulesManager({
       </section>
 
       {dialogOpen ? (
-        <AutomationRuleDialog
+      <AutomationRuleDialog
           key={editingRule?.id ?? "new-rule"}
           open
           rule={editingRule}
@@ -266,6 +269,7 @@ export default function AutomationRulesManager({
           roles={roles}
           stages={stages}
           emailTemplates={emailTemplates}
+          appointmentTypes={appointmentTypes}
           onOpenChange={setDialogOpen}
           onSave={saveRule}
         />

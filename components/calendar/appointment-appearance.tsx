@@ -12,9 +12,9 @@ import {
 import type { AppointmentType } from "@/components/calendar/constants";
 
 export const FALLBACK_EMPLOYEE_COLOR = "#475569";
-export const FALLBACK_INSTALLER_COLOR = "#047857";
+export const FALLBACK_INSTALLER_COLOR = "#475569";
 
-const APPOINTMENT_ICONS = {
+const APPOINTMENT_ICONS: Record<string, typeof CalendarClock> = {
   appointment: CalendarClock,
   measure: Ruler,
   installation: Hammer,
@@ -24,7 +24,7 @@ const APPOINTMENT_ICONS = {
   customer_meeting: Handshake,
   follow_up: MessageCircleMore,
   other: CircleEllipsis,
-} satisfies Record<AppointmentType, typeof CalendarClock>;
+};
 
 export function AppointmentTypeIcon({
   type,
@@ -33,7 +33,7 @@ export function AppointmentTypeIcon({
   type: AppointmentType | null;
   className?: string;
 }) {
-  const Icon = type ? APPOINTMENT_ICONS[type] : CalendarClock;
+  const Icon = type ? APPOINTMENT_ICONS[type] ?? CircleEllipsis : CalendarClock;
   return <Icon aria-hidden="true" className={className} />;
 }
 

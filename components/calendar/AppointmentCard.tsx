@@ -43,7 +43,10 @@ export default function AppointmentCard({
     customerName: appointment.job?.customer?.full_name,
     jobName: appointment.job?.customer_name,
   });
-  const typeLabel = formatAppointmentType(appointment.appointment_type);
+  const typeLabel = formatAppointmentType(
+    appointment.appointment_type,
+    appointment.appointment_type_record?.name,
+  );
   const customerName = appointment.job?.customer?.full_name?.trim();
   const jobName = appointment.job?.customer_name?.trim();
   const badgeLabel =

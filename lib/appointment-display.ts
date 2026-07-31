@@ -2,16 +2,19 @@ import type { AppointmentType } from "@/components/calendar/constants";
 
 export type AppointmentDisplayValues = {
   appointmentType?: AppointmentType | null;
+  appointmentTypeLabel?: string | null;
   customerName?: string | null;
   jobName?: string | null;
 };
 
 export function formatAppointmentType(
   type: AppointmentType | null | undefined,
+  configuredLabel?: string | null,
 ): string {
+  if (configuredLabel?.trim()) return configuredLabel.trim();
   if (!type) return "Appointment";
 
-  const labels: Record<AppointmentType, string> = {
+  const labels: Record<string, string> = {
     appointment: "Customer Meeting",
     measure: "Floor Measure",
     installation: "Install",
@@ -23,7 +26,11 @@ export function formatAppointmentType(
     other: "Other",
   };
 
-  return labels[type];
+  return labels[type] ?? type
+    .split("_")
+    .filter(Boolean)
+    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 /**
@@ -33,10 +40,11 @@ export function formatAppointmentType(
  */
 export function formatAppointmentDisplayName({
   appointmentType,
+  appointmentTypeLabel,
   customerName,
   jobName,
 }: AppointmentDisplayValues): string {
-  const type = formatAppointmentType(appointmentType);
+  const type = formatAppointmentType(appointmentType, appointmentTypeLabel);
   const customer = customerName?.trim();
   const job = jobName?.trim();
 

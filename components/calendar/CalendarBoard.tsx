@@ -28,10 +28,7 @@ import {
   startOfMonth,
   startOfWeek,
 } from "@/components/calendar/calendar-utils";
-import {
-  APPOINTMENT_TYPES,
-  type AppointmentType,
-} from "@/components/calendar/constants";
+import type { AppointmentType } from "@/components/calendar/constants";
 import type { CalendarAppointment, CalendarView } from "@/components/calendar/types";
 import { completeAppointment } from "@/lib/services/appointments";
 import type { Employee } from "@/lib/services/employees";
@@ -41,6 +38,7 @@ import {
   rememberCalendarViewAction,
   updateCalendarPreferencesAction,
 } from "@/app/settings/calendar/actions";
+import type { AppointmentTypeDefinition } from "@/lib/services/appointment-types";
 
 type CalendarBoardProps = {
   initialAppointments?: CalendarAppointment[];
@@ -54,6 +52,7 @@ type CalendarBoardProps = {
   initialDefaultView?: Exclude<CalendarView, "list">;
   rememberLastView?: boolean;
   currentEmployeeId: string;
+  appointmentTypes: AppointmentTypeDefinition[];
 };
 
 function getHeading(view: CalendarView, date: Date) {
@@ -88,6 +87,7 @@ export default function CalendarBoard({
   initialDefaultView = "month",
   rememberLastView = false,
   currentEmployeeId,
+  appointmentTypes,
 }: CalendarBoardProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -155,7 +155,7 @@ export default function CalendarBoard({
             : [],
           appointmentTypes: Array.isArray(parsed.appointmentTypes)
             ? parsed.appointmentTypes.filter((type) =>
-                APPOINTMENT_TYPES.includes(type),
+                appointmentTypes.some((definition) => definition.key === type),
               )
             : [],
           status: parsed.status ?? "",
@@ -167,7 +167,7 @@ export default function CalendarBoard({
     } catch {
       window.localStorage.removeItem(filterStorageKey);
     }
-  }, [employees, filterStorageKey]);
+  }, [appointmentTypes, employees, filterStorageKey]);
 
   useEffect(() => {
     if (!rememberView) return;
@@ -336,7 +336,7 @@ export default function CalendarBoard({
 
   return (
     <>
-      <div className="mt-4 grid gap-4 sm:mt-8 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+      <div className="mt-3 grid gap-4 sm:mt-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
         <section className="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           <CalendarModeTabs value={mode} onChange={handleModeChange} />
 
@@ -484,6 +484,7 @@ export default function CalendarBoard({
         installerCrews={installerCrews}
         jobs={jobs}
         defaultAppointmentType={defaultAppointmentType}
+        appointmentTypes={appointmentTypes}
       />
 
       {viewOptionsOpen ? (
@@ -497,6 +498,7 @@ export default function CalendarBoard({
           }}
           employees={employees}
           jobs={jobs}
+          appointmentTypes={appointmentTypes}
           onOpenChange={setViewOptionsOpen}
           onApply={handleApplyViewOptions}
         />

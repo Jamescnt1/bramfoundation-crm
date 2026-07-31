@@ -2,10 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  APPOINTMENT_TYPES,
-  type AppointmentType,
-} from "@/components/calendar/constants";
+import type { AppointmentType } from "@/components/calendar/constants";
 import type { CalendarAppointment } from "@/components/calendar/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +23,7 @@ import type { Job } from "@/lib/services/jobs";
 import type { InstallerCrew } from "@/lib/services/installer-crews";
 import { formatJobDisplayName } from "@/lib/job-display";
 import { formatAppointmentType } from "@/lib/appointment-display";
+import type { AppointmentTypeDefinition } from "@/lib/services/appointment-types";
 
 type AppointmentDialogProps = {
   open: boolean;
@@ -37,6 +35,7 @@ type AppointmentDialogProps = {
   jobs?: Job[];
   defaultJobId?: string | null;
   defaultAppointmentType?: AppointmentType;
+  appointmentTypes: AppointmentTypeDefinition[];
 };
 
 type LocationMode = "job" | "custom";
@@ -64,6 +63,16 @@ function createAppointmentDate(date: string, time: string) {
   return new Date(`${date}T${time}:00`);
 }
 
+function oneHourAfter(date: string, time: string) {
+  const start = createAppointmentDate(date, time);
+  if (Number.isNaN(start.getTime())) return null;
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  return {
+    date: formatDateInput(end),
+    time: formatTimeInput(end),
+  };
+}
+
 function formatContactName(contact: Job["company_contact"]) {
   if (!contact) return "Not selected";
   return `${contact.first_name} ${contact.last_name}`.trim();
@@ -79,6 +88,7 @@ export default function AppointmentDialog({
   jobs = [],
   defaultJobId = null,
   defaultAppointmentType = "appointment",
+  appointmentTypes,
 }: AppointmentDialogProps) {
   const router = useRouter();
   const isEditing = Boolean(appointment);
@@ -97,6 +107,7 @@ export default function AppointmentDialog({
   const [installationScope, setInstallationScope] = useState("");
   const [jobId, setJobId] = useState("");
   const [customTitle, setCustomTitle] = useState("");
+  const [endTimeManuallyEdited, setEndTimeManuallyEdited] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(
@@ -137,13 +148,14 @@ export default function AppointmentDialog({
       setInstallationScope(appointment.installation_scope ?? "");
       setJobId(appointment.job_id ?? "");
       setCustomTitle(appointment.job_id ? "" : appointment.title ?? "");
+      setEndTimeManuallyEdited(true);
     } else {
       const initialJob = jobs.find((job) => job.id === defaultJobId);
       setAppointmentType(defaultAppointmentType);
       setDate(formatDateInput(defaultDate ?? new Date()));
-      setEndDate(formatDateInput(defaultDate ?? new Date()));
       const initialStart = defaultDate ?? new Date();
       const initialEnd = new Date(initialStart.getTime() + 60 * 60 * 1000);
+      setEndDate(formatDateInput(initialEnd));
       setStartTime(formatTimeInput(initialStart));
       setEndTime(formatTimeInput(initialEnd));
       setLocation(initialJob?.address ?? "");
@@ -154,6 +166,7 @@ export default function AppointmentDialog({
       setInstallationScope("");
       setJobId(defaultJobId ?? "");
       setCustomTitle("");
+      setEndTimeManuallyEdited(false);
     }
 
     setErrorMessage(null);
@@ -190,13 +203,38 @@ export default function AppointmentDialog({
     }
   }
 
+  function handleStartTimeChange(nextStartTime: string) {
+    setStartTime(nextStartTime);
+    if (endTimeManuallyEdited) return;
+    const nextEnd = oneHourAfter(date, nextStartTime);
+    if (!nextEnd) return;
+    setEndDate(nextEnd.date);
+    setEndTime(nextEnd.time);
+  }
+
+  const selectableAppointmentTypes = appointment?.appointment_type &&
+    !appointmentTypes.some((type) => type.key === appointment.appointment_type)
+    ? [
+        ...appointmentTypes,
+        {
+          key: appointment.appointment_type,
+          name: formatAppointmentType(
+            appointment.appointment_type,
+            appointment.appointment_type_record?.name,
+          ),
+          active: false,
+          sort_order: Number.MAX_SAFE_INTEGER,
+        },
+      ]
+    : appointmentTypes;
+
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
     setErrorMessage(null);
 
-    if (!date || !startTime || !endTime || (appointmentType === "installation" && !endDate)) {
+    if (!date || !endDate || !startTime || !endTime) {
       setErrorMessage(
         "Please select the appointment date and times.",
       );
@@ -204,10 +242,7 @@ export default function AppointmentDialog({
     }
 
     const startsAt = createAppointmentDate(date, startTime);
-    const endsAt = createAppointmentDate(
-      appointmentType === "installation" ? endDate : date,
-      endTime,
-    );
+    const endsAt = createAppointmentDate(endDate, endTime);
 
     if (
       Number.isNaN(startsAt.getTime()) ||
@@ -307,9 +342,10 @@ export default function AppointmentDialog({
                 }
                 className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-base text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200 sm:h-9 sm:text-sm"
               >
-                {APPOINTMENT_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {formatAppointmentType(type)}
+                {selectableAppointmentTypes.map((type) => (
+                  <option key={type.key} value={type.key}>
+                    {type.name}
+                    {!type.active ? " (Retired)" : ""}
                   </option>
                 ))}
               </select>
@@ -389,7 +425,22 @@ export default function AppointmentDialog({
                   type="date"
                   value={date}
                   onChange={(event) =>
-                    setDate(event.target.value)
+                    {
+                      const nextDate = event.target.value;
+                      setDate(nextDate);
+                      if (
+                        endTimeManuallyEdited &&
+                        appointmentType !== "installation"
+                      ) {
+                        setEndDate(nextDate);
+                      } else if (!endTimeManuallyEdited) {
+                        const nextEnd = oneHourAfter(nextDate, startTime);
+                        if (nextEnd) {
+                          setEndDate(nextEnd.date);
+                          setEndTime(nextEnd.time);
+                        }
+                      }
+                    }
                   }
                   required
                 />
@@ -429,7 +480,10 @@ export default function AppointmentDialog({
                     type="date"
                     value={endDate}
                     min={date}
-                    onChange={(event) => setEndDate(event.target.value)}
+                    onChange={(event) => {
+                      setEndDate(event.target.value);
+                      setEndTimeManuallyEdited(true);
+                    }}
                     required
                   />
                 </div>
@@ -460,9 +514,7 @@ export default function AppointmentDialog({
                   id="appointment-start-time"
                   type="time"
                   value={startTime}
-                  onChange={(event) =>
-                    setStartTime(event.target.value)
-                  }
+                  onChange={(event) => handleStartTimeChange(event.target.value)}
                   required
                 />
               </div>
@@ -479,9 +531,10 @@ export default function AppointmentDialog({
                   id="appointment-end-time"
                   type="time"
                   value={endTime}
-                  onChange={(event) =>
-                    setEndTime(event.target.value)
-                  }
+                  onChange={(event) => {
+                    setEndTime(event.target.value);
+                    setEndTimeManuallyEdited(true);
+                  }}
                   required
                 />
               </div>

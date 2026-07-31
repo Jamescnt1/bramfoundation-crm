@@ -19,6 +19,7 @@ import type { Customer } from "@/components/customers/types";
 import type { Employee } from "@/lib/services/employees";
 import type { Job, JobActivity, JobContactSummary } from "@/lib/services/jobs";
 import type { InstallerCrew } from "@/lib/services/installer-crews";
+import type { AppointmentTypeDefinition } from "@/lib/services/appointment-types";
 import type { TaskType, UniversalTask } from "@/components/tasks/types";
 import { formatJobDisplayName } from "@/lib/job-display";
 import InternalMessagePanel from "@/components/messaging/InternalMessagePanel";
@@ -41,6 +42,7 @@ type Props = {
   assignedEmployee: Employee | null;
   employees: Employee[];
   installerCrews: InstallerCrew[];
+  appointmentTypes: AppointmentTypeDefinition[];
   activities: JobActivity[];
   tasks: UniversalTask[];
   taskTypes: TaskType[];
@@ -90,7 +92,7 @@ const baseNav = [
   ["communications", "Communications"],
 ] as const;
 
-export default function JobWorkspace({ activeTab, job, customer, assignedEmployee, employees, installerCrews, activities, tasks, taskTypes, appointments, activityError, taskError, canChangeStatus, stages, attachments, attachmentError, canManageAttachments, canArchiveAttachments, conversation, currentEmployee, customerEmails, emailTemplates, customerEmailError, canSendCustomerEmail, layoutsEnabled, layouts, layoutError, canManageLayouts, canArchiveLayouts, notes, notesError, canViewNotes, canCreateNotes, canEditNotes, canDeleteNotes }: Props) {
+export default function JobWorkspace({ activeTab, job, customer, assignedEmployee, employees, installerCrews, appointmentTypes, activities, tasks, taskTypes, appointments, activityError, taskError, canChangeStatus, stages, attachments, attachmentError, canManageAttachments, canArchiveAttachments, conversation, currentEmployee, customerEmails, emailTemplates, customerEmailError, canSendCustomerEmail, layoutsEnabled, layouts, layoutError, canManageLayouts, canArchiveLayouts, notes, notesError, canViewNotes, canCreateNotes, canEditNotes, canDeleteNotes }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -510,7 +512,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
         ) : null}
       </div>
 
-      <AppointmentDialog open={appointmentOpen} onOpenChange={setAppointmentOpen} defaultDate={new Date()} defaultJobId={job.id} defaultAppointmentType={appointmentType} employees={employees} installerCrews={installerCrews} jobs={[job]} />
+      <AppointmentDialog open={appointmentOpen} onOpenChange={setAppointmentOpen} defaultDate={new Date()} defaultJobId={job.id} defaultAppointmentType={appointmentType} employees={employees} installerCrews={installerCrews} jobs={[job]} appointmentTypes={appointmentTypes} />
       {pendingStatus ? (
         <JobRequirementsDialog
           open

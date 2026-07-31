@@ -125,6 +125,14 @@ const settingsGroups: SettingsGroup[] = [
         available: true,
       },
       {
+        title: "Appointment Types",
+        description: "Create, reorder, rename, and retire unified scheduling types.",
+        href: "/settings/appointment-types",
+        icon: CalendarDays,
+        restricted: true,
+        available: true,
+      },
+      {
         title: "Calendar",
         description: "Configure calendar defaults, appointment types, and display options.",
         href: "/settings/calendar",

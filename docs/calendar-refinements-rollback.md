@@ -118,6 +118,148 @@ Interactive browser and device checks require
 Supabase project first. Complete the checklist above in the deployed beta
 environment after the migration is applied.
 
+## Configurable appointment types and calendar density refinement
+
+### Pre-change baseline
+
+- Git commit: `803f80c90f158e6e5fe6137a87815833a00bb418`
+- Commit label: `Add installation crew work order tracking`
+- Recorded: July 30, 2026
+- Unrelated pre-existing working-tree item: `supabase/.temp/`
+
+This refinement replaces the frontend-only appointment-type list with an
+administratively managed table, adds subtle weekend emphasis, aligns calendar
+chrome with Foundation's neutral/blue palette, defaults new appointments to a
+one-hour duration, and reduces desktop calendar page scrolling.
+
+### Planned database change
+
+Migration `202607300003_configurable_appointment_types.sql`:
+
+- Creates `public.appointment_types` with a stable `key`, editable `name`,
+  `active`, and `sort_order`.
+- Seeds every appointment type supported by the application before adding the
+  relationship.
+- Replaces the fixed appointment-type check constraint with a foreign key from
+  `appointments.appointment_type` to `appointment_types.key`.
+- Preserves historical appointment labels by retiring referenced types instead
+  of deleting them.
+- Adds preparation, audit, indexes, RLS, and administrator policies consistent
+  with the existing Administration configuration tables.
+
+### Planned application areas
+
+- Appointment-type Administration page and shared CRUD service/actions
+- Settings hub scheduling navigation
+- Unified appointment dialog used by Calendar and Job Workspace scheduling
+- Calendar filter options, labels, and appointment icon fallback
+- Month, week, 3-day, and day weekend presentation
+- Desktop month and time-grid density
+- Calendar page and Job Workspace appointment-type loading
+
+### Safe rollback
+
+1. Stop deployment or place the application in maintenance mode.
+2. Revert the application commit containing this refinement and redeploy.
+3. Keep `appointment_types` and its foreign key in place while the prior
+   application is live. The seeded keys remain compatible with the prior
+   frontend constants.
+4. If a complete database rollback is required, first verify that no custom
+   appointment-type keys are referenced:
+
+```sql
+select distinct a.appointment_type
+from public.appointments a
+left join (
+  values
+    ('appointment'),
+    ('measure'),
+    ('installation'),
+    ('follow_up'),
+    ('job_walk'),
+    ('material_selection'),
+    ('builder_meeting'),
+    ('customer_meeting'),
+    ('other')
+) as supported(key) on supported.key = a.appointment_type
+where supported.key is null;
+```
+
+5. If the query returns rows, export or remap those appointments before
+   continuing. Removing the table without remapping custom keys would make the
+   prior application unable to format those records.
+6. After confirming only prior supported keys remain, run:
+
+```sql
+begin;
+
+alter table public.appointments
+  drop constraint if exists appointments_appointment_type_fkey;
+
+alter table public.appointments
+  drop constraint if exists appointments_appointment_type_check;
+
+alter table public.appointments
+  add constraint appointments_appointment_type_check
+  check (
+    appointment_type in (
+      'appointment',
+      'measure',
+      'installation',
+      'follow_up',
+      'job_walk',
+      'material_selection',
+      'builder_meeting',
+      'customer_meeting',
+      'other'
+    )
+  );
+
+drop table if exists public.appointment_types;
+
+commit;
+```
+
+### Verification checklist
+
+- Administrators can create, rename, reorder, retire, reactivate, and remove an
+  unused appointment type.
+- A referenced type is retired instead of deleted and historical appointments
+  retain its label.
+- Active types appear in every unified Schedule form entry point.
+- Editing a historical appointment keeps its retired type selectable.
+- Weekend shading is visible without making Saturday or Sunday look disabled.
+- Month, Week, 3 Day, and Day retain readable employee colors.
+- No calendar chrome uses green except an employee or crew configured with a
+  green color.
+- Changing a new appointment start time keeps the end time one hour later until
+  the end time is manually edited.
+- Manual end-time edits survive subsequent start-time and field changes.
+- A routine desktop workday is visible inside the calendar without page-level
+  scrolling; unusually early or late times remain available by internal scroll.
+- Mobile and iPad dialogs remain scroll-safe.
+- Hover cards, filters, employee colors, and Install Calendar behavior remain
+  intact.
+
+### Verification record
+
+July 30, 2026:
+
+- `npm run lint` completed with no errors. The two pre-existing `next/image`
+  warnings remain in `components/attachments/AttachmentManager.tsx`.
+- `npm run build` completed successfully, including TypeScript validation and
+  route generation for `/settings/appointment-types`.
+- `git diff --check` completed successfully.
+- Source scan confirmed that the hard-coded `APPOINTMENT_TYPES` list has been
+  removed from application code.
+- Source scan confirmed no green or emerald calendar chrome remains. The color
+  contrast calculation still refers to the RGB green channel, which is
+  mathematical logic rather than a UI color.
+- Database-backed CRUD and signed-in browser interaction checks require
+  `202607300003_configurable_appointment_types.sql` to be applied to the
+  connected Supabase project. Complete the checklist above in the deployed beta
+  environment before production sign-off.
+
 ## View Options refactor
 
 ### Pre-change baseline

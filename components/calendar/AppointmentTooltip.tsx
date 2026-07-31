@@ -262,7 +262,10 @@ export default function AppointmentTooltip({
 
                 <dt className="font-medium text-gray-500">Type</dt>
                 <dd className="text-gray-900">
-                  {formatAppointmentType(appointment.appointment_type)}
+                  {formatAppointmentType(
+                    appointment.appointment_type,
+                    appointment.appointment_type_record?.name,
+                  )}
                 </dd>
 
                 <dt className="font-medium text-gray-500">Status</dt>

@@ -31,6 +31,7 @@ export default function CalendarDay({
   );
 
   const isToday = isSameDay(date, today);
+  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
   const visibleAppointments = appointments.slice(
     0,
@@ -56,8 +57,12 @@ export default function CalendarDay({
       }}
       className={`min-h-40 cursor-pointer border-b border-r border-gray-200 p-2.5 text-left transition hover:bg-gray-50 ${
         belongsToCurrentMonth
-          ? "bg-white"
-          : "bg-gray-50"
+          ? isWeekend
+            ? "bg-slate-200/70"
+            : "bg-white"
+          : isWeekend
+            ? "bg-slate-100"
+            : "bg-gray-50"
       } ${
         selected
           ? "ring-2 ring-inset ring-black"

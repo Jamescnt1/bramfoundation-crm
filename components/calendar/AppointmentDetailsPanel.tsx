@@ -76,7 +76,7 @@ export default function AppointmentDetailsPanel({
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Event details</p>
             <h2 className="mt-2 text-xl font-semibold text-gray-900">{formatAppointmentDisplayName({ appointmentType: appointment.appointment_type, customerName: appointment.job?.customer?.full_name, jobName: appointment.job?.customer_name })}</h2>
             <div className="mt-3 flex flex-wrap gap-2">
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">{formatAppointmentType(appointment.appointment_type)}</span>
+              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">{formatAppointmentType(appointment.appointment_type, appointment.appointment_type_record?.name)}</span>
               <span className="rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600">{label(appointment.status)}</span>
             </div>
           </div>

@@ -22,7 +22,7 @@ type PositionedAppointment = {
   laneCount: number;
 };
 
-const HOUR_HEIGHT = 64;
+const HOUR_HEIGHT = 48;
 const DAY_HEIGHT = HOUR_HEIGHT * 24;
 const MORNING_SCROLL_HOUR = 7;
 const hours = Array.from({ length: 24 }, (_, hour) => hour);
@@ -128,7 +128,7 @@ export default function CalendarScheduleView({
   return (
     <div
       ref={scrollRef}
-      className="max-h-[72dvh] overflow-auto bg-white"
+      className="max-h-[calc(100dvh-15.5rem)] min-h-[28rem] overflow-auto bg-white xl:max-h-[calc(100dvh-13.5rem)]"
       aria-label="Appointment time grid"
     >
       <div
@@ -152,9 +152,9 @@ export default function CalendarScheduleView({
               onClick={() => onSelectDate(day)}
               className={`border-r border-gray-200 px-3 py-2 text-center hover:bg-gray-50 ${
                 isSameDay(day, today)
-                  ? "bg-blue-50"
+                  ? "bg-blue-100"
                   : day.getDay() === 0 || day.getDay() === 6
-                    ? "bg-gray-100"
+                    ? "bg-slate-200/80"
                     : "bg-white"
               }`}
             >
@@ -194,8 +194,8 @@ export default function CalendarScheduleView({
                 key={key}
                 className={`relative border-r border-gray-200 ${
                   day.getDay() === 0 || day.getDay() === 6
-                    ? "bg-[repeating-linear-gradient(to_bottom,#f3f4f6_0,#f3f4f6_31px,#e5e7eb_31px,#e5e7eb_32px,#f3f4f6_32px,#f3f4f6_63px,#c9cdd1_63px,#c9cdd1_64px)]"
-                    : "bg-[repeating-linear-gradient(to_bottom,#ffffff_0,#ffffff_31px,#f3f4f6_31px,#f3f4f6_32px,#ffffff_32px,#ffffff_63px,#d1d5db_63px,#d1d5db_64px)]"
+                    ? "bg-[repeating-linear-gradient(to_bottom,#e2e8f0_0,#e2e8f0_23px,#cbd5e1_23px,#cbd5e1_24px,#e2e8f0_24px,#e2e8f0_47px,#94a3b8_47px,#94a3b8_48px)]"
+                    : "bg-[repeating-linear-gradient(to_bottom,#ffffff_0,#ffffff_23px,#f3f4f6_23px,#f3f4f6_24px,#ffffff_24px,#ffffff_47px,#d1d5db_47px,#d1d5db_48px)]"
                 }`}
                 style={{ height: DAY_HEIGHT }}
                 onDoubleClick={(event) => {

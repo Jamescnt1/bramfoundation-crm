@@ -22,6 +22,7 @@ type Props = {
   onReorder: (items: ConfigurableItem[]) => Promise<void>;
   onRemove: (id: string) => Promise<"deleted" | "retired">;
   showColor?: boolean;
+  protectedIds?: string[];
 };
 
 export default function ConfigurableListManager({
@@ -33,6 +34,7 @@ export default function ConfigurableListManager({
   onReorder,
   onRemove,
   showColor = false,
+  protectedIds = [],
 }: Props) {
   const [items, setItems] = useState(initialItems);
   const [newName, setNewName] = useState("");
@@ -150,7 +152,9 @@ export default function ConfigurableListManager({
       {message ? <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">{message}</div> : null}
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        {items.map((item, index) => (
+        {items.map((item, index) => {
+          const isProtected = protectedIds.includes(item.id);
+          return (
           <div key={item.id} className="flex flex-col gap-3 border-b border-gray-100 p-4 last:border-0 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">
               {editingId === item.id ? (
@@ -183,7 +187,13 @@ export default function ConfigurableListManager({
                     ) : null}
                     {item.name}
                   </p>
-                  <p className="mt-1 text-xs text-gray-500">{item.active ? usageDescription : "Retired — preserved on historical records and hidden from new forms."}</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {isProtected
+                      ? `${usageDescription} This system type must remain active.`
+                      : item.active
+                        ? usageDescription
+                        : "Retired — preserved on historical records and hidden from new forms."}
+                  </p>
                 </>
               )}
             </div>
@@ -192,11 +202,12 @@ export default function ConfigurableListManager({
               <button type="button" onClick={() => move(index, -1)} disabled={busy || index === 0} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30" aria-label={`Move ${item.name} up`}><ArrowUp className="h-4 w-4" /></button>
               <button type="button" onClick={() => move(index, 1)} disabled={busy || index === items.length - 1} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30" aria-label={`Move ${item.name} down`}><ArrowDown className="h-4 w-4" /></button>
               <button type="button" onClick={() => { setEditingId(item.id); setEditingName(item.name); setEditingColor(item.color ?? "#047857"); }} disabled={busy} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100" aria-label={`Edit ${item.name}`}><Pencil className="h-4 w-4" /></button>
-              <button type="button" onClick={() => remove(item)} disabled={busy} className="rounded-lg p-2 text-red-600 hover:bg-red-50" aria-label={`Delete or retire ${item.name}`}><Trash2 className="h-4 w-4" /></button>
-              <button type="button" onClick={() => toggle(item)} disabled={busy} className={`ml-2 rounded-full px-3 py-1 text-xs font-semibold ${item.active ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-600"}`}>{item.active ? "Active" : "Retired"}</button>
+              <button type="button" onClick={() => remove(item)} disabled={busy || isProtected} className="rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30" aria-label={`Delete or retire ${item.name}`}><Trash2 className="h-4 w-4" /></button>
+              <button type="button" onClick={() => toggle(item)} disabled={busy || isProtected} className={`ml-2 rounded-full px-3 py-1 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${item.active ? "bg-blue-50 text-blue-700" : "bg-gray-100 text-gray-600"}`}>{item.active ? "Active" : "Retired"}</button>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

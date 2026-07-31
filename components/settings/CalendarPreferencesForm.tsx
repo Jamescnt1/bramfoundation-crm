@@ -95,7 +95,7 @@ export default function CalendarPreferencesForm({
         </span>
       </label>
 
-      {message ? <p role="status" className="mt-4 text-sm text-green-700">{message}</p> : null}
+      {message ? <p role="status" className="mt-4 text-sm text-blue-700">{message}</p> : null}
       {error ? <p role="alert" className="mt-4 text-sm text-red-700">{error}</p> : null}
 
       <div className="mt-5 flex justify-end">

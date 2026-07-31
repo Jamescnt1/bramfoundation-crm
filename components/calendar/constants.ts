@@ -1,17 +1,4 @@
-export const APPOINTMENT_TYPES = [
-  "measure",
-  "installation",
-  "job_walk",
-  "material_selection",
-  "builder_meeting",
-  "customer_meeting",
-  "appointment",
-  "follow_up",
-  "other",
-] as const;
-
-export type AppointmentType =
-  (typeof APPOINTMENT_TYPES)[number];
+export type AppointmentType = string;
 
 export const APPOINTMENT_STATUSES = [
   "scheduled",

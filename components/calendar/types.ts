@@ -12,6 +12,11 @@ export type CalendarAppointment = {
   title: string | null;
 
   appointment_type: AppointmentType | null;
+  appointment_type_record?: {
+    key: string;
+    name: string;
+    active: boolean;
+  } | null;
 
   starts_at: string;
   ends_at: string | null;

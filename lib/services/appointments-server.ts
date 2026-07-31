@@ -9,6 +9,11 @@ export async function getAppointmentsForCalendar(): Promise<CalendarAppointment[
     .from("appointments")
     .select(`
       *,
+      appointment_type_record:appointment_types!appointments_appointment_type_fkey (
+        key,
+        name,
+        active
+      ),
       assigned_employee:employees!appointments_assigned_employee_id_fkey (
         id,
         name,

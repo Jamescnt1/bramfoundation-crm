@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   APPOINTMENT_STATUSES,
-  APPOINTMENT_TYPES,
   type AppointmentStatus,
   type AppointmentType,
 } from "@/components/calendar/constants";
@@ -23,8 +22,8 @@ import {
 import type { CalendarView } from "@/components/calendar/types";
 import type { Employee } from "@/lib/services/employees";
 import type { Job } from "@/lib/services/jobs";
-import { formatAppointmentType } from "@/lib/appointment-display";
 import { formatJobDisplayName } from "@/lib/job-display";
+import type { AppointmentTypeDefinition } from "@/lib/services/appointment-types";
 
 export type CalendarFilterValues = {
   employeeIds: string[];
@@ -46,6 +45,7 @@ type Props = {
   value: CalendarViewOptionsValue;
   employees: Employee[];
   jobs: Job[];
+  appointmentTypes: AppointmentTypeDefinition[];
   onOpenChange: (open: boolean) => void;
   onApply: (value: CalendarViewOptionsValue) => Promise<void>;
 };
@@ -61,10 +61,6 @@ const appointmentViews: Array<{ value: CalendarView; label: string }> = [
 const defaultViews = appointmentViews.filter(
   (item): item is { value: Exclude<CalendarView, "list">; label: string } =>
     item.value !== "list",
-);
-
-const availableAppointmentTypes = APPOINTMENT_TYPES.filter(
-  (type) => type !== "installation",
 );
 
 const formatStatus = (value: string) =>
@@ -88,6 +84,7 @@ export default function CalendarViewOptions({
   value,
   employees,
   jobs,
+  appointmentTypes,
   onOpenChange,
   onApply,
 }: Props) {
@@ -250,21 +247,21 @@ export default function CalendarViewOptions({
                 </button>
               </div>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {availableAppointmentTypes.map((type) => {
-                  const checked = draft.filters.appointmentTypes.includes(type);
+                {appointmentTypes.filter((type) => type.key !== "installation").map((type) => {
+                  const checked = draft.filters.appointmentTypes.includes(type.key);
                   return (
                     <label
-                      key={type}
+                      key={type.key}
                       className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 px-3 py-2.5"
                     >
                       <input
                         type="checkbox"
                         checked={checked}
-                        onChange={() => toggleAppointmentType(type)}
+                        onChange={() => toggleAppointmentType(type.key)}
                       />
-                      <AppointmentTypeIcon type={type} className="h-4 w-4 text-gray-500" />
+                      <AppointmentTypeIcon type={type.key} className="h-4 w-4 text-gray-500" />
                       <span className="text-sm font-medium text-gray-800">
-                        {formatAppointmentType(type)}
+                        {type.name}
                       </span>
                     </label>
                   );
@@ -394,13 +391,13 @@ export default function CalendarViewOptions({
                 ))}
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
-                {availableAppointmentTypes.map((type) => (
+                {appointmentTypes.filter((type) => type.key !== "installation").map((type) => (
                   <span
-                    key={type}
+                    key={type.key}
                     className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700"
                   >
-                    <AppointmentTypeIcon type={type} className="h-3.5 w-3.5" />
-                    {formatAppointmentType(type)}
+                    <AppointmentTypeIcon type={type.key} className="h-3.5 w-3.5" />
+                    {type.name}
                   </span>
                 ))}
               </div>

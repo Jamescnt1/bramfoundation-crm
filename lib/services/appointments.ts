@@ -26,8 +26,19 @@ async function generatedAppointmentTitle(
   jobId: string | null,
   appointmentType: AppointmentType,
 ) {
+  const { data: appointmentTypeRecord, error: appointmentTypeError } =
+    await supabase
+      .from("appointment_types")
+      .select("name")
+      .eq("key", appointmentType)
+      .maybeSingle();
+  if (appointmentTypeError) throw new Error(appointmentTypeError.message);
+
   if (!jobId) {
-    return formatAppointmentDisplayName({ appointmentType });
+    return formatAppointmentDisplayName({
+      appointmentType,
+      appointmentTypeLabel: appointmentTypeRecord?.name,
+    });
   }
 
   const { data, error } = await supabase
@@ -47,6 +58,7 @@ async function generatedAppointmentTitle(
 
   return formatAppointmentDisplayName({
     appointmentType,
+    appointmentTypeLabel: appointmentTypeRecord?.name,
     customerName: customerRelation?.full_name,
     jobName: data?.customer_name,
   });
@@ -57,6 +69,11 @@ export async function getAppointmentsByJobId(jobId: string) {
     .from("appointments")
     .select(`
       *,
+      appointment_type_record:appointment_types!appointments_appointment_type_fkey (
+        key,
+        name,
+        active
+      ),
       assigned_employee:employees!appointments_assigned_employee_id_fkey (
         id,
         name,
@@ -143,6 +160,11 @@ export async function completeAppointment(
     .eq("id", appointmentId)
     .select(`
       *,
+      appointment_type_record:appointment_types!appointments_appointment_type_fkey (
+        key,
+        name,
+        active
+      ),
       assigned_employee:employees!appointments_assigned_employee_id_fkey (
         id,
         name,

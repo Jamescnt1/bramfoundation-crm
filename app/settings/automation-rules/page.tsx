@@ -8,12 +8,13 @@ import {
 } from "@/lib/services/task-automation";
 import { getPipelineStages } from "@/lib/services/pipeline-stages";
 import { getEmailTemplates } from "@/lib/services/email-templates";
+import { getAppointmentTypes } from "@/lib/services/appointment-types";
 
 export const dynamic = "force-dynamic";
 
 export default async function AutomationRulesSettingsPage() {
   await requireEmployee();
-  const { rules, employees, roles, stages, emailTemplates, errorMessage } = await loadAutomationSettings();
+  const { rules, employees, roles, stages, emailTemplates, appointmentTypes, errorMessage } = await loadAutomationSettings();
 
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-8">
@@ -28,7 +29,7 @@ export default async function AutomationRulesSettingsPage() {
             Unable to load automation settings: {errorMessage}
           </div>
         ) : (
-          <AutomationRulesManager initialRules={rules} employees={employees} roles={roles} stages={stages} emailTemplates={emailTemplates.map(({ id, name }) => ({ id, name }))} />
+          <AutomationRulesManager initialRules={rules} employees={employees} roles={roles} stages={stages} emailTemplates={emailTemplates.map(({ id, name }) => ({ id, name }))} appointmentTypes={appointmentTypes} />
         )}
       </div>
     </main>
@@ -37,15 +38,16 @@ export default async function AutomationRulesSettingsPage() {
 
 async function loadAutomationSettings() {
   try {
-    const [rules, employees, roles, stages, emailTemplates] = await Promise.all([
+    const [rules, employees, roles, stages, emailTemplates, appointmentTypes] = await Promise.all([
       getAutomationRules(),
       getAutomationEmployees(),
       getAutomationRoles(),
       getPipelineStages(),
       getEmailTemplates(),
+      getAppointmentTypes(),
     ]);
 
-    return { rules, employees, roles, stages, emailTemplates, errorMessage: "" };
+    return { rules, employees, roles, stages, emailTemplates, appointmentTypes, errorMessage: "" };
   } catch (error) {
     return {
       rules: [],
@@ -53,6 +55,7 @@ async function loadAutomationSettings() {
       roles: [],
       stages: [],
       emailTemplates: [],
+      appointmentTypes: [],
       errorMessage:
         error instanceof Error ? error.message : "An unexpected error occurred.",
     };
