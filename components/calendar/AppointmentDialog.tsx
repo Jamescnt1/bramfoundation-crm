@@ -460,7 +460,7 @@ export default function AppointmentDialog({
               </span>
             </label>
 
-            {!allDay ? <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <label
                   htmlFor="appointment-date"
@@ -516,7 +516,7 @@ export default function AppointmentDialog({
                   </select>
                 ) : null}
               </div>
-            </div> : null}
+            </div>
 
             {appointmentType === "installation" ? (
               <div className="grid gap-4 sm:grid-cols-2">
@@ -550,7 +550,7 @@ export default function AppointmentDialog({
               </div>
             ) : null}
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            {!allDay ? <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <label
                   htmlFor="appointment-start-time"
@@ -587,7 +587,7 @@ export default function AppointmentDialog({
                   required
                 />
               </div>
-            </div>
+            </div> : null}
 
             {appointmentType !== "installation" ? <div className="grid gap-2">
               <label

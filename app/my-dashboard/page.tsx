@@ -52,18 +52,24 @@ export default async function MyDashboardPage() {
           <WorkspaceSection title="Upcoming Appointments" href="/calendar">
             {workspace.appointments.length ? (
               <div className="divide-y divide-gray-100">
-                {workspace.appointments.slice(0, 8).map((appointment) => (
-                  <Link key={appointment.id} href={`/calendar?appointment=${appointment.id}&date=${dateKeyInTimeZone(appointment.starts_at, companySettings.timezone)}`} className="block py-2 transition hover:bg-gray-50 sm:px-1">
+                {workspace.appointments.slice(0, 8).map((appointment) => {
+                  const isInstallation = appointment.appointment_type === "installation";
+                  return (
+                  <Link key={appointment.id} href={`/calendar?appointment=${appointment.id}&date=${dateKeyInTimeZone(appointment.starts_at, companySettings.timezone)}`} className={`block border-l-4 py-2 pr-1 pl-3 transition ${isInstallation ? "border-amber-500 bg-amber-50/70 hover:bg-amber-100/70" : "border-transparent hover:bg-gray-50"}`}>
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="truncate font-medium text-gray-900">{formatAppointmentDisplayName({ appointmentType: appointment.appointment_type, customerName: appointment.job?.customer?.full_name, jobName: appointment.job?.customer_name })}</p>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <p className="truncate font-medium text-gray-900">{formatAppointmentDisplayName({ appointmentType: appointment.appointment_type, customerName: appointment.job?.customer?.full_name, jobName: appointment.job?.customer_name })}</p>
+                          {isInstallation ? <span className="shrink-0 rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900">Installation</span> : null}
+                        </div>
                         <p className="mt-0.5 text-xs text-gray-500">{appointment.job?.qfloors_job_number ? `QF# ${appointment.job.qfloors_job_number}` : ""}</p>
                       </div>
                       <time className="shrink-0 text-right text-xs font-medium text-gray-600">{formatAppointmentDateTime(appointment.starts_at, companySettings.timezone)}</time>
                     </div>
                     <p className="mt-1 truncate text-xs text-gray-500">{appointment.location ?? "No location"}</p>
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             ) : <EmptyText text="No appointments assigned in the next 14 days." />}
           </WorkspaceSection>
