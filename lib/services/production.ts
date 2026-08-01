@@ -140,3 +140,43 @@ export async function getProductionSummaries(jobIds: string[]): Promise<Record<s
   }));
   return Object.fromEntries(entries);
 }
+
+export type ProductionScopeOption = {
+  id: string;
+  job_id: string;
+  label: string;
+  abbreviation: string;
+};
+
+export async function getProductionScopeOptions(jobIds: string[]): Promise<ProductionScopeOption[]> {
+  if (!jobIds.length) return [];
+  const { data, error } = await createAdminClient()
+    .from("job_material_scopes")
+    .select(`id, job_id, description,
+      category:material_categories!job_material_scopes_material_category_id_fkey (name, abbreviation)`)
+    .in("job_id", jobIds)
+    .order("sort_order")
+    .order("created_at");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((scope) => {
+    const category = Array.isArray(scope.category) ? scope.category[0] : scope.category;
+    return {
+      id: scope.id,
+      job_id: scope.job_id,
+      label: scope.description || category?.name || "Production scope",
+      abbreviation: category?.abbreviation || "P",
+    };
+  });
+}
+
+export async function getAppointmentProductionScopeLinks(appointmentIds: string[]): Promise<Record<string, string[]>> {
+  if (!appointmentIds.length) return {};
+  const { data, error } = await createAdminClient()
+    .from("job_material_scope_appointments")
+    .select("appointment_id, material_scope_id")
+    .in("appointment_id", appointmentIds);
+  if (error) throw new Error(error.message);
+  const links: Record<string, string[]> = {};
+  for (const item of data ?? []) links[item.appointment_id] = [...(links[item.appointment_id] ?? []), item.material_scope_id];
+  return links;
+}

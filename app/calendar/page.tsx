@@ -11,6 +11,7 @@ import {
   getAppointmentTypes,
   type AppointmentTypeDefinition,
 } from "@/lib/services/appointment-types";
+import { getAppointmentProductionScopeLinks, getProductionScopeOptions, type ProductionScopeOption } from "@/lib/services/production";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,8 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   let installerCrews: InstallerCrew[] = [];
   let appointmentTypes: AppointmentTypeDefinition[] = [];
   let errorMessage = "";
+  let productionScopes: ProductionScopeOption[] = [];
+  let appointmentScopeLinks: Record<string, string[]> = {};
 
   try {
     [appointments, employees, jobs, installerCrews, appointmentTypes] = await Promise.all([
@@ -53,6 +56,10 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
       getJobs(),
       getActiveInstallerCrews(),
       getAppointmentTypes(),
+    ]);
+    [productionScopes, appointmentScopeLinks] = await Promise.all([
+      getProductionScopeOptions(jobs.map((job) => job.id)),
+      getAppointmentProductionScopeLinks(appointments.map((appointment) => appointment.id)),
     ]);
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Unable to load calendar.";
@@ -78,6 +85,8 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
             rememberLastView={currentEmployee.remember_last_calendar_view}
             currentEmployeeId={currentEmployee.id}
             appointmentTypes={appointmentTypes}
+            productionScopes={productionScopes}
+            appointmentScopeLinks={appointmentScopeLinks}
           />
         )}
       </div>

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CalendarDays, MapPinned, Package, Plus, Send } from "lucide-react";
-import { addMaterialScopeAction, linkMaterialScopeAppointmentAction, updateMaterialScopeStatusAction } from "@/app/leads/[id]/production/actions";
+import { AlertTriangle, CalendarDays, MapPinned, Package, Pencil, Plus, Send, Trash2 } from "lucide-react";
+import { addMaterialScopeAction, deleteProductionScopeAction, linkMaterialScopeAppointmentAction, updateMaterialScopeStatusAction, updateProductionScopeAction } from "@/app/leads/[id]/production/actions";
 import type { MaterialCategory, MaterialScope, MaterialStatus, ProductionSummary } from "@/components/production/types";
 import ProductionProgress from "@/components/production/ProductionProgress";
 import JobInstallationsPanel from "@/components/jobs/JobInstallationsPanel";
@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 type StatusDialog = { scope: MaterialScope; status: MaterialStatus } | null;
 
 export default function ProductionWorkspace({
-  jobId, scopes, categories, summary, appointments, installationRequired, onSchedule,
+  jobId, scopes, categories, summary, appointments, installationRequired, onSchedule, onEditInstallation,
 }: {
   jobId: string;
   scopes: MaterialScope[];
@@ -24,9 +24,11 @@ export default function ProductionWorkspace({
   appointments: CalendarAppointment[];
   installationRequired: boolean;
   onSchedule: (scopeId?: string, type?: "installation" | "job_walk") => void;
+  onEditInstallation: (appointment: CalendarAppointment) => void;
 }) {
   const router = useRouter();
   const [addOpen, setAddOpen] = useState(false);
+  const [editingScope, setEditingScope] = useState<MaterialScope | null>(null);
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
   const [description, setDescription] = useState("");
   const [jobWalkRequired, setJobWalkRequired] = useState(false);
@@ -37,13 +39,30 @@ export default function ProductionWorkspace({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  async function addScope() {
+  function beginAdd() {
+    setEditingScope(null); setCategoryId(categories[0]?.id ?? ""); setDescription(""); setJobWalkRequired(false); setError(""); setAddOpen(true);
+  }
+
+  function beginEdit(scope: MaterialScope) {
+    setEditingScope(scope); setCategoryId(scope.material_category_id); setDescription(scope.description ?? ""); setJobWalkRequired(scope.job_walk_required); setError(""); setAddOpen(true);
+  }
+
+  async function saveScope() {
     if (!categoryId) return setError("Choose a material category.");
-    setBusyId("new"); setError("");
+    setBusyId(editingScope?.id ?? "new"); setError("");
     try {
-      await addMaterialScopeAction({ jobId, categoryId, description, jobWalkRequired });
-      setAddOpen(false); setDescription(""); setJobWalkRequired(false); router.refresh();
+      if (editingScope) await updateProductionScopeAction({ jobId, scopeId: editingScope.id, categoryId, description, jobWalkRequired });
+      else await addMaterialScopeAction({ jobId, categoryId, description, jobWalkRequired });
+      setAddOpen(false); setEditingScope(null); setDescription(""); setJobWalkRequired(false); router.refresh();
     } catch (caught) { setError(message(caught)); }
+    finally { setBusyId(null); }
+  }
+
+  async function removeScope(scope: MaterialScope) {
+    if (!window.confirm(`Remove ${scope.category.name}${scope.description ? ` — ${scope.description}` : ""}? The calendar appointment will remain, but its Production link will be removed.`)) return;
+    setBusyId(scope.id); setError("");
+    try { await deleteProductionScopeAction(jobId, scope.id); router.refresh(); }
+    catch (caught) { setError(message(caught)); }
     finally { setBusyId(null); }
   }
 
@@ -78,7 +97,7 @@ export default function ProductionWorkspace({
   return <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
     <header className="flex flex-col gap-3 border-b border-gray-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div><h3 className="font-semibold text-gray-950">Production Readiness</h3><p className="mt-1 text-sm text-gray-500">One connected workflow for materials, installation scopes, and crew work orders.</p></div>
-      <div className="flex items-center gap-2"><span className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700">{summary.completed_steps}/{summary.total_steps} complete</span><Button type="button" onClick={() => setAddOpen(true)}><Plus /> Add Scope</Button></div>
+      <div className="flex items-center gap-2"><span className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700">{summary.completed_steps}/{summary.total_steps} complete</span><Button type="button" onClick={beginAdd}><Plus /> Add Scope</Button></div>
     </header>
 
     <div className="grid gap-px bg-gray-200 sm:grid-cols-2 xl:grid-cols-4">
@@ -110,6 +129,8 @@ export default function ProductionWorkspace({
                 {scope.job_walk_required && !jobWalkScheduled ? <Button type="button" size="sm" variant="outline" onClick={() => onSchedule(scope.id, "job_walk")}><MapPinned /> Job walk</Button> : null}
                 <Button type="button" size="sm" variant="outline" disabled={busyId !== null} onClick={() => openStatus(scope, "issue")}><AlertTriangle /> Issue</Button>
                 <Button type="button" size="sm" variant="outline" disabled={busyId !== null} onClick={() => openStatus(scope, "excluded")}>Exclude</Button>
+                <Button type="button" size="sm" variant="ghost" disabled={busyId !== null} onClick={() => beginEdit(scope)} aria-label="Edit production scope"><Pencil /></Button>
+                <Button type="button" size="sm" variant="ghost" disabled={busyId !== null} onClick={() => void removeScope(scope)} aria-label="Remove production scope" className="text-red-600 hover:text-red-700"><Trash2 /></Button>
               </div>
             </article>;
           })}
@@ -118,11 +139,11 @@ export default function ProductionWorkspace({
 
       <aside className="min-w-0 bg-gray-50/60 p-4">
         <div className="mb-3"><h4 className="font-semibold text-gray-950">Crew Assignments</h4><p className="mt-1 text-xs text-gray-500">{activeInstallations.length} scheduled installation{activeInstallations.length === 1 ? "" : "s"}; work orders update the same material pipeline.</p></div>
-        <div className="rounded-lg border border-gray-200 bg-white p-3"><JobInstallationsPanel jobId={jobId} appointments={appointments} installationRequired={installationRequired} compact={false} onSchedule={() => onSchedule()} /></div>
+        <div className="rounded-lg border border-gray-200 bg-white p-3"><JobInstallationsPanel jobId={jobId} appointments={appointments} installationRequired={installationRequired} compact={false} onSchedule={() => onSchedule()} onEdit={onEditInstallation} /></div>
       </aside>
     </div>
 
-    <Dialog open={addOpen} onOpenChange={setAddOpen}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>Add production scope</DialogTitle><DialogDescription>Add a material installation, demo crew, or labor-only phase. Each scope progresses independently.</DialogDescription></DialogHeader><div className="grid gap-4 py-5"><label className="grid gap-2 text-sm font-medium">Scope category<select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className="h-10 rounded-lg border border-gray-300 bg-white px-3"><option value="">Choose category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><label className="grid gap-2 text-sm font-medium">Scope or area<Input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Locker rooms, demo, upstairs install…" /></label><label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 text-sm"><input type="checkbox" className="mt-1" checked={jobWalkRequired} onChange={(event) => setJobWalkRequired(event.target.checked)} /><span><strong className="block">Job walk required</strong><span className="text-xs text-gray-500">Adds a Job Walk milestone to this crew or material scope.</span></span></label></div><DialogFooter><Button type="button" variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button><Button type="button" disabled={busyId !== null} onClick={() => void addScope()}>{busyId === "new" ? "Adding…" : "Add scope"}</Button></DialogFooter></DialogContent></Dialog>
+    <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) setEditingScope(null); }}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>{editingScope ? "Edit production scope" : "Add production scope"}</DialogTitle><DialogDescription>{editingScope ? "Changes to the scope or area also update its linked installation appointment." : "Add a material installation, demo crew, or labor-only phase. Each scope progresses independently."}</DialogDescription></DialogHeader><div className="grid gap-4 py-5"><label className="grid gap-2 text-sm font-medium">Scope category<select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className="h-10 rounded-lg border border-gray-300 bg-white px-3"><option value="">Choose category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><label className="grid gap-2 text-sm font-medium">Scope or area<Input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Locker rooms, demo, upstairs install…" /></label><label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 text-sm"><input type="checkbox" className="mt-1" checked={jobWalkRequired} onChange={(event) => setJobWalkRequired(event.target.checked)} /><span><strong className="block">Job walk required</strong><span className="text-xs text-gray-500">Adds a Job Walk milestone to this crew or material scope.</span></span></label></div><DialogFooter><Button type="button" variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button><Button type="button" disabled={busyId !== null} onClick={() => void saveScope()}>{busyId ? "Saving…" : editingScope ? "Save changes" : "Add scope"}</Button></DialogFooter></DialogContent></Dialog>
 
     <Dialog open={Boolean(statusDialog)} onOpenChange={(open) => !open && setStatusDialog(null)}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>{statusDialog?.status === "ordered" ? "Material ordered" : statusDialog?.status === "issue" ? "Report material issue" : "Exclude material step"}</DialogTitle><DialogDescription>{statusDialog?.scope.category.name}{statusDialog?.scope.description ? ` — ${statusDialog.scope.description}` : ""}</DialogDescription></DialogHeader><div className="grid gap-4 py-5">{statusDialog?.status === "ordered" ? <label className="grid gap-2 text-sm font-medium">Expected arrival date<Input type="date" value={etaDate} onChange={(event) => setEtaDate(event.target.value)} required /><span className="text-xs font-normal text-gray-500">Foundation uses this date to warn when material may arrive after the planned installation.</span></label> : <label className="grid gap-2 text-sm font-medium">{statusDialog?.status === "issue" ? "What needs attention?" : "Reason for exclusion"}<textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} className="rounded-lg border border-gray-300 p-3 text-sm" autoFocus /></label>}{error ? <p className="rounded-md bg-red-50 p-2 text-sm text-red-700">{error}</p> : null}</div><DialogFooter><Button type="button" variant="outline" onClick={() => setStatusDialog(null)}>Cancel</Button><Button type="button" disabled={!statusDialog || busyId !== null || (statusDialog.status === "ordered" && !etaDate)} onClick={() => statusDialog && void saveStatus(statusDialog.scope, statusDialog.status, etaDate || null, note || null)}>{busyId ? "Saving…" : "Save"}</Button></DialogFooter></DialogContent></Dialog>
   </section>;

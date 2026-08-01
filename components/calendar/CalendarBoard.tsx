@@ -39,6 +39,7 @@ import {
   updateCalendarPreferencesAction,
 } from "@/app/settings/calendar/actions";
 import type { AppointmentTypeDefinition } from "@/lib/services/appointment-types";
+import type { ProductionScopeOption } from "@/lib/services/production";
 
 type CalendarBoardProps = {
   initialAppointments?: CalendarAppointment[];
@@ -53,6 +54,8 @@ type CalendarBoardProps = {
   rememberLastView?: boolean;
   currentEmployeeId: string;
   appointmentTypes: AppointmentTypeDefinition[];
+  productionScopes: ProductionScopeOption[];
+  appointmentScopeLinks: Record<string, string[]>;
 };
 
 function getHeading(view: CalendarView, date: Date) {
@@ -88,6 +91,8 @@ export default function CalendarBoard({
   rememberLastView = false,
   currentEmployeeId,
   appointmentTypes,
+  productionScopes,
+  appointmentScopeLinks,
 }: CalendarBoardProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -485,6 +490,8 @@ export default function CalendarBoard({
         jobs={jobs}
         defaultAppointmentType={defaultAppointmentType}
         appointmentTypes={appointmentTypes}
+        productionScopes={productionScopes}
+        appointmentScopeIds={appointmentBeingEdited ? appointmentScopeLinks[appointmentBeingEdited.id] ?? [] : []}
       />
 
       {viewOptionsOpen ? (

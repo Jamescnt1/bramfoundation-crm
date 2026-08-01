@@ -91,6 +91,64 @@ export async function linkMaterialScopeAppointmentAction(values: {
   refresh(values.jobId);
 }
 
+export async function updateProductionScopeAction(values: {
+  jobId: string;
+  scopeId: string;
+  categoryId: string;
+  description: string;
+  jobWalkRequired: boolean;
+}) {
+  await requirePermission("pipeline.manage");
+  const employee = await requireEmployee();
+  const admin = createAdminClient();
+  const { data: category, error: categoryError } = await admin
+    .from("material_categories")
+    .select("name, ordering_required, installation_required, work_order_required")
+    .eq("id", values.categoryId).eq("active", true).single();
+  if (categoryError) throw new Error(categoryError.message);
+  const { error } = await admin.from("job_material_scopes").update({
+    material_category_id: values.categoryId,
+    description: values.description.trim() || null,
+    ordering_required: category.ordering_required,
+    installation_required: category.installation_required,
+    work_order_required: category.work_order_required,
+    scope_kind: category.name === "Demo / Labor" ? "demo" : "material",
+    job_walk_required: values.jobWalkRequired,
+    updated_by: employee.id,
+  }).eq("id", values.scopeId).eq("job_id", values.jobId);
+  if (error) throw new Error(error.message);
+
+  const { data: links, error: linkError } = await admin
+    .from("job_material_scope_appointments")
+    .select("appointment_id")
+    .eq("material_scope_id", values.scopeId);
+  if (linkError) throw new Error(linkError.message);
+  for (const link of links ?? []) {
+    const { data: siblingLinks } = await admin
+      .from("job_material_scope_appointments")
+      .select(`scope:job_material_scopes!job_material_scope_appointments_material_scope_id_fkey (
+        description, category:material_categories!job_material_scopes_material_category_id_fkey (name)
+      )`).eq("appointment_id", link.appointment_id);
+    const label = (siblingLinks ?? []).map((item) => {
+      const scope = Array.isArray(item.scope) ? item.scope[0] : item.scope;
+      const relatedCategory = scope && (Array.isArray(scope.category) ? scope.category[0] : scope.category);
+      return scope?.description || relatedCategory?.name;
+    }).filter(Boolean).join(", ");
+    await admin.from("appointments").update({ installation_scope: label || null }).eq("id", link.appointment_id).eq("appointment_type", "installation");
+  }
+  refresh(values.jobId);
+}
+
+export async function deleteProductionScopeAction(jobId: string, scopeId: string) {
+  await requirePermission("pipeline.manage");
+  const { data, error } = await createAdminClient()
+    .from("job_material_scopes")
+    .delete().eq("id", scopeId).eq("job_id", jobId).select("id").single();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Production scope not found.");
+  refresh(jobId);
+}
+
 function refresh(jobId: string) {
   revalidatePath(`/leads/${jobId}`);
   revalidatePath("/pipeline");

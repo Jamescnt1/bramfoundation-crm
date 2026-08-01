@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDays, CheckCircle2, ClipboardList, Send } from "lucide-react";
+import { CalendarDays, CheckCircle2, ClipboardList, Pencil, Send } from "lucide-react";
 import type { CalendarAppointment } from "@/components/calendar/types";
 import { Button } from "@/components/ui/button";
 import { setInstallationWorkOrderSentAction } from "@/app/leads/[id]/installations/actions";
@@ -14,6 +14,7 @@ type Props = {
   compact?: boolean;
   onSchedule: () => void;
   onOpenInstallations?: () => void;
+  onEdit?: (appointment: CalendarAppointment) => void;
 };
 
 export default function JobInstallationsPanel({
@@ -23,6 +24,7 @@ export default function JobInstallationsPanel({
   compact = false,
   onSchedule,
   onOpenInstallations,
+  onEdit,
 }: Props) {
   const router = useRouter();
   const installations = appointments
@@ -148,10 +150,11 @@ export default function JobInstallationsPanel({
                   )}
                 </div>
 
+                <div className="mt-4 flex flex-wrap gap-2">
+                {onEdit ? <Button type="button" variant="outline" disabled={busyId !== null} onClick={() => onEdit(appointment)}><Pencil /> Edit appointment</Button> : null}
                 <Button
                   type="button"
                   variant={sent ? "outline" : "default"}
-                  className="mt-4"
                   disabled={busyId !== null}
                   onClick={() => void setSent(appointment, !sent)}
                 >
@@ -162,6 +165,7 @@ export default function JobInstallationsPanel({
                       ? "Mark not sent"
                       : "Mark work order sent"}
                 </Button>
+                </div>
               </article>
             );
           })}

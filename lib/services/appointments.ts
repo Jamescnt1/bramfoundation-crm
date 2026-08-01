@@ -258,6 +258,18 @@ export async function linkAppointmentsToMaterialScopes(
   if (error) throw new Error(error.message);
 }
 
+export async function updateLinkedProductionScopeDescription(
+  materialScopeIds: string[],
+  description: string,
+) {
+  if (materialScopeIds.length !== 1 || !description.trim()) return;
+  const { error } = await supabase
+    .from("job_material_scopes")
+    .update({ description: description.trim() })
+    .eq("id", materialScopeIds[0]);
+  if (error) throw new Error(error.message);
+}
+
 export async function updateAppointment(
   appointmentId: string,
   values: AppointmentValues,

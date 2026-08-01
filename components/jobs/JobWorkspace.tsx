@@ -106,6 +106,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
   const [appointmentOpen, setAppointmentOpen] = useState(false);
   const [appointmentType, setAppointmentType] = useState<AppointmentType>("appointment");
   const [scheduledMaterialScopeIds, setScheduledMaterialScopeIds] = useState<string[]>([]);
+  const [appointmentBeingEdited, setAppointmentBeingEdited] = useState<CalendarAppointment | null>(null);
   const [currentStatus, setCurrentStatus] = useState(job.status);
   const [currentQfNumber, setCurrentQfNumber] = useState(job.qfloors_job_number);
   const [currentContractAmount, setCurrentContractAmount] = useState(job.contract_amount);
@@ -212,8 +213,16 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
   }
 
   function schedule(type: AppointmentType = "appointment", materialScopeIds: string[] = []) {
+    setAppointmentBeingEdited(null);
     setAppointmentType(type);
     setScheduledMaterialScopeIds(materialScopeIds);
+    setAppointmentOpen(true);
+  }
+
+  function editInstallation(appointment: CalendarAppointment) {
+    setAppointmentBeingEdited(appointment);
+    setAppointmentType(appointment.appointment_type ?? "installation");
+    setScheduledMaterialScopeIds(materialScopes.filter((scope) => scope.appointments.some((item) => item.id === appointment.id)).map((scope) => scope.id));
     setAppointmentOpen(true);
   }
 
@@ -465,7 +474,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
               description="Coordinate materials, installation scopes, and crew work orders."
             />
             <div className="mt-2">
-              <ProductionWorkspace jobId={job.id} scopes={materialScopes} categories={materialCategories} summary={productionSummary} appointments={appointments} installationRequired={currentInstallationRequired} onSchedule={(scopeId, type = "installation") => schedule(type, scopeId ? [scopeId] : [])} />
+              <ProductionWorkspace jobId={job.id} scopes={materialScopes} categories={materialCategories} summary={productionSummary} appointments={appointments} installationRequired={currentInstallationRequired} onSchedule={(scopeId, type = "installation") => schedule(type, scopeId ? [scopeId] : [])} onEditInstallation={editInstallation} />
             </div>
           </section>
         ) : null}
@@ -515,7 +524,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
         ) : null}
       </div>
 
-      <AppointmentDialog open={appointmentOpen} onOpenChange={setAppointmentOpen} defaultDate={new Date()} defaultJobId={job.id} defaultAppointmentType={appointmentType} employees={employees} installerCrews={installerCrews} jobs={[job]} appointmentTypes={appointmentTypes} productionScopes={materialScopes.map((scope) => ({ id: scope.id, job_id: scope.job_id, label: scope.description || scope.category.name, abbreviation: scope.category.abbreviation }))} defaultMaterialScopeIds={scheduledMaterialScopeIds} />
+      <AppointmentDialog open={appointmentOpen} onOpenChange={(open) => { setAppointmentOpen(open); if (!open) setAppointmentBeingEdited(null); }} appointment={appointmentBeingEdited} defaultDate={new Date()} defaultJobId={job.id} defaultAppointmentType={appointmentType} employees={employees} installerCrews={installerCrews} jobs={[job]} appointmentTypes={appointmentTypes} productionScopes={materialScopes.map((scope) => ({ id: scope.id, job_id: scope.job_id, label: scope.description || scope.category.name, abbreviation: scope.category.abbreviation }))} defaultMaterialScopeIds={scheduledMaterialScopeIds} appointmentScopeIds={scheduledMaterialScopeIds} />
       {pendingStatus ? (
         <JobRequirementsDialog
           open
