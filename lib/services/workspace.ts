@@ -76,6 +76,7 @@ export async function getEmployeeWorkspace(
     supabase
       .from("jobs")
       .select("id, customer_name, status, next_action, next_action_due, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name)")
+      .is("archived_at", null)
       .or(`assigned_employee_id.eq.${employee.id},salesperson.eq.${escapeFilterValue(employee.name)}`)
       .order("updated_at", { ascending: false }),
   ]);
