@@ -15,8 +15,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
+  copyAppointmentToEmployee,
   createAppointment,
   updateAppointment,
+  type AppointmentUpdateScope,
 } from "@/lib/services/appointments";
 import type { Employee } from "@/lib/services/employees";
 import type { Job } from "@/lib/services/jobs";
@@ -73,6 +75,13 @@ function oneHourAfter(date: string, time: string) {
   };
 }
 
+function oneYearAfter(date: string) {
+  if (!date) return "";
+  const value = new Date(`${date}T12:00:00`);
+  value.setFullYear(value.getFullYear() + 1);
+  return formatDateInput(value);
+}
+
 function formatContactName(contact: Job["company_contact"]) {
   if (!contact) return "Not selected";
   return `${contact.first_name} ${contact.last_name}`.trim();
@@ -108,6 +117,13 @@ export default function AppointmentDialog({
   const [jobId, setJobId] = useState("");
   const [customTitle, setCustomTitle] = useState("");
   const [endTimeManuallyEdited, setEndTimeManuallyEdited] = useState(false);
+  const [allDay, setAllDay] = useState(false);
+  const [recurrence, setRecurrence] = useState<"none" | "daily" | "weekly" | "biweekly" | "monthly">("none");
+  const [recurrenceEndsOn, setRecurrenceEndsOn] = useState("");
+  const [updateScope, setUpdateScope] = useState<AppointmentUpdateScope>("occurrence");
+  const [copyEmployeeId, setCopyEmployeeId] = useState("");
+  const [copyScope, setCopyScope] = useState<"occurrence" | "series">("occurrence");
+  const [copyMessage, setCopyMessage] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(
@@ -149,6 +165,13 @@ export default function AppointmentDialog({
       setJobId(appointment.job_id ?? "");
       setCustomTitle(appointment.job_id ? "" : appointment.title ?? "");
       setEndTimeManuallyEdited(true);
+      setAllDay(Boolean(appointment.all_day));
+      setRecurrence("none");
+      setRecurrenceEndsOn(appointment.recurrence_ends_on ?? "");
+      setUpdateScope("occurrence");
+      setCopyEmployeeId("");
+      setCopyScope("occurrence");
+      setCopyMessage("");
     } else {
       const initialJob = jobs.find((job) => job.id === defaultJobId);
       setAppointmentType(defaultAppointmentType);
@@ -167,6 +190,13 @@ export default function AppointmentDialog({
       setJobId(defaultJobId ?? "");
       setCustomTitle("");
       setEndTimeManuallyEdited(false);
+      setAllDay(false);
+      setRecurrence("none");
+      setRecurrenceEndsOn("");
+      setUpdateScope("occurrence");
+      setCopyEmployeeId("");
+      setCopyScope("occurrence");
+      setCopyMessage("");
     }
 
     setErrorMessage(null);
@@ -234,15 +264,15 @@ export default function AppointmentDialog({
     event.preventDefault();
     setErrorMessage(null);
 
-    if (!date || !endDate || !startTime || !endTime) {
+    if (!date || !endDate || (!allDay && (!startTime || !endTime))) {
       setErrorMessage(
         "Please select the appointment date and times.",
       );
       return;
     }
 
-    const startsAt = createAppointmentDate(date, startTime);
-    const endsAt = createAppointmentDate(endDate, endTime);
+    const startsAt = createAppointmentDate(date, allDay ? "07:00" : startTime);
+    const endsAt = createAppointmentDate(endDate, allDay ? "15:00" : endTime);
 
     if (
       Number.isNaN(startsAt.getTime()) ||
@@ -271,6 +301,7 @@ export default function AppointmentDialog({
       installer_crew_id: appointmentType === "installation" ? installerCrewId || null : null,
       installation_scope: appointmentType === "installation" ? installationScope.trim() || null : null,
       job_id: jobId || null,
+      all_day: allDay,
     };
 
     setIsSaving(true);
@@ -280,11 +311,16 @@ export default function AppointmentDialog({
         await updateAppointment(
           appointment.id,
           appointmentValues,
+          updateScope,
         );
       } else {
-        await createAppointment({
-          ...appointmentValues,
-        });
+        const recurrenceValue = recurrence === "none" ? null : {
+          frequency: recurrence === "biweekly" ? "weekly" as const : recurrence,
+          interval: recurrence === "biweekly" ? 2 : 1,
+          endsOn: recurrenceEndsOn,
+        };
+        if (recurrenceValue && !recurrenceEndsOn) throw new Error("Choose when the recurring appointment ends.");
+        await createAppointment({ ...appointmentValues, recurrence: recurrenceValue });
       }
 
       onOpenChange(false);
@@ -411,7 +447,20 @@ export default function AppointmentDialog({
               </div>
             ) : null}
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <input
+                type="checkbox"
+                checked={allDay}
+                onChange={(event) => setAllDay(event.target.checked)}
+                className="mt-1"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-gray-900">All Day</span>
+                <span className="mt-0.5 block text-xs text-gray-500">Blocks the Foundation workday from 7:00 AM–3:00 PM.</span>
+              </span>
+            </label>
+
+            {!allDay ? <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <label
                   htmlFor="appointment-date"
@@ -467,7 +516,7 @@ export default function AppointmentDialog({
                   </select>
                 ) : null}
               </div>
-            </div>
+            </div> : null}
 
             {appointmentType === "installation" ? (
               <div className="grid gap-4 sm:grid-cols-2">
@@ -560,6 +609,77 @@ export default function AppointmentDialog({
                 ))}
               </select>
             </div> : null}
+
+            {!isEditing && appointmentType !== "installation" ? (
+              <div className="grid gap-3 rounded-lg border border-gray-200 p-3 sm:grid-cols-2">
+                <label className="grid gap-2 text-sm font-medium text-gray-900">
+                  Repeat
+                  <select
+                    value={recurrence}
+                    onChange={(event) => setRecurrence(event.target.value as typeof recurrence)}
+                    className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm"
+                  >
+                    <option value="none">Does not repeat</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="biweekly">Every 2 weeks</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </label>
+                {recurrence !== "none" ? (
+                  <label className="grid gap-2 text-sm font-medium text-gray-900">
+                    Repeat through
+                    <Input type="date" min={date} max={oneYearAfter(date)} value={recurrenceEndsOn} onChange={(event) => setRecurrenceEndsOn(event.target.value)} required />
+                  </label>
+                ) : null}
+              </div>
+            ) : null}
+
+            {isEditing && appointment?.recurrence_series_id ? (
+              <label className="grid gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm font-medium text-gray-900">
+                Apply changes to
+                <select value={updateScope} onChange={(event) => setUpdateScope(event.target.value as AppointmentUpdateScope)} className="h-10 rounded-md border border-blue-200 bg-white px-3 text-sm">
+                  <option value="occurrence">This appointment</option>
+                  <option value="future">This and future appointments</option>
+                  <option value="series">Entire series</option>
+                </select>
+              </label>
+            ) : null}
+
+            {appointment && appointmentType !== "installation" ? (
+              <section className="rounded-lg border border-gray-200 p-3">
+                <h3 className="text-sm font-semibold text-gray-900">Copy To</h3>
+                <p className="mt-1 text-xs text-gray-500">Create an independent copy for another employee.</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                  <select value={copyEmployeeId} onChange={(event) => setCopyEmployeeId(event.target.value)} className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm">
+                    <option value="">Select employee</option>
+                    {employees.filter((employee) => employee.id !== appointment.assigned_employee_id).map((employee) => (
+                      <option key={employee.id} value={employee.id}>{employee.name}</option>
+                    ))}
+                  </select>
+                  {appointment.recurrence_series_id ? (
+                    <select value={copyScope} onChange={(event) => setCopyScope(event.target.value as typeof copyScope)} className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm">
+                      <option value="occurrence">This only</option>
+                      <option value="series">Entire series</option>
+                    </select>
+                  ) : null}
+                  <Button type="button" variant="outline" disabled={!copyEmployeeId || isSaving} onClick={async () => {
+                    if (!copyEmployeeId) return;
+                    setIsSaving(true); setErrorMessage(null); setCopyMessage("");
+                    try {
+                      await copyAppointmentToEmployee(appointment.id, copyEmployeeId, copyScope);
+                      const employee = employees.find((item) => item.id === copyEmployeeId);
+                      setCopyMessage(`Copied to ${employee?.name ?? "employee"}.`);
+                      setCopyEmployeeId("");
+                      router.refresh();
+                    } catch (error) {
+                      setErrorMessage(error instanceof Error ? error.message : "Unable to copy the appointment.");
+                    } finally { setIsSaving(false); }
+                  }}>Copy</Button>
+                </div>
+                {copyMessage ? <p className="mt-2 text-xs font-semibold text-green-700">{copyMessage}</p> : null}
+              </section>
+            ) : null}
 
             <div className="grid gap-2">
               <label

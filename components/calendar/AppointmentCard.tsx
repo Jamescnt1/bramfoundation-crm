@@ -73,7 +73,7 @@ export default function AppointmentCard({
           </span>
           {showTime ? (
             <span className="shrink-0 text-[10px] font-semibold opacity-85">
-              {formatAppointmentTime(appointment.starts_at)}
+              {appointment.all_day ? "All Day" : formatAppointmentTime(appointment.starts_at)}
             </span>
           ) : null}
         </span>

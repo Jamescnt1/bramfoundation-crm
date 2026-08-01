@@ -8,6 +8,12 @@ export type CalendarAppointment = {
   job_id: string | null;
   assigned_employee_id: string | null;
   installer_crew_id: string | null;
+  all_day: boolean;
+  recurrence_series_id: string | null;
+  recurrence_frequency: "daily" | "weekly" | "monthly" | null;
+  recurrence_interval: number | null;
+  recurrence_ends_on: string | null;
+  copied_from_id: string | null;
 
   title: string | null;
 

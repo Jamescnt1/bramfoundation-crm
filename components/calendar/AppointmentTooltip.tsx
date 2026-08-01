@@ -219,11 +219,15 @@ export default function AppointmentTooltip({
 
                 <dt className="font-medium text-gray-500">Time</dt>
                 <dd className="text-gray-900">
-                  {formatAppointmentTime(appointment.starts_at)}
-                  {appointment.ends_at
+                  {appointment.all_day ? "All Day · 7:00 AM–3:00 PM" : formatAppointmentTime(appointment.starts_at)}
+                  {!appointment.all_day && appointment.ends_at
                     ? ` – ${formatAppointmentTime(appointment.ends_at)}`
                     : ""}
                 </dd>
+
+                {appointment.recurrence_series_id ? (
+                  <><dt className="font-medium text-gray-500">Repeats</dt><dd className="text-gray-900">Recurring series</dd></>
+                ) : null}
 
                 <dt className="font-medium text-gray-500">Assigned</dt>
                 <dd className="text-gray-900">
