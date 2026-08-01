@@ -91,6 +91,29 @@ export async function linkMaterialScopeAppointmentAction(values: {
   refresh(values.jobId);
 }
 
+export async function unlinkMaterialScopeAppointmentAction(values: {
+  jobId: string;
+  scopeId: string;
+  appointmentId: string;
+}) {
+  await requirePermission("pipeline.manage");
+  const admin = createAdminClient();
+  const { data: scope, error: scopeError } = await admin
+    .from("job_material_scopes")
+    .select("id")
+    .eq("id", values.scopeId)
+    .eq("job_id", values.jobId)
+    .single();
+  if (scopeError || !scope) throw new Error(scopeError?.message ?? "Production scope not found.");
+  const { error } = await admin
+    .from("job_material_scope_appointments")
+    .delete()
+    .eq("material_scope_id", values.scopeId)
+    .eq("appointment_id", values.appointmentId);
+  if (error) throw new Error(error.message);
+  refresh(values.jobId);
+}
+
 export async function updateProductionScopeAction(values: {
   jobId: string;
   scopeId: string;

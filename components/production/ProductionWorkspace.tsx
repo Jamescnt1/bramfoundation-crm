@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CalendarDays, MapPinned, Package, Pencil, Plus, Send, Trash2 } from "lucide-react";
-import { addMaterialScopeAction, deleteProductionScopeAction, linkMaterialScopeAppointmentAction, updateMaterialScopeStatusAction, updateProductionScopeAction } from "@/app/leads/[id]/production/actions";
+import { addMaterialScopeAction, deleteProductionScopeAction, unlinkMaterialScopeAppointmentAction, updateMaterialScopeStatusAction, updateProductionScopeAction } from "@/app/leads/[id]/production/actions";
 import type { MaterialCategory, MaterialScope, MaterialStatus, ProductionSummary } from "@/components/production/types";
 import ProductionProgress from "@/components/production/ProductionProgress";
 import JobInstallationsPanel from "@/components/jobs/JobInstallationsPanel";
@@ -35,7 +35,6 @@ export default function ProductionWorkspace({
   const [statusDialog, setStatusDialog] = useState<StatusDialog>(null);
   const [etaDate, setEtaDate] = useState("");
   const [note, setNote] = useState("");
-  const [installSelections, setInstallSelections] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -83,11 +82,9 @@ export default function ProductionWorkspace({
     finally { setBusyId(null); }
   }
 
-  async function linkExistingInstall(scope: MaterialScope) {
-    const appointmentId = installSelections[scope.id] || activeInstallations[0]?.id;
-    if (!appointmentId) return;
+  async function unlinkAppointment(scope: MaterialScope, appointmentId: string) {
     setBusyId(scope.id); setError("");
-    try { await linkMaterialScopeAppointmentAction({ jobId, scopeId: scope.id, appointmentId }); router.refresh(); }
+    try { await unlinkMaterialScopeAppointmentAction({ jobId, scopeId: scope.id, appointmentId }); router.refresh(); }
     catch (caught) { setError(message(caught)); }
     finally { setBusyId(null); }
   }
@@ -117,18 +114,24 @@ export default function ProductionWorkspace({
         </div>
         {scopes.length ? <div className="mt-3 divide-y divide-gray-100 rounded-lg border border-gray-200 px-3">
           {scopes.map((scope) => {
-            const scheduled = scope.appointments.some((item) => item.appointment_type === "installation" && item.status !== "cancelled");
-            const jobWalkScheduled = scope.appointments.some((item) => item.appointment_type === "job_walk" && item.status !== "cancelled");
+            const linkedInstallationSummary = scope.appointments.find((item) => item.appointment_type === "installation" && item.status !== "cancelled");
+            const linkedInstallation = linkedInstallationSummary ? appointments.find((item) => item.id === linkedInstallationSummary.id) : null;
+            const linkedJobWalk = scope.appointments.find((item) => item.appointment_type === "job_walk" && item.status !== "cancelled");
+            const scheduled = Boolean(linkedInstallationSummary);
+            const jobWalkScheduled = Boolean(linkedJobWalk);
             return <article key={scope.id} className="flex flex-col gap-3 py-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="min-w-0"><div className="flex items-center gap-2"><p className="truncate font-semibold text-gray-900">{scope.category.name}{scope.description ? ` — ${scope.description}` : ""}</p><StatusBadge scope={scope} /></div><p className="mt-1 text-xs text-gray-500">{scope.eta_date ? `Expected ${formatDate(scope.eta_date)}` : scope.ordering_required ? "ETA not entered" : "Ordering not required"}{scope.issue_note ? ` · ${scope.issue_note}` : ""}</p></div>
+              <div className="min-w-0"><div className="flex items-center gap-2"><p className="truncate font-semibold text-gray-900">{scope.category.name}{scope.description ? ` — ${scope.description}` : ""}</p><StatusBadge scope={scope} /></div><p className="mt-1 text-xs text-gray-500">{scope.eta_date ? `Expected ${formatDate(scope.eta_date)}` : scope.ordering_required ? "ETA not entered" : "Ordering not required"}{scope.issue_note ? ` · ${scope.issue_note}` : ""}</p>{linkedInstallationSummary ? <p className="mt-1 text-xs font-medium text-[#3f6e8c]">Install: {formatDateTime(linkedInstallationSummary.starts_at)} · {linkedInstallationSummary.installer_name ?? "Unassigned crew"}</p> : <p className="mt-1 text-xs text-gray-400">Installation not scheduled</p>}</div>
               <div className="flex flex-wrap gap-1.5">
                 {!['ordered','partially_received','ready','excluded'].includes(scope.material_status) ? <Button type="button" size="sm" variant="outline" disabled={busyId !== null} onClick={() => openStatus(scope, "ordered")}>Mark ordered</Button> : null}
                 {scope.material_status !== "ready" && scope.material_status !== "excluded" ? <Button type="button" size="sm" variant="outline" disabled={busyId !== null} onClick={() => openStatus(scope, "ready")}>Mark ready</Button> : null}
-                {scope.installation_required && !scheduled && activeInstallations.length ? <><select value={installSelections[scope.id] || activeInstallations[0]?.id} onChange={(event) => setInstallSelections((current) => ({ ...current, [scope.id]: event.target.value }))} className="h-8 max-w-44 rounded-md border border-gray-300 bg-white px-2 text-xs">{activeInstallations.map((item) => <option key={item.id} value={item.id}>{formatDateTime(item.starts_at)} · {item.installer_crew?.name ?? "Unassigned crew"}</option>)}</select><Button type="button" size="sm" variant="outline" disabled={busyId !== null} onClick={() => void linkExistingInstall(scope)}>Link install</Button></> : null}
                 {scope.installation_required && !scheduled ? <Button type="button" size="sm" variant="outline" onClick={() => onSchedule(scope.id)}><CalendarDays /> Schedule new</Button> : null}
+                {scope.installation_required && linkedInstallation ? <Button type="button" size="sm" variant="outline" onClick={() => onEditInstallation(linkedInstallation)}><CalendarDays /> Change schedule</Button> : null}
+                {scope.installation_required && linkedInstallationSummary ? <Button type="button" size="sm" variant="ghost" disabled={busyId !== null} onClick={() => void unlinkAppointment(scope, linkedInstallationSummary.id)}>Unlink install</Button> : null}
                 {scope.job_walk_required && !jobWalkScheduled ? <Button type="button" size="sm" variant="outline" onClick={() => onSchedule(scope.id, "job_walk")}><MapPinned /> Job walk</Button> : null}
+                {scope.job_walk_required && linkedJobWalk ? <Button type="button" size="sm" variant="ghost" disabled={busyId !== null} onClick={() => void unlinkAppointment(scope, linkedJobWalk.id)}>Unlink job walk</Button> : null}
                 <Button type="button" size="sm" variant="outline" disabled={busyId !== null} onClick={() => openStatus(scope, "issue")}><AlertTriangle /> Issue</Button>
                 <Button type="button" size="sm" variant="outline" disabled={busyId !== null} onClick={() => openStatus(scope, "excluded")}>Exclude</Button>
+                {scope.material_status !== "needs_ordering" ? <Button type="button" size="sm" variant="ghost" disabled={busyId !== null} onClick={() => void saveStatus(scope, "needs_ordering", null, null)}>Reset material</Button> : null}
                 <Button type="button" size="sm" variant="ghost" disabled={busyId !== null} onClick={() => beginEdit(scope)} aria-label="Edit production scope"><Pencil /></Button>
                 <Button type="button" size="sm" variant="ghost" disabled={busyId !== null} onClick={() => void removeScope(scope)} aria-label="Remove production scope" className="text-red-600 hover:text-red-700"><Trash2 /></Button>
               </div>
