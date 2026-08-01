@@ -2,7 +2,7 @@ import "server-only";
 
 import type { EmployeeRole } from "@/lib/auth/roles";
 import type { Employee } from "@/lib/services/employees";
-import { requireAdministrator } from "@/lib/services/employees";
+import { requireAdministrator, requireEmployee } from "@/lib/services/employees";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -308,7 +308,7 @@ export async function uploadManagedEmployeeAvatar(
   employeeId: string,
   file: File,
 ) {
-  await requireAdministrator();
+  await requireAvatarAccess(employeeId);
   const extension = avatarExtensions[file.type];
   if (!extension) throw new Error("Choose a JPG, PNG, or WebP image.");
   if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
@@ -357,7 +357,7 @@ export async function uploadManagedEmployeeAvatar(
 }
 
 export async function removeManagedEmployeeAvatar(employeeId: string) {
-  await requireAdministrator();
+  await requireAvatarAccess(employeeId);
   const admin = createAdminClient();
   const { data: existing, error: existingError } = await admin
     .from("employees")
@@ -380,6 +380,13 @@ export async function removeManagedEmployeeAvatar(employeeId: string) {
   }
 
   return data as Employee;
+}
+
+async function requireAvatarAccess(employeeId: string) {
+  const actor = await requireEmployee();
+  if (actor.id !== employeeId && actor.role !== "administrator") {
+    throw new Error("You can only change your own profile photo.");
+  }
 }
 
 function getManagedAvatarPath(url: string | null) {

@@ -11,6 +11,7 @@ import GlobalSearch from "@/components/search/GlobalSearch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Employee } from "@/lib/services/employees";
 import { getRoleLabel } from "@/lib/auth/roles";
+import ProfilePhotoDialog from "@/components/account/ProfilePhotoDialog";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -25,6 +26,7 @@ export default function AppShell({
 }: AppShellProps) {
   const pathname = usePathname();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const [profilePhotoOpen, setProfilePhotoOpen] = useState(false);
 
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
@@ -133,15 +135,26 @@ export default function AppShell({
             </div>
             <GlobalSearch key={pathname} />
             <div className="flex min-w-0 items-center gap-2">
-              <Avatar size="lg" className="ring-1 ring-white/25">
-                <AvatarImage src={employee?.avatar_url ?? undefined} alt="" />
-                <AvatarFallback
-                  style={{ backgroundColor: employee?.color ?? "#3f6e8c" }}
-                  className="font-semibold text-white"
+              {employee ? (
+                <button
+                  type="button"
+                  onClick={() => setProfilePhotoOpen(true)}
+                  className="rounded-full outline-none transition hover:ring-2 hover:ring-blue-400 focus-visible:ring-2 focus-visible:ring-blue-400"
+                  aria-label="Change profile photo"
+                  title="Change profile photo"
                 >
-                  {getInitials(employee?.name ?? "Foundation CRM")}
-                </AvatarFallback>
-              </Avatar>
+                  <Avatar size="lg" className="ring-1 ring-white/25">
+                    <AvatarImage src={employee.avatar_url ?? undefined} alt="" />
+                    <AvatarFallback style={{ backgroundColor: employee.color }} className="font-semibold text-white">
+                      {getInitials(employee.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              ) : (
+                <Avatar size="lg" className="ring-1 ring-white/25">
+                  <AvatarFallback style={{ backgroundColor: "#3f6e8c" }} className="font-semibold text-white">FC</AvatarFallback>
+                </Avatar>
+              )}
               <div className="hidden min-w-0 text-right lg:block">
                 <p className="max-w-36 truncate text-sm font-medium text-white">{employee?.name ?? "Foundation CRM"}</p>
                 <p className="text-xs text-gray-400">{employee ? getRoleLabel(employee.role) : "Employee"}</p>
@@ -152,6 +165,9 @@ export default function AppShell({
         </header>
         <div>{children}</div>
       </div>
+      {employee && profilePhotoOpen ? (
+        <ProfilePhotoDialog employee={employee} open onOpenChange={setProfilePhotoOpen} />
+      ) : null}
     </div>
   );
 }
