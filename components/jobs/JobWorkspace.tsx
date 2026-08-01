@@ -465,7 +465,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
               description="Coordinate materials, installation scopes, and crew work orders."
             />
             <div className="mt-2">
-              <ProductionWorkspace jobId={job.id} scopes={materialScopes} categories={materialCategories} summary={productionSummary} appointments={appointments} installationRequired={currentInstallationRequired} onSchedule={(scopeId) => schedule("installation", scopeId ? [scopeId] : [])} />
+              <ProductionWorkspace jobId={job.id} scopes={materialScopes} categories={materialCategories} summary={productionSummary} appointments={appointments} installationRequired={currentInstallationRequired} onSchedule={(scopeId, type = "installation") => schedule(type, scopeId ? [scopeId] : [])} />
             </div>
           </section>
         ) : null}

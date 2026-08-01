@@ -9,13 +9,14 @@ export async function addMaterialScopeAction(values: {
   jobId: string;
   categoryId: string;
   description: string;
+  jobWalkRequired?: boolean;
 }) {
   await requirePermission("pipeline.manage");
   const employee = await requireEmployee();
   const admin = createAdminClient();
   const { data: category, error: categoryError } = await admin
     .from("material_categories")
-    .select("ordering_required, installation_required, work_order_required")
+    .select("name, ordering_required, installation_required, work_order_required")
     .eq("id", values.categoryId)
     .eq("active", true)
     .single();
@@ -27,6 +28,8 @@ export async function addMaterialScopeAction(values: {
     ordering_required: category.ordering_required,
     installation_required: category.installation_required,
     work_order_required: category.work_order_required,
+    scope_kind: category.name === "Demo / Labor" ? "demo" : "material",
+    job_walk_required: Boolean(values.jobWalkRequired),
     created_by: employee.id,
     updated_by: employee.id,
   });

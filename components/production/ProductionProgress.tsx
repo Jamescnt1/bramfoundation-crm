@@ -41,9 +41,9 @@ export default function ProductionProgress({
         {summary.needs_attention ? <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800"><AlertTriangle className="h-3 w-3" /> Attention</span> : null}
       </div> : null}
       <div className="mt-3 overflow-x-auto">
-        <div className="min-w-[430px]">
-          <div className="grid grid-cols-[minmax(100px,1fr)_repeat(4,54px)] gap-1 px-1 text-center text-[9px] font-semibold uppercase tracking-wide text-gray-500">
-            <span /><span>Ordered</span><span>Ready</span><span>Schedule</span><span>W.O.</span>
+        <div className="min-w-[490px]">
+          <div className="grid grid-cols-[minmax(100px,1fr)_repeat(5,54px)] gap-1 px-1 text-center text-[9px] font-semibold uppercase tracking-wide text-gray-500">
+            <span /><span>Ordered</span><span>Ready</span><span>Schedule</span><span>W.O.</span><span>Job Walk</span>
           </div>
           <div className="mt-1 divide-y divide-gray-100">
             {visible.map((scope) => <MaterialProgressRow key={scope.id} scope={scope} />)}
@@ -62,10 +62,14 @@ function MaterialProgressRow({ scope }: { scope: MaterialScope }) {
   const excluded = scope.material_status === "excluded";
   const ordered = excluded || !scope.ordering_required || ["ordered", "partially_received", "ready"].includes(scope.material_status);
   const ready = excluded || scope.material_status === "ready";
-  const scheduled = excluded || !scope.installation_required || scope.appointments.some((item) => item.status !== "cancelled");
-  const workOrder = excluded || !scope.work_order_required || (scope.appointments.length > 0 && scope.appointments.every((item) => ["sent", "acknowledged"].includes(item.work_order_status)));
+  const installAppointments = scope.appointments.filter((item) => item.appointment_type === "installation" && item.status !== "cancelled");
+  const scheduled = excluded || !scope.installation_required || installAppointments.length > 0;
+  const workOrder = excluded || !scope.work_order_required || (installAppointments.length > 0 && installAppointments.every((item) => ["sent", "acknowledged"].includes(item.work_order_status)));
+  const jobWalkAppointments = scope.appointments.filter((item) => item.appointment_type === "job_walk" && item.status !== "cancelled");
+  const jobWalk = excluded || !scope.job_walk_required || jobWalkAppointments.some((item) => item.status === "completed");
+  const jobWalkScheduled = scope.job_walk_required && jobWalkAppointments.length > 0 && !jobWalk;
   return (
-    <div className="grid grid-cols-[minmax(100px,1fr)_repeat(4,54px)] items-center gap-1 py-2">
+    <div className="grid grid-cols-[minmax(100px,1fr)_repeat(5,54px)] items-center gap-1 py-2">
       <div className="flex min-w-0 items-center gap-2">
         <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white ${categoryColors[scope.category.color_key] ?? categoryColors.gray}`}>{scope.category.abbreviation}</span>
         <span className="truncate text-xs font-medium text-gray-800" title={scope.description ?? scope.category.name}>{scope.description || scope.category.name}</span>
@@ -74,6 +78,7 @@ function MaterialProgressRow({ scope }: { scope: MaterialScope }) {
       <Step complete={ready} priorComplete={ordered} excluded={excluded} attention={scope.material_status === "issue" || scope.material_status === "partially_received"} />
       <Step complete={scheduled} priorComplete={ready} excluded={excluded || !scope.installation_required} />
       <Step complete={workOrder} priorComplete={scheduled} excluded={excluded || !scope.work_order_required} />
+      <Step complete={jobWalk} priorComplete={workOrder} excluded={excluded || !scope.job_walk_required} attention={jobWalkScheduled} />
     </div>
   );
 }

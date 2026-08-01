@@ -26,6 +26,8 @@ export type MaterialScope = {
   ordering_required: boolean;
   installation_required: boolean;
   work_order_required: boolean;
+  scope_kind: "material" | "demo" | "labor";
+  job_walk_required: boolean;
   material_status: MaterialStatus;
   eta_date: string | null;
   ordered_at: string | null;
@@ -36,6 +38,7 @@ export type MaterialScope = {
   category: MaterialCategory;
   appointments: {
     id: string;
+    appointment_type: string;
     starts_at: string;
     ends_at: string | null;
     status: string;
@@ -56,5 +59,8 @@ export type ProductionSummary = {
   installations_scheduled: number;
   work_orders_required: number;
   work_orders_sent: number;
+  job_walks_required: number;
+  job_walks_scheduled: number;
+  job_walks_completed: number;
   needs_attention: boolean;
 };

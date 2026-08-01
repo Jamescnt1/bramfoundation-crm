@@ -23,7 +23,7 @@ export async function getJobMaterialScopes(jobId: string): Promise<MaterialScope
   const { data, error } = await admin
     .from("job_material_scopes")
     .select(`id, job_id, material_category_id, description, ordering_required,
-      installation_required, work_order_required, material_status, eta_date,
+      installation_required, work_order_required, scope_kind, job_walk_required, material_status, eta_date,
       ordered_at, ready_at, issue_note, excluded_reason, sort_order,
       category:material_categories!job_material_scopes_material_category_id_fkey (
         id, name, abbreviation, color_key, ordering_required,
@@ -44,7 +44,7 @@ export async function getJobMaterialScopes(jobId: string): Promise<MaterialScope
   const { data: links, error: linkError } = await admin
     .from("job_material_scope_appointments")
     .select(`material_scope_id, appointment:appointments!job_material_scope_appointments_appointment_id_fkey (
-      id, starts_at, ends_at, status, installation_scope, work_order_status,
+      id, appointment_type, starts_at, ends_at, status, installation_scope, work_order_status,
       installer:installer_crews!appointments_installer_crew_id_fkey (name)
     )`)
     .in("material_scope_id", scopes.map((scope) => scope.id));
@@ -57,6 +57,7 @@ export async function getJobMaterialScopes(jobId: string): Promise<MaterialScope
     const installer = Array.isArray(raw.installer) ? raw.installer[0] : raw.installer;
     const appointment = {
       id: raw.id,
+      appointment_type: raw.appointment_type,
       starts_at: raw.starts_at,
       ends_at: raw.ends_at,
       status: raw.status,
@@ -74,27 +75,42 @@ export function summarizeProduction(jobId: string, scopes: MaterialScope[]): Pro
   let completedSteps = 0;
   let materialsOrdered = 0;
   let materialsReady = 0;
+  let materialsTotal = 0;
   let installationsRequired = 0;
   let installationsScheduled = 0;
   let workOrdersRequired = 0;
   let workOrdersSent = 0;
+  let jobWalksRequired = 0;
+  let jobWalksScheduled = 0;
+  let jobWalksCompleted = 0;
   let needsAttention = false;
 
   for (const scope of scopes) {
     const excluded = scope.material_status === "excluded";
     const ordered = excluded || !scope.ordering_required || ["ordered", "partially_received", "ready"].includes(scope.material_status);
     const ready = excluded || scope.material_status === "ready";
-    const scheduled = excluded || !scope.installation_required || scope.appointments.some((item) => item.status !== "cancelled");
+    const installAppointments = scope.appointments.filter((item) => item.appointment_type === "installation" && item.status !== "cancelled");
+    const jobWalkAppointments = scope.appointments.filter((item) => item.appointment_type === "job_walk" && item.status !== "cancelled");
+    const scheduled = excluded || !scope.installation_required || installAppointments.length > 0;
     const sent = excluded || !scope.work_order_required || (
-      scope.appointments.length > 0 && scope.appointments.every((item) => ["sent", "acknowledged"].includes(item.work_order_status))
+      installAppointments.length > 0 && installAppointments.every((item) => ["sent", "acknowledged"].includes(item.work_order_status))
     );
-    if (scope.ordering_required) { totalSteps += 2; completedSteps += Number(ordered) + Number(ready); }
-    if (ordered) materialsOrdered += 1;
-    if (ready) materialsReady += 1;
+    const jobWalkScheduled = excluded || !scope.job_walk_required || jobWalkAppointments.length > 0;
+    const jobWalkComplete = excluded || !scope.job_walk_required || jobWalkAppointments.some((item) => item.status === "completed");
+    if (scope.ordering_required) {
+      materialsTotal += 1;
+      totalSteps += 2;
+      completedSteps += Number(ordered) + Number(ready);
+      if (ordered) materialsOrdered += 1;
+      if (ready) materialsReady += 1;
+    }
     if (scope.installation_required) { installationsRequired += 1; totalSteps += 1; completedSteps += Number(scheduled); }
     if (scheduled) installationsScheduled += Number(scope.installation_required);
     if (scope.work_order_required) { workOrdersRequired += 1; totalSteps += 1; completedSteps += Number(sent); }
     if (sent) workOrdersSent += Number(scope.work_order_required);
+    if (scope.job_walk_required) { jobWalksRequired += 1; totalSteps += 1; completedSteps += Number(jobWalkComplete); }
+    if (jobWalkScheduled) jobWalksScheduled += Number(scope.job_walk_required);
+    if (jobWalkComplete) jobWalksCompleted += Number(scope.job_walk_required);
     needsAttention ||= scope.material_status === "issue" || Boolean(
       scope.eta_date && scope.appointments.some((item) => item.starts_at.slice(0, 10) < scope.eta_date!),
     );
@@ -103,13 +119,16 @@ export function summarizeProduction(jobId: string, scopes: MaterialScope[]): Pro
     job_id: jobId,
     total_steps: totalSteps,
     completed_steps: completedSteps,
-    materials_total: scopes.length,
+    materials_total: materialsTotal,
     materials_ordered: materialsOrdered,
     materials_ready: materialsReady,
     installations_required: installationsRequired,
     installations_scheduled: installationsScheduled,
     work_orders_required: workOrdersRequired,
     work_orders_sent: workOrdersSent,
+    job_walks_required: jobWalksRequired,
+    job_walks_scheduled: jobWalksScheduled,
+    job_walks_completed: jobWalksCompleted,
     needs_attention: needsAttention,
   };
 }
