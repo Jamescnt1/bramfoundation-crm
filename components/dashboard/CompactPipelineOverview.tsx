@@ -20,8 +20,19 @@ export default function CompactPipelineOverview({
   groups: PipelineStageGroup[];
 }) {
   const [activeStageSlug, setActiveStageSlug] = useState<string | null>(null);
+  const [panelPosition, setPanelPosition] = useState<{ left: number; top: number; above: boolean } | null>(null);
   const activeGroup =
     groups.find(({ stage }) => stage.slug === activeStageSlug) ?? null;
+
+  function openStage(stageSlug: string, trigger: HTMLButtonElement) {
+    const bounds = trigger.getBoundingClientRect();
+    const panelWidth = Math.min(352, window.innerWidth - 32);
+    const left = Math.max(16, Math.min(bounds.left + bounds.width / 2 - panelWidth / 2, window.innerWidth - panelWidth - 16));
+    const spaceBelow = window.innerHeight - bounds.bottom;
+    const above = spaceBelow < 340 && bounds.top > spaceBelow;
+    setPanelPosition({ left, top: above ? bounds.top - 4 : bounds.bottom + 4, above });
+    setActiveStageSlug(stageSlug);
+  }
 
   return (
     <div
@@ -47,13 +58,12 @@ export default function CompactPipelineOverview({
                 type="button"
                 aria-expanded={activeStageSlug === stage.slug}
                 aria-label={`${stage.label}: ${jobs.length} assigned ${jobs.length === 1 ? "job" : "jobs"}`}
-                onMouseEnter={() => setActiveStageSlug(stage.slug)}
-                onFocus={() => setActiveStageSlug(stage.slug)}
-                onClick={() =>
-                  setActiveStageSlug((current) =>
-                    current === stage.slug ? null : stage.slug,
-                  )
-                }
+                onMouseEnter={(event) => openStage(stage.slug, event.currentTarget)}
+                onFocus={(event) => openStage(stage.slug, event.currentTarget)}
+                onClick={(event) => {
+                  if (activeStageSlug === stage.slug) setActiveStageSlug(null);
+                  else openStage(stage.slug, event.currentTarget);
+                }}
                 className={`relative flex h-10 w-full items-center justify-between gap-2 px-4 text-left text-white shadow-sm transition brightness-95 hover:z-20 hover:brightness-105 focus-visible:z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-2 ${styles.accent} ${
                   first ? "pl-3" : "pl-5"
                 } ${last ? "pr-3" : "pr-5"}`}
@@ -78,8 +88,11 @@ export default function CompactPipelineOverview({
         </div>
       </div>
 
-      {activeGroup ? (
-        <div className="absolute left-1/2 top-full z-50 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 pt-1">
+      {activeGroup && panelPosition ? (
+        <div
+          className={`fixed z-50 w-[min(22rem,calc(100vw-2rem))] ${panelPosition.above ? "-translate-y-full" : ""}`}
+          style={{ left: panelPosition.left, top: panelPosition.top }}
+        >
           <StageJobPanel group={activeGroup} />
         </div>
       ) : null}

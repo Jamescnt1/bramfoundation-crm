@@ -7,6 +7,7 @@ import {
   type PipelineStage,
 } from "@/components/pipeline/constants";
 import type { PipelineJob } from "@/components/pipeline/types";
+import type { PipelineCardSize } from "@/app/pipeline/actions";
 
 type PipelineColumnProps = {
   stage: PipelineStageView;
@@ -19,6 +20,7 @@ type PipelineColumnProps = {
   onDragEnter: (stage: PipelineStage) => void;
   onDrop: (jobId: string, stage: PipelineStage) => void;
   canChangeStatus: boolean;
+  cardSize: PipelineCardSize;
 };
 
 export default function PipelineColumn({
@@ -32,6 +34,7 @@ export default function PipelineColumn({
   onDragEnter,
   onDrop,
   canChangeStatus,
+  cardSize,
 }: PipelineColumnProps) {
   const styles = getStageStyles(stage);
 
@@ -50,7 +53,7 @@ export default function PipelineColumn({
           onDrop(jobId, stage.slug);
         }
       }}
-      className={`flex w-72 flex-none flex-col overflow-hidden rounded-xl border bg-gray-100 transition ${
+      className={`flex flex-none flex-col overflow-hidden rounded-xl border bg-gray-100 transition ${cardSize === "small" ? "w-60" : cardSize === "medium" ? "w-64" : "w-72"} ${
         isDragTarget ? `${styles.border} ring-2 ring-black/10` : "border-gray-200"
       }`}
       aria-label={`${stage.label} pipeline column`}
@@ -82,6 +85,7 @@ export default function PipelineColumn({
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
               canChangeStatus={canChangeStatus}
+              cardSize={cardSize}
             />
           ))
         )}

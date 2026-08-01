@@ -1,18 +1,20 @@
 import PipelineBoard from "@/components/pipeline/PipelineBoard";
 import { getJobs } from "@/lib/services/jobs";
-import { hasPermission } from "@/lib/services/employees";
+import { getActiveEmployees, hasPermission, requireEmployee } from "@/lib/services/employees";
 import { getPipelineStages } from "@/lib/services/pipeline-stages";
 import { getInstallationJobIds, getWorkOrderReadyJobIds } from "@/lib/services/appointments";
 
 export const dynamic = "force-dynamic";
 
 export default async function PipelinePage() {
-  const [{ jobs, errorMessage }, canChangeStatus, stages, installationJobIds, workOrderReadyJobIds] = await Promise.all([
+  const [{ jobs, errorMessage }, canChangeStatus, stages, installationJobIds, workOrderReadyJobIds, employees, currentEmployee] = await Promise.all([
     loadPipelineJobs(),
     hasPermission("pipeline.manage"),
     getPipelineStages(),
     getInstallationJobIds(),
     getWorkOrderReadyJobIds(),
+    getActiveEmployees(),
+    requireEmployee(),
   ]);
 
   return (
@@ -42,6 +44,8 @@ export default async function PipelinePage() {
             stages={stages}
             installationJobIds={installationJobIds}
             workOrderReadyJobIds={workOrderReadyJobIds}
+            employees={employees.map(({ id, name, color }) => ({ id, name, color }))}
+            initialCardSize={currentEmployee.pipeline_card_size}
           />
         )}
       </div>

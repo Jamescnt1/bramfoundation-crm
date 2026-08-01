@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AlertTriangle, CalendarClock, GripVertical } from "lucide-react";
 import type { PipelineJob } from "@/components/pipeline/types";
 import { formatJobDisplayName } from "@/lib/job-display";
+import type { PipelineCardSize } from "@/app/pipeline/actions";
 
 type PipelineCardProps = {
   job: PipelineJob;
@@ -11,6 +12,7 @@ type PipelineCardProps = {
   onDragStart: (jobId: string) => void;
   onDragEnd: () => void;
   canChangeStatus: boolean;
+  cardSize: PipelineCardSize;
 };
 
 export default function PipelineCard({
@@ -19,6 +21,7 @@ export default function PipelineCard({
   onDragStart,
   onDragEnd,
   canChangeStatus,
+  cardSize,
 }: PipelineCardProps) {
   const overdue = isOverdue(job.next_action_due);
   const missingRequiredQf =
@@ -30,6 +33,7 @@ export default function PipelineCard({
 
   return (
     <article
+      data-pipeline-card
       draggable={canChangeStatus && !isMoving}
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = "move";
@@ -37,7 +41,7 @@ export default function PipelineCard({
         onDragStart(job.id);
       }}
       onDragEnd={onDragEnd}
-      className={`group rounded-md border border-gray-200 bg-white px-2.5 py-2 shadow-sm transition ${
+      className={`group rounded-md border border-gray-200 bg-white shadow-sm transition ${cardSize === "small" ? "px-2 py-1.5" : cardSize === "medium" ? "px-2.5 py-1.5" : "px-2.5 py-2"} ${
         isMoving
           ? "cursor-wait opacity-60"
           : canChangeStatus
@@ -53,7 +57,7 @@ export default function PipelineCard({
 
         <Link
           href={`/leads/${job.id}`}
-          className="min-w-0 flex-1 truncate text-sm font-semibold leading-5 text-gray-900 hover:underline"
+          className={`min-w-0 flex-1 truncate font-semibold text-gray-900 hover:underline ${cardSize === "small" ? "text-xs leading-4" : "text-sm leading-5"}`}
           title={formatJobDisplayName({
             customerName: job.customer?.full_name,
             jobName: job.customer_name,
@@ -84,7 +88,7 @@ export default function PipelineCard({
         ) : null}
       </div>
 
-      <div className="mt-1 flex min-w-0 items-center gap-1.5 pl-5 text-[11px] leading-4 text-gray-500">
+      {cardSize !== "small" ? <div className={`flex min-w-0 items-center gap-1.5 pl-5 text-gray-500 ${cardSize === "medium" ? "mt-0.5 text-[10px] leading-4" : "mt-1 text-[11px] leading-4"}`}>
         <span className="max-w-[42%] shrink-0 truncate">
           {job.salesperson ?? "Unassigned"}
         </span>
@@ -94,7 +98,7 @@ export default function PipelineCard({
           {job.next_action ?? "No next action"}
           {job.next_action_due ? ` · ${formatDate(job.next_action_due)}` : ""}
         </span>
-      </div>
+      </div> : null}
     </article>
   );
 }

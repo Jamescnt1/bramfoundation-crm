@@ -3,6 +3,7 @@ import type { Job } from "@/lib/services/jobs";
 export type PipelineJob = Pick<
   Job,
   | "id"
+  | "assigned_employee_id"
   | "customer_name"
   | "lead_source"
   | "status"

@@ -1,8 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { SlidersHorizontal } from "lucide-react";
 import PipelineColumn from "@/components/pipeline/PipelineColumn";
+import PipelineViewOptions, { type PipelineEmployeeOption } from "@/components/pipeline/PipelineViewOptions";
 import JobRequirementsDialog from "@/components/pipeline/JobRequirementsDialog";
 import {
   isConfiguredQfNumberRequired,
@@ -15,6 +17,7 @@ import {
 import type { PipelineJob } from "@/components/pipeline/types";
 import { changeJobPipelineStatus } from "@/app/actions/job-status";
 import { formatJobDisplayName } from "@/lib/job-display";
+import { updatePipelineCardSizeAction, type PipelineCardSize } from "@/app/pipeline/actions";
 
 type PipelineBoardProps = {
   initialJobs: PipelineJob[];
@@ -22,11 +25,19 @@ type PipelineBoardProps = {
   stages: PipelineStageView[];
   installationJobIds: string[];
   workOrderReadyJobIds: string[];
+  employees: PipelineEmployeeOption[];
+  initialCardSize: PipelineCardSize;
 };
 
-export default function PipelineBoard({ initialJobs, canChangeStatus, stages, installationJobIds, workOrderReadyJobIds }: PipelineBoardProps) {
+export default function PipelineBoard({ initialJobs, canChangeStatus, stages, installationJobIds, workOrderReadyJobIds, employees, initialCardSize }: PipelineBoardProps) {
   const router = useRouter();
+  const boardRef = useRef<HTMLDivElement>(null);
+  const panState = useRef<{ pointerId: number; startX: number; scrollLeft: number } | null>(null);
   const [jobs, setJobs] = useState(initialJobs);
+  const [cardSize, setCardSize] = useState<PipelineCardSize>(initialCardSize);
+  const [employeeIds, setEmployeeIds] = useState<string[]>([]);
+  const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
   const [movingJobId, setMovingJobId] = useState<string | null>(null);
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
   const [dragTarget, setDragTarget] = useState<PipelineStage | null>(null);
@@ -36,18 +47,69 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
     status: PipelineStage;
   } | null>(null);
 
+  const visibleJobs = useMemo(() => {
+    if (employeeIds.length === 0) return jobs;
+    return jobs.filter((job) =>
+      job.assigned_employee_id
+        ? employeeIds.includes(job.assigned_employee_id)
+        : employeeIds.includes("unassigned"),
+    );
+  }, [employeeIds, jobs]);
+
   const jobsByStage = useMemo(() => {
     const groups = Object.fromEntries(
       stages.map((stage) => [stage.slug, [] as PipelineJob[]]),
     ) as Record<string, PipelineJob[]>;
 
-    for (const job of jobs) {
+    for (const job of visibleJobs) {
       const stage = resolveConfiguredStage(job.status, stages);
       if (stage) groups[stage.slug].push(job);
     }
 
     return groups;
-  }, [jobs, stages]);
+  }, [stages, visibleJobs]);
+
+  function startPan(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("[data-pipeline-card], button, a, input, select, textarea")) return;
+    const board = boardRef.current;
+    if (!board) return;
+    panState.current = { pointerId: event.pointerId, startX: event.clientX, scrollLeft: board.scrollLeft };
+    board.setPointerCapture(event.pointerId);
+    setIsPanning(true);
+    event.preventDefault();
+  }
+
+  function movePan(event: ReactPointerEvent<HTMLDivElement>) {
+    const pan = panState.current;
+    const board = boardRef.current;
+    if (!pan || !board || pan.pointerId !== event.pointerId) return;
+    board.scrollLeft = pan.scrollLeft - (event.clientX - pan.startX);
+  }
+
+  function endPan(event: ReactPointerEvent<HTMLDivElement>) {
+    if (panState.current?.pointerId !== event.pointerId) return;
+    panState.current = null;
+    setIsPanning(false);
+  }
+
+  function autoScrollDuringCardDrag(event: React.DragEvent<HTMLDivElement>) {
+    const board = boardRef.current;
+    if (!board) return;
+    const bounds = board.getBoundingClientRect();
+    const edge = 90;
+    if (event.clientX < bounds.left + edge) board.scrollLeft -= 18;
+    if (event.clientX > bounds.right - edge) board.scrollLeft += 18;
+  }
+
+  async function applyViewOptions(next: { cardSize: PipelineCardSize; employeeIds: string[] }) {
+    setEmployeeIds(next.employeeIds);
+    if (next.cardSize !== cardSize) {
+      await updatePipelineCardSizeAction(next.cardSize);
+      setCardSize(next.cardSize);
+    }
+  }
 
   if (stages.length === 0) {
     return (
@@ -177,11 +239,42 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
         </div>
       ) : null}
 
-      <p className="mt-6 text-sm text-gray-500">
-        Drag a job card to another column to update its pipeline stage.
-      </p>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-gray-500">
+          Drag cards between stages. Grab empty board space to move across the pipeline.
+        </p>
+        <button
+          type="button"
+          onClick={() => setViewOptionsOpen(true)}
+          className="relative inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition hover:border-blue-300 hover:bg-blue-50"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Filter
+          <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-gray-600">{cardSize}</span>
+          {employeeIds.length ? (
+            <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-black px-1.5 py-0.5 text-[10px] font-bold text-white" aria-label={`${employeeIds.length} active employee filters`}>
+              {employeeIds.length}
+            </span>
+          ) : null}
+        </button>
+      </div>
 
-      <div className="mt-4 overflow-x-auto pb-6">
+      {employeeIds.length ? (
+        <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+          <span>Showing {visibleJobs.length} of {jobs.length} company jobs.</span>
+          <button type="button" onClick={() => setEmployeeIds([])} className="font-semibold text-gray-900 hover:underline">Clear employee filter</button>
+        </div>
+      ) : null}
+
+      <div
+        ref={boardRef}
+        onPointerDown={startPan}
+        onPointerMove={movePan}
+        onPointerUp={endPan}
+        onPointerCancel={endPan}
+        onDragOver={autoScrollDuringCardDrag}
+        className={`mt-4 overflow-x-auto pb-6 select-none ${isPanning ? "cursor-grabbing" : "cursor-grab"}`}
+      >
         <div className="flex min-w-max items-stretch gap-5">
           {stages.map((stage) => (
             <PipelineColumn
@@ -196,10 +289,21 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
               onDragEnter={setDragTarget}
               onDrop={moveJob}
               canChangeStatus={canChangeStatus}
+              cardSize={cardSize}
             />
           ))}
         </div>
       </div>
+
+      {viewOptionsOpen ? (
+        <PipelineViewOptions
+          open
+          value={{ cardSize, employeeIds }}
+          employees={employees}
+          onOpenChange={setViewOptionsOpen}
+          onApply={applyViewOptions}
+        />
+      ) : null}
 
       {pendingMove ? (
       <JobRequirementsDialog
