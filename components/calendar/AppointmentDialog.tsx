@@ -47,6 +47,8 @@ type AppointmentDialogProps = {
 
 type LocationMode = "job" | "custom";
 
+const EMPTY_SCOPE_IDS: string[] = [];
+
 function formatDateInput(date: Date | null | undefined) {
   if (!date) {
     return "";
@@ -104,8 +106,8 @@ export default function AppointmentDialog({
   defaultAppointmentType = "appointment",
   appointmentTypes,
   productionScopes = [],
-  defaultMaterialScopeIds = [],
-  appointmentScopeIds = [],
+  defaultMaterialScopeIds = EMPTY_SCOPE_IDS,
+  appointmentScopeIds = EMPTY_SCOPE_IDS,
 }: AppointmentDialogProps) {
   const router = useRouter();
   const isEditing = Boolean(appointment);
@@ -211,7 +213,10 @@ export default function AppointmentDialog({
     }
 
     setErrorMessage(null);
-  }, [open, appointment, defaultDate, defaultJobId, defaultAppointmentType, jobs, defaultMaterialScopeIds, appointmentScopeIds]);
+  // Initialize once for the appointment being opened. Depending on array props
+  // here caused every form interaction to restore the original appointment.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, appointment?.id]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function handleOpenChange(nextOpen: boolean) {
@@ -251,6 +256,30 @@ export default function AppointmentDialog({
     if (!nextEnd) return;
     setEndDate(nextEnd.date);
     setEndTime(nextEnd.time);
+  }
+
+  function handleStartDateChange(nextDate: string) {
+    const previousStart = date ? new Date(`${date}T12:00:00`) : null;
+    const previousEnd = endDate ? new Date(`${endDate}T12:00:00`) : null;
+    setDate(nextDate);
+
+    if (appointmentType === "installation") {
+      const daySpan = previousStart && previousEnd
+        ? Math.max(0, Math.round((previousEnd.getTime() - previousStart.getTime()) / 86_400_000))
+        : 0;
+      const nextEnd = new Date(`${nextDate}T12:00:00`);
+      if (!Number.isNaN(nextEnd.getTime())) {
+        nextEnd.setDate(nextEnd.getDate() + daySpan);
+        setEndDate(formatDateInput(nextEnd));
+      }
+      return;
+    }
+
+    setEndDate(nextDate);
+    if (!endTimeManuallyEdited) {
+      const nextEnd = oneHourAfter(nextDate, startTime);
+      if (nextEnd) setEndTime(nextEnd.time);
+    }
   }
 
   const selectableAppointmentTypes = appointment?.appointment_type &&
@@ -504,24 +533,7 @@ export default function AppointmentDialog({
                   id="appointment-date"
                   type="date"
                   value={date}
-                  onChange={(event) =>
-                    {
-                      const nextDate = event.target.value;
-                      setDate(nextDate);
-                      if (
-                        endTimeManuallyEdited &&
-                        appointmentType !== "installation"
-                      ) {
-                        setEndDate(nextDate);
-                      } else if (!endTimeManuallyEdited) {
-                        const nextEnd = oneHourAfter(nextDate, startTime);
-                        if (nextEnd) {
-                          setEndDate(nextEnd.date);
-                          setEndTime(nextEnd.time);
-                        }
-                      }
-                    }
-                  }
+                  onChange={(event) => handleStartDateChange(event.target.value)}
                   required
                 />
               </div>
