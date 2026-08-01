@@ -240,6 +240,24 @@ export async function createAppointment(
   return (data ?? []) as CalendarAppointment[];
 }
 
+export async function linkAppointmentsToMaterialScopes(
+  appointmentIds: string[],
+  materialScopeIds: string[],
+) {
+  if (!appointmentIds.length) return;
+  const { error: deleteError } = await supabase
+    .from("job_material_scope_appointments")
+    .delete()
+    .in("appointment_id", appointmentIds);
+  if (deleteError) throw new Error(deleteError.message);
+  if (!materialScopeIds.length) return;
+  const rows = appointmentIds.flatMap((appointment_id) =>
+    materialScopeIds.map((material_scope_id) => ({ appointment_id, material_scope_id })),
+  );
+  const { error } = await supabase.from("job_material_scope_appointments").insert(rows);
+  if (error) throw new Error(error.message);
+}
+
 export async function updateAppointment(
   appointmentId: string,
   values: AppointmentValues,

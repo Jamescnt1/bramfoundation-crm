@@ -105,6 +105,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
   const searchParams = useSearchParams();
   const [appointmentOpen, setAppointmentOpen] = useState(false);
   const [appointmentType, setAppointmentType] = useState<AppointmentType>("appointment");
+  const [scheduledMaterialScopeIds, setScheduledMaterialScopeIds] = useState<string[]>([]);
   const [currentStatus, setCurrentStatus] = useState(job.status);
   const [currentQfNumber, setCurrentQfNumber] = useState(job.qfloors_job_number);
   const [currentContractAmount, setCurrentContractAmount] = useState(job.contract_amount);
@@ -210,8 +211,9 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
     }
   }
 
-  function schedule(type: AppointmentType = "appointment") {
+  function schedule(type: AppointmentType = "appointment", materialScopeIds: string[] = []) {
     setAppointmentType(type);
+    setScheduledMaterialScopeIds(materialScopeIds);
     setAppointmentOpen(true);
   }
 
@@ -463,7 +465,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
               description="Coordinate materials, installation scopes, and crew work orders."
             />
             <div className="mt-2">
-              <ProductionWorkspace jobId={job.id} scopes={materialScopes} categories={materialCategories} summary={productionSummary} appointments={appointments} installationRequired={currentInstallationRequired} onSchedule={() => schedule("installation")} />
+              <ProductionWorkspace jobId={job.id} scopes={materialScopes} categories={materialCategories} summary={productionSummary} appointments={appointments} installationRequired={currentInstallationRequired} onSchedule={(scopeId) => schedule("installation", scopeId ? [scopeId] : [])} />
             </div>
           </section>
         ) : null}
@@ -513,7 +515,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
         ) : null}
       </div>
 
-      <AppointmentDialog open={appointmentOpen} onOpenChange={setAppointmentOpen} defaultDate={new Date()} defaultJobId={job.id} defaultAppointmentType={appointmentType} employees={employees} installerCrews={installerCrews} jobs={[job]} appointmentTypes={appointmentTypes} />
+      <AppointmentDialog open={appointmentOpen} onOpenChange={setAppointmentOpen} defaultDate={new Date()} defaultJobId={job.id} defaultAppointmentType={appointmentType} employees={employees} installerCrews={installerCrews} jobs={[job]} appointmentTypes={appointmentTypes} productionScopes={materialScopes.map((scope) => ({ id: scope.id, job_id: scope.job_id, label: scope.description || scope.category.name, abbreviation: scope.category.abbreviation }))} defaultMaterialScopeIds={scheduledMaterialScopeIds} />
       {pendingStatus ? (
         <JobRequirementsDialog
           open

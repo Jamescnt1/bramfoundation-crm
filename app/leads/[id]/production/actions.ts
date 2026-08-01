@@ -67,6 +67,27 @@ export async function updateMaterialScopeStatusAction(values: {
   refresh(values.jobId);
 }
 
+export async function linkMaterialScopeAppointmentAction(values: {
+  jobId: string;
+  scopeId: string;
+  appointmentId: string;
+}) {
+  await requirePermission("pipeline.manage");
+  const admin = createAdminClient();
+  const [{ data: scope, error: scopeError }, { data: appointment, error: appointmentError }] = await Promise.all([
+    admin.from("job_material_scopes").select("id").eq("id", values.scopeId).eq("job_id", values.jobId).single(),
+    admin.from("appointments").select("id").eq("id", values.appointmentId).eq("job_id", values.jobId).eq("appointment_type", "installation").single(),
+  ]);
+  if (scopeError || !scope) throw new Error(scopeError?.message ?? "Material scope not found.");
+  if (appointmentError || !appointment) throw new Error(appointmentError?.message ?? "Installation appointment not found.");
+  const { error } = await admin.from("job_material_scope_appointments").upsert({
+    material_scope_id: values.scopeId,
+    appointment_id: values.appointmentId,
+  });
+  if (error) throw new Error(error.message);
+  refresh(values.jobId);
+}
+
 function refresh(jobId: string) {
   revalidatePath(`/leads/${jobId}`);
   revalidatePath("/pipeline");

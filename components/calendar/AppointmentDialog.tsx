@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import {
   copyAppointmentToEmployee,
   createAppointment,
+  linkAppointmentsToMaterialScopes,
   updateAppointment,
   type AppointmentUpdateScope,
 } from "@/lib/services/appointments";
@@ -38,6 +39,8 @@ type AppointmentDialogProps = {
   defaultJobId?: string | null;
   defaultAppointmentType?: AppointmentType;
   appointmentTypes: AppointmentTypeDefinition[];
+  productionScopes?: { id: string; job_id: string; label: string; abbreviation: string }[];
+  defaultMaterialScopeIds?: string[];
 };
 
 type LocationMode = "job" | "custom";
@@ -98,6 +101,8 @@ export default function AppointmentDialog({
   defaultJobId = null,
   defaultAppointmentType = "appointment",
   appointmentTypes,
+  productionScopes = [],
+  defaultMaterialScopeIds = [],
 }: AppointmentDialogProps) {
   const router = useRouter();
   const isEditing = Boolean(appointment);
@@ -114,6 +119,7 @@ export default function AppointmentDialog({
   const [assignedEmployeeId, setAssignedEmployeeId] = useState("");
   const [installerCrewId, setInstallerCrewId] = useState("");
   const [installationScope, setInstallationScope] = useState("");
+  const [materialScopeIds, setMaterialScopeIds] = useState<string[]>([]);
   const [jobId, setJobId] = useState("");
   const [customTitle, setCustomTitle] = useState("");
   const [endTimeManuallyEdited, setEndTimeManuallyEdited] = useState(false);
@@ -162,6 +168,7 @@ export default function AppointmentDialog({
       setAssignedEmployeeId(appointment.assigned_employee_id ?? "");
       setInstallerCrewId(appointment.installer_crew_id ?? "");
       setInstallationScope(appointment.installation_scope ?? "");
+      setMaterialScopeIds([]);
       setJobId(appointment.job_id ?? "");
       setCustomTitle(appointment.job_id ? "" : appointment.title ?? "");
       setEndTimeManuallyEdited(true);
@@ -187,6 +194,7 @@ export default function AppointmentDialog({
       setAssignedEmployeeId("");
       setInstallerCrewId("");
       setInstallationScope("");
+      setMaterialScopeIds(defaultMaterialScopeIds);
       setJobId(defaultJobId ?? "");
       setCustomTitle("");
       setEndTimeManuallyEdited(false);
@@ -200,7 +208,7 @@ export default function AppointmentDialog({
     }
 
     setErrorMessage(null);
-  }, [open, appointment, defaultDate, defaultJobId, defaultAppointmentType, jobs]);
+  }, [open, appointment, defaultDate, defaultJobId, defaultAppointmentType, jobs, defaultMaterialScopeIds]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function handleOpenChange(nextOpen: boolean) {
@@ -320,7 +328,10 @@ export default function AppointmentDialog({
           endsOn: recurrenceEndsOn,
         };
         if (recurrenceValue && !recurrenceEndsOn) throw new Error("Choose when the recurring appointment ends.");
-        await createAppointment({ ...appointmentValues, recurrence: recurrenceValue });
+        const created = await createAppointment({ ...appointmentValues, recurrence: recurrenceValue });
+        if (appointmentType === "installation") {
+          await linkAppointmentsToMaterialScopes(created.map((item) => item.id), materialScopeIds);
+        }
       }
 
       onOpenChange(false);
@@ -517,6 +528,17 @@ export default function AppointmentDialog({
                 ) : null}
               </div>
             </div>
+
+            {appointmentType === "installation" ? (
+              <fieldset className="rounded-lg border border-gray-200 p-3">
+                <legend className="px-1 text-sm font-semibold text-gray-900">Production scopes</legend>
+                <p className="mt-1 text-xs text-gray-500">Choose which material scopes this crew appointment schedules.</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {productionScopes.filter((scope) => scope.job_id === jobId).map((scope) => <label key={scope.id} className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${materialScopeIds.includes(scope.id) ? "border-[#3f6e8c] bg-blue-50" : "border-gray-200"}`}><input type="checkbox" checked={materialScopeIds.includes(scope.id)} onChange={(event) => setMaterialScopeIds(event.target.checked ? [...materialScopeIds, scope.id] : materialScopeIds.filter((id) => id !== scope.id))} /><span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#3f6e8c] px-1 text-[10px] font-bold text-white">{scope.abbreviation}</span>{scope.label}</label>)}
+                  {productionScopes.filter((scope) => scope.job_id === jobId).length === 0 ? <p className="text-xs text-gray-500">No production material scopes are available for this job.</p> : null}
+                </div>
+              </fieldset>
+            ) : null}
 
             {appointmentType === "installation" ? (
               <div className="grid gap-4 sm:grid-cols-2">
