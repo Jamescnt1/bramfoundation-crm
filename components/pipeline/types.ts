@@ -1,4 +1,5 @@
 import type { Job } from "@/lib/services/jobs";
+import type { ProductionSummary } from "@/components/production/types";
 
 export type PipelineJob = Pick<
   Job,
@@ -15,3 +16,7 @@ export type PipelineJob = Pick<
   | "installation_required"
   | "created_at"
 > & Pick<Job, "customer">;
+
+export type PipelineJobWithProduction = PipelineJob & {
+  production_summary?: ProductionSummary;
+};

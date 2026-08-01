@@ -25,6 +25,8 @@ import {
   getAppointmentTypes,
   type AppointmentTypeDefinition,
 } from "@/lib/services/appointment-types";
+import { getJobMaterialScopes, getMaterialCategories, summarizeProduction } from "@/lib/services/production";
+import type { MaterialCategory, MaterialScope } from "@/components/production/types";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -37,7 +39,7 @@ const tabs: JobWorkspaceTab[] = [
   "timeline",
   "tasks",
   "calendar",
-  "installations",
+  "production",
   "files",
   "photos",
   "layouts",
@@ -48,8 +50,9 @@ export const dynamic = "force-dynamic";
 
 export default async function JobWorkspacePage({ params, searchParams }: Props) {
   const [{ id }, { tab }] = await Promise.all([params, searchParams]);
-  const activeTab = tabs.includes(tab as JobWorkspaceTab) && (tab !== "layouts" || LAYOUTS_BETA_ENABLED)
-    ? (tab as JobWorkspaceTab)
+  const requestedTab = tab === "installations" ? "production" : tab;
+  const activeTab = tabs.includes(requestedTab as JobWorkspaceTab) && (requestedTab !== "layouts" || LAYOUTS_BETA_ENABLED)
+    ? (requestedTab as JobWorkspaceTab)
     : "overview";
 
   let job;
@@ -67,6 +70,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
     statusPermissionResult,
     stagesResult,
     appointmentTypesResult,
+    globalMaterialCategoriesResult,
   ] = await Promise.all([
     safe(getActiveEmployees(), []),
     safe(getActiveInstallerCrews(), []),
@@ -74,6 +78,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
     safe(hasPermission("pipeline.manage"), false),
     safe(getPipelineStages(), []),
     safe<AppointmentTypeDefinition[]>(getAppointmentTypes(), []),
+    safe<MaterialCategory[]>(getMaterialCategories(), []),
   ]);
 
   let activitiesResult = emptyResult<JobActivity[]>([]);
@@ -96,12 +101,15 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
   let notesDeleteResult = emptyResult(false);
   let layoutManagePermissionResult = emptyResult(false);
   let layoutArchivePermissionResult = emptyResult(false);
+  let materialScopesResult = emptyResult<MaterialScope[]>([]);
+  let materialCategoriesResult = globalMaterialCategoriesResult;
 
   if (activeTab === "overview") {
-    [activitiesResult, tasksResult, appointmentsResult] = await Promise.all([
+    [activitiesResult, tasksResult, appointmentsResult, materialScopesResult] = await Promise.all([
       safe(getJobActivities(job.id), []),
       safe(getTasks({ jobId: job.id }), []),
       safe(getAppointmentsByJobId(job.id), []),
+      safe(getJobMaterialScopes(job.id), []),
     ]);
   } else if (activeTab === "timeline") {
     activitiesResult = await safe(getJobActivities(job.id), []);
@@ -119,8 +127,14 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
       safe(getTasks({ jobId: job.id }), []),
       safe(getTaskTypes(), []),
     ]);
-  } else if (activeTab === "calendar" || activeTab === "installations") {
-    appointmentsResult = await safe(getAppointmentsByJobId(job.id), []);
+  } else if (activeTab === "calendar" || activeTab === "production") {
+    if (activeTab === "production") {
+      [appointmentsResult, materialScopesResult, materialCategoriesResult] = await Promise.all([
+        safe(getAppointmentsByJobId(job.id), []),
+        safe(getJobMaterialScopes(job.id), []),
+        Promise.resolve(globalMaterialCategoriesResult),
+      ]);
+    } else appointmentsResult = await safe(getAppointmentsByJobId(job.id), []);
   } else if (activeTab === "files" || activeTab === "photos") {
     [attachmentsResult, manageAttachmentsResult, archiveAttachmentsResult] = await Promise.all([
       safe(getJobAttachments(job.id), []),
@@ -201,6 +215,9 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
             canCreateNotes={notesCreateResult.value}
             canEditNotes={notesEditResult.value}
             canDeleteNotes={notesDeleteResult.value}
+            materialScopes={materialScopesResult.value}
+            materialCategories={materialCategoriesResult.value}
+            productionSummary={summarizeProduction(job.id, materialScopesResult.value)}
           />
         </div>
       </div>

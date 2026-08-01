@@ -5,7 +5,9 @@ export type AutomationAssignmentType = "job_salesperson" | "specific_employee";
 export type AutomationTriggerEvent =
   | "job_created" | "job_status_changed" | "customer_created"
   | "appointment_scheduled" | "appointment_completed" | "task_completed"
-  | "lead_untouched_daily";
+  | "lead_untouched_daily" | "material_ordered" | "material_ready"
+  | "all_materials_ordered" | "all_materials_ready" | "work_order_sent"
+  | "all_work_orders_sent";
 export type AutomationActionType = "create_task" | "update_job_status" | "send_email";
 
 export type AutomationEmployee = { id: string; name: string };

@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { AlertTriangle, CalendarClock, GripVertical } from "lucide-react";
-import type { PipelineJob } from "@/components/pipeline/types";
+import type { PipelineJobWithProduction } from "@/components/pipeline/types";
 import { formatJobDisplayName } from "@/lib/job-display";
 import type { PipelineCardSize } from "@/app/pipeline/actions";
 
 type PipelineCardProps = {
-  job: PipelineJob;
+  job: PipelineJobWithProduction;
   isMoving: boolean;
   onDragStart: (jobId: string) => void;
   onDragEnd: () => void;
@@ -30,6 +30,7 @@ export default function PipelineCard({
   const missingRequiredContract =
     ["approved", "materials_ordered", "install_scheduled", "complete", "lost", "Approved", "Materials Ordered", "Install Scheduled", "Complete", "Lost"].includes(job.status)
     && !job.contract_amount;
+  const production = job.production_summary;
 
   return (
     <article
@@ -84,6 +85,14 @@ export default function PipelineCard({
           <span className="inline-flex shrink-0 items-center gap-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-700" title="Contract Amount is required at this pipeline stage">
             <AlertTriangle className="h-3 w-3" aria-hidden="true" />
             $
+          </span>
+        ) : null}
+        {production && production.total_steps > 0 ? (
+          <span
+            className={`inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ${production.needs_attention ? "bg-amber-50 text-amber-800 ring-1 ring-amber-200" : production.completed_steps === production.total_steps ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"}`}
+            title={`Production: ${production.completed_steps}/${production.total_steps} milestones complete`}
+          >
+            P {production.completed_steps}/{production.total_steps}{production.needs_attention ? " !" : ""}
           </span>
         ) : null}
       </div>

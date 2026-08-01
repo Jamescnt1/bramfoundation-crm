@@ -6,12 +6,12 @@ import {
   type PipelineStageView,
   type PipelineStage,
 } from "@/components/pipeline/constants";
-import type { PipelineJob } from "@/components/pipeline/types";
+import type { PipelineJobWithProduction } from "@/components/pipeline/types";
 import type { PipelineCardSize } from "@/app/pipeline/actions";
 
 type PipelineColumnProps = {
   stage: PipelineStageView;
-  jobs: PipelineJob[];
+  jobs: PipelineJobWithProduction[];
   movingJobId: string | null;
   draggedJobId: string | null;
   isDragTarget: boolean;

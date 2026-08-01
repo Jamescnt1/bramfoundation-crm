@@ -21,6 +21,12 @@ export const AUTOMATION_EVENTS: { value: AutomationTriggerEvent; label: string }
   { value: "appointment_completed", label: "Appointment is completed" },
   { value: "task_completed", label: "Task is completed" },
   { value: "lead_untouched_daily", label: "Lead has been untouched for 24 hours" },
+  { value: "material_ordered", label: "A material is ordered" },
+  { value: "material_ready", label: "A material is ready" },
+  { value: "all_materials_ordered", label: "All required materials are ordered" },
+  { value: "all_materials_ready", label: "All required materials are ready" },
+  { value: "work_order_sent", label: "A crew work order is sent" },
+  { value: "all_work_orders_sent", label: "All required work orders are sent" },
 ];
 
 export default function AutomationRuleDialog({ open, rule, employees, roles, stages, emailTemplates, appointmentTypes, onOpenChange, onSave }: Props) {

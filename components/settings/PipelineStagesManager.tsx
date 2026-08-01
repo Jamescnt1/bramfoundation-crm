@@ -45,6 +45,7 @@ export default function PipelineStagesManager({ initialStages }: { initialStages
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const activeStages = useMemo(() => stages.filter((stage) => stage.active), [stages]);
+  const unifiedProductionActive = activeStages.some((stage) => stage.slug === "in_progress");
 
   function values(stage: PipelineStageConfig): PipelineStageValues {
     return {
@@ -158,7 +159,7 @@ export default function PipelineStagesManager({ initialStages }: { initialStages
                 <div className="flex items-center gap-1">
                   <button type="button" onClick={() => move(index, -1)} disabled={busy || index === 0} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30" aria-label={`Move ${stage.label} up`}><ArrowUp className="h-4 w-4" /></button>
                   <button type="button" onClick={() => move(index, 1)} disabled={busy || index === activeStages.length - 1} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30" aria-label={`Move ${stage.label} down`}><ArrowDown className="h-4 w-4" /></button>
-                  <button type="button" onClick={() => beginEdit(stage)} disabled={busy} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100" aria-label={`Edit ${stage.label}`}><Pencil className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => beginEdit(stage)} disabled={busy || stage.slug === "in_progress"} title={stage.slug === "in_progress" ? "In Progress is a fixed production stage." : "Edit stage"} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30" aria-label={`Edit ${stage.label}`}><Pencil className="h-4 w-4" /></button>
                   <button type="button" onClick={() => archive(stage)} disabled={busy || stage.system_required} className="rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30" title={stage.system_required ? "Required system stages cannot be archived." : "Archive stage"} aria-label={`Archive ${stage.label}`}><Archive className="h-4 w-4" /></button>
                 </div>
               </div>
@@ -167,7 +168,7 @@ export default function PipelineStagesManager({ initialStages }: { initialStages
         ))}
       </div>
 
-      {stages.some((stage) => !stage.active) ? <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"><h2 className="font-semibold text-gray-900">Archived stages</h2><p className="mt-1 text-sm text-gray-500">Hidden from new status choices but retained on historical jobs.</p><div className="mt-4 divide-y divide-gray-100">{stages.filter((stage) => !stage.active).map((stage) => <div key={stage.id} className="flex items-center justify-between gap-4 py-3"><div><p className="font-medium text-gray-700">{stage.label}</p><p className="text-xs text-gray-500">{stage.job_count} historical job{stage.job_count === 1 ? "" : "s"}</p></div><button type="button" onClick={() => restore(stage)} disabled={busy} className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Restore</button></div>)}</div></section> : null}
+      {stages.some((stage) => !stage.active) ? <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"><h2 className="font-semibold text-gray-900">Archived stages</h2><p className="mt-1 text-sm text-gray-500">Hidden from new status choices but retained on historical jobs.</p><div className="mt-4 divide-y divide-gray-100">{stages.filter((stage) => !stage.active).map((stage) => { const legacyProductionStage = ["materials_ordered", "install_scheduled", "work_order_sent"].includes(stage.slug) && unifiedProductionActive; return <div key={stage.id} className="flex items-center justify-between gap-4 py-3"><div><p className="font-medium text-gray-700">{stage.label}</p><p className="text-xs text-gray-500">{legacyProductionStage ? "Managed by the unified production workflow." : `${stage.job_count} historical job${stage.job_count === 1 ? "" : "s"}`}</p></div><button type="button" onClick={() => restore(stage)} disabled={busy || legacyProductionStage} title={legacyProductionStage ? "Use Revert to legacy stages above." : "Restore stage"} className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40">Restore</button></div>; })}</div></section> : null}
     </div>
   );
 }

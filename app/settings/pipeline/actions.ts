@@ -9,6 +9,7 @@ import {
   updatePipelineStage,
   type PipelineStageValues,
 } from "@/lib/services/pipeline-stages";
+import { createClient } from "@/lib/supabase/server";
 
 export async function createPipelineStageAction(values: PipelineStageValues) {
   await requirePermission("pipeline.settings.manage");
@@ -32,6 +33,13 @@ export async function reorderPipelineStagesAction(items: { id: string; values: P
 export async function archivePipelineStageAction(id: string, replacementSlug?: string) {
   await requirePermission("pipeline.settings.manage");
   await archivePipelineStage(id, replacementSlug);
+  revalidateAll();
+}
+
+export async function setProductionWorkflowEnabledAction(enabled: boolean) {
+  await requirePermission("pipeline.settings.manage");
+  const { error } = await (await createClient()).rpc("set_production_workflow_enabled", { next_enabled: enabled });
+  if (error) throw new Error(error.message);
   revalidateAll();
 }
 

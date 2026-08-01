@@ -74,7 +74,16 @@ export async function updatePipelineStage(id: string, values: PipelineStageValue
   if (current.system_required && !normalized.active) {
     throw new Error("Required system stages cannot be archived.");
   }
+  if (current.slug === "in_progress" && normalized.label !== "In Progress") {
+    throw new Error("In Progress is a fixed production stage and cannot be renamed.");
+  }
   normalized.system_required = current.system_required;
+  if (current.slug === "in_progress") {
+    normalized.label = "In Progress";
+    normalized.active = true;
+    normalized.system_required = true;
+    normalized.behavior = { ...normalized.behavior, fixed: true, production_workflow: true };
+  }
   if (normalized.slug === "estimate_sent") normalized.qf_number_required = true;
   if (normalized.slug === "approved") normalized.contract_amount_required = true;
   if (["complete", "lost"].includes(normalized.slug)) normalized.terminal = true;

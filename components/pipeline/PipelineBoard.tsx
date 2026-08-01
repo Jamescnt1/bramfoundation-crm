@@ -14,13 +14,13 @@ import {
   type PipelineStage,
   type PipelineStageView,
 } from "@/components/pipeline/constants";
-import type { PipelineJob } from "@/components/pipeline/types";
+import type { PipelineJobWithProduction } from "@/components/pipeline/types";
 import { changeJobPipelineStatus } from "@/app/actions/job-status";
 import { formatJobDisplayName } from "@/lib/job-display";
 import { updatePipelineCardSizeAction, type PipelineCardSize } from "@/app/pipeline/actions";
 
 type PipelineBoardProps = {
-  initialJobs: PipelineJob[];
+  initialJobs: PipelineJobWithProduction[];
   canChangeStatus: boolean;
   stages: PipelineStageView[];
   installationJobIds: string[];
@@ -58,8 +58,8 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
 
   const jobsByStage = useMemo(() => {
     const groups = Object.fromEntries(
-      stages.map((stage) => [stage.slug, [] as PipelineJob[]]),
-    ) as Record<string, PipelineJob[]>;
+      stages.map((stage) => [stage.slug, [] as PipelineJobWithProduction[]]),
+    ) as Record<string, PipelineJobWithProduction[]>;
 
     for (const job of visibleJobs) {
       const stage = resolveConfiguredStage(job.status, stages);

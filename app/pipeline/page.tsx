@@ -3,11 +3,12 @@ import { getJobs } from "@/lib/services/jobs";
 import { getActiveEmployees, hasPermission, requireEmployee } from "@/lib/services/employees";
 import { getPipelineStages } from "@/lib/services/pipeline-stages";
 import { getInstallationJobIds, getWorkOrderReadyJobIds } from "@/lib/services/appointments";
+import { getProductionSummaries } from "@/lib/services/production";
 
 export const dynamic = "force-dynamic";
 
 export default async function PipelinePage() {
-  const [{ jobs, errorMessage }, canChangeStatus, stages, installationJobIds, workOrderReadyJobIds, employees, currentEmployee] = await Promise.all([
+  const [{ jobs: loadedJobs, errorMessage }, canChangeStatus, stages, installationJobIds, workOrderReadyJobIds, employees, currentEmployee] = await Promise.all([
     loadPipelineJobs(),
     hasPermission("pipeline.manage"),
     getPipelineStages(),
@@ -16,6 +17,9 @@ export default async function PipelinePage() {
     getActiveEmployees(),
     requireEmployee(),
   ]);
+  const inProgressIds = loadedJobs.filter((job) => ["in_progress", "In Progress"].includes(job.status)).map((job) => job.id);
+  const productionSummaries = await getProductionSummaries(inProgressIds);
+  const jobs = loadedJobs.map((job) => ({ ...job, production_summary: productionSummaries[job.id] }));
 
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-8">

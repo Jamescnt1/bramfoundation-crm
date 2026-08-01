@@ -22,11 +22,13 @@ type Props = {
   initialQfNumber?: string | null;
   initialContractAmount?: string | null;
   showInstallationQuestion?: boolean;
+  showProductionSetup?: boolean;
+  materialCategories?: { id: string; name: string; abbreviation: string }[];
   initialInstallationRequired?: boolean;
   isSaving: boolean;
   errorMessage?: string;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (values: { qfNumber?: string; contractAmount?: string; installationRequired?: boolean }) => void;
+  onConfirm: (values: { qfNumber?: string; contractAmount?: string; installationRequired?: boolean; materialCategoryIds?: string[] }) => void;
 };
 
 export default function JobRequirementsDialog(props: Props) {
@@ -36,6 +38,8 @@ export default function JobRequirementsDialog(props: Props) {
     props.initialInstallationRequired ?? true,
   );
   const [validationError, setValidationError] = useState("");
+  const [materialCategoryIds, setMaterialCategoryIds] = useState<string[]>([]);
+  const [noMaterialsRequired, setNoMaterialsRequired] = useState(false);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,11 +52,16 @@ export default function JobRequirementsDialog(props: Props) {
       setValidationError("Enter a positive Contract Amount before continuing.");
       return;
     }
+    if (props.showProductionSetup && !noMaterialsRequired && !materialCategoryIds.length) {
+      setValidationError("Choose at least one material category or select No materials required.");
+      return;
+    }
     setValidationError("");
     props.onConfirm({
       ...(props.requireQfNumber ? { qfNumber: qfNumber.trim() } : {}),
       ...(props.requireContractAmount ? { contractAmount: amount.toFixed(2) } : {}),
       ...(props.showInstallationQuestion ? { installationRequired } : {}),
+      ...(props.showProductionSetup ? { materialCategoryIds: noMaterialsRequired ? [] : materialCategoryIds } : {}),
     });
   }
 
@@ -116,6 +125,16 @@ export default function JobRequirementsDialog(props: Props) {
                 <p className="mt-2 text-xs text-gray-500">
                   Crew assignments and work orders can be managed from the job’s Installations tab.
                 </p>
+              </fieldset>
+            ) : null}
+            {props.showProductionSetup ? (
+              <fieldset className="rounded-lg border border-gray-200 p-3">
+                <legend className="px-1 text-sm font-semibold text-gray-950">Production setup</legend>
+                <p className="mt-1 text-xs leading-5 text-gray-600">Select the material groups included in this job. More scopes can be added from Production.</p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {(props.materialCategories ?? []).map((category) => <label key={category.id} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${materialCategoryIds.includes(category.id) ? "border-[#3f6e8c] bg-blue-50 text-blue-950" : "border-gray-200"}`}><input type="checkbox" checked={materialCategoryIds.includes(category.id)} disabled={noMaterialsRequired || props.isSaving} onChange={(event) => setMaterialCategoryIds(event.target.checked ? [...materialCategoryIds, category.id] : materialCategoryIds.filter((id) => id !== category.id))} /><span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-700 px-1 text-[10px] font-bold text-white">{category.abbreviation}</span>{category.name}</label>)}
+                </div>
+                <label className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3 text-sm"><input type="checkbox" checked={noMaterialsRequired} disabled={props.isSaving} onChange={(event) => { setNoMaterialsRequired(event.target.checked); if (event.target.checked) setMaterialCategoryIds([]); }} />No materials required</label>
               </fieldset>
             ) : null}
             {props.requireInstallAppointment && installationRequired ? (

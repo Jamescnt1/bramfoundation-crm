@@ -33,8 +33,11 @@ import LayoutWorkspace from "@/components/layouts/LayoutWorkspace";
 import type { JobLayout } from "@/components/layouts/types";
 import JobNotesPanel from "@/components/jobs/JobNotesPanel";
 import type { JobNote } from "@/lib/services/job-notes";
-import JobInstallationsPanel from "@/components/jobs/JobInstallationsPanel";
 import { formatDateTime as formatCompanyDateTime } from "@/lib/date-time";
+import type { MaterialCategory, MaterialScope, ProductionSummary } from "@/components/production/types";
+import ProductionProgress from "@/components/production/ProductionProgress";
+import ProductionWorkspace from "@/components/production/ProductionWorkspace";
+import { addMaterialScopeAction } from "@/app/leads/[id]/production/actions";
 
 type Props = {
   activeTab: JobWorkspaceTab;
@@ -73,6 +76,9 @@ type Props = {
   canCreateNotes: boolean;
   canEditNotes: boolean;
   canDeleteNotes: boolean;
+  materialScopes: MaterialScope[];
+  materialCategories: MaterialCategory[];
+  productionSummary: ProductionSummary;
 };
 
 export type JobWorkspaceTab =
@@ -81,7 +87,7 @@ export type JobWorkspaceTab =
   | "timeline"
   | "tasks"
   | "calendar"
-  | "installations"
+  | "production"
   | "files"
   | "photos"
   | "layouts"
@@ -89,11 +95,11 @@ export type JobWorkspaceTab =
 
 const baseNav = [
   ["overview", "Overview"], ["notes", "Notes"], ["timeline", "Timeline"], ["tasks", "Tasks"],
-  ["calendar", "Calendar"], ["installations", "Installations"], ["files", "Files"], ["photos", "Photos"],
+  ["calendar", "Calendar"], ["production", "Production"], ["files", "Files"], ["photos", "Photos"],
   ["communications", "Communications"],
 ] as const;
 
-export default function JobWorkspace({ activeTab, job, customer, assignedEmployee, employees, installerCrews, appointmentTypes, activities, tasks, taskTypes, appointments, activityError, taskError, canChangeStatus, stages, attachments, attachmentError, canManageAttachments, canArchiveAttachments, conversation, currentEmployee, customerEmails, emailTemplates, customerEmailError, canSendCustomerEmail, layoutsEnabled, layouts, layoutError, canManageLayouts, canArchiveLayouts, notes, notesError, canViewNotes, canCreateNotes, canEditNotes, canDeleteNotes }: Props) {
+export default function JobWorkspace({ activeTab, job, customer, assignedEmployee, employees, installerCrews, appointmentTypes, activities, tasks, taskTypes, appointments, activityError, taskError, canChangeStatus, stages, attachments, attachmentError, canManageAttachments, canArchiveAttachments, conversation, currentEmployee, customerEmails, emailTemplates, customerEmailError, canSendCustomerEmail, layoutsEnabled, layouts, layoutError, canManageLayouts, canArchiveLayouts, notes, notesError, canViewNotes, canCreateNotes, canEditNotes, canDeleteNotes, materialScopes, materialCategories, productionSummary }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -170,7 +176,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
     await saveStatus(nextStatus);
   }
 
-  async function saveStatus(nextStatus: PipelineStage, qfNumber?: string, contractAmount?: string, installationRequired?: boolean) {
+  async function saveStatus(nextStatus: PipelineStage, qfNumber?: string, contractAmount?: string, installationRequired?: boolean, materialCategoryIds?: string[]) {
     const previousStatus = currentStatus;
     const previousQfNumber = currentQfNumber;
     const previousContractAmount = currentContractAmount;
@@ -183,6 +189,9 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
     if (installationRequired !== undefined) setCurrentInstallationRequired(installationRequired);
 
     try {
+      if (materialCategoryIds?.length) {
+        await Promise.all(materialCategoryIds.map((categoryId) => addMaterialScopeAction({ jobId: job.id, categoryId, description: "" })));
+      }
       const updated = await changeJobPipelineStatus(job.id, nextStatus, qfNumber, contractAmount, installationRequired);
       setCurrentStatus(updated.status);
       setCurrentQfNumber(updated.qfloors_job_number);
@@ -340,14 +349,12 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
               </div>
 
               <div className="space-y-3">
-                <WorkspaceCard title="Installation work orders">
-                  <JobInstallationsPanel
-                    jobId={job.id}
-                    appointments={appointments}
-                    installationRequired={currentInstallationRequired}
+                <WorkspaceCard title="Production Progress">
+                  <ProductionProgress
+                    scopes={materialScopes}
+                    summary={productionSummary}
                     compact
-                    onSchedule={() => schedule("installation")}
-                    onOpenInstallations={() => selectTab("installations")}
+                    onOpen={() => selectTab("production")}
                   />
                 </WorkspaceCard>
 
@@ -449,21 +456,14 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
           </section>
         ) : null}
 
-        {activeTab === "installations" ? (
+        {activeTab === "production" ? (
           <section>
             <WorkspaceSectionHeader
-              title="Installations"
-              description="Track each crew, flooring scope, schedule, and work order independently."
+              title="Production"
+              description="Coordinate materials, installation scopes, and crew work orders."
             />
             <div className="mt-2">
-              <WorkspaceCard title="Installation planning" count={appointments.filter((appointment) => appointment.appointment_type === "installation" && appointment.status !== "cancelled").length}>
-                <JobInstallationsPanel
-                  jobId={job.id}
-                  appointments={appointments}
-                  installationRequired={currentInstallationRequired}
-                  onSchedule={() => schedule("installation")}
-                />
-              </WorkspaceCard>
+              <ProductionWorkspace jobId={job.id} scopes={materialScopes} categories={materialCategories} summary={productionSummary} appointments={appointments} installationRequired={currentInstallationRequired} onSchedule={() => schedule("installation")} />
             </div>
           </section>
         ) : null}
@@ -531,7 +531,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
             currentInstallationRequired &&
             !workOrdersReady
           }
-          installationsHref={`/leads/${job.id}?tab=installations`}
+          installationsHref={`/leads/${job.id}?tab=production`}
           onScheduleInstall={() => {
             setPendingStatus(null);
             schedule("installation");
@@ -555,6 +555,8 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                 installationAppointments.length === 0)
             );
           })()}
+          showProductionSetup={resolveConfiguredStage(pendingStatus, stages)?.slug === "in_progress" && resolveConfiguredStage(currentStatus, stages)?.slug !== "in_progress" && materialScopes.length === 0}
+          materialCategories={materialCategories.map(({ id, name, abbreviation }) => ({ id, name, abbreviation }))}
           initialInstallationRequired={currentInstallationRequired}
           isSaving={statusSaving}
           errorMessage={statusError}
@@ -564,7 +566,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
               setStatusError("");
             }
           }}
-          onConfirm={({ qfNumber, contractAmount, installationRequired }) => void saveStatus(pendingStatus, qfNumber, contractAmount, installationRequired)}
+          onConfirm={({ qfNumber, contractAmount, installationRequired, materialCategoryIds }) => void saveStatus(pendingStatus, qfNumber, contractAmount, installationRequired, materialCategoryIds)}
         />
       ) : null}
     </>
