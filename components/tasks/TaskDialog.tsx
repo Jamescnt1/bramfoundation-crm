@@ -29,7 +29,10 @@ export default function TaskDialog({ open, onOpenChange, onSaved, task, customer
 function TaskDialogForm({ onOpenChange, onSaved, task, customers, jobs, employees, taskTypes, defaultCustomerId, defaultJobId, currentEmployeeId = null, currentEmployeeRole = null, onLatestNoteChange }: Omit<Props, "open">) {
   const selectedDefaultJob = jobs.find((job) => job.id === (task?.job_id ?? defaultJobId));
   const [title, setTitle] = useState(task?.title ?? "");
-  const [employeeId, setEmployeeId] = useState(task?.assigned_employee_id ?? ""); const [dueAt, setDueAt] = useState(toLocalInput(task?.due_at));
+  const initialDue = toLocalDueParts(task?.due_at, task?.due_date);
+  const [employeeId, setEmployeeId] = useState(task?.assigned_employee_id ?? "");
+  const [dueDate, setDueDate] = useState(initialDue.date);
+  const [dueTime, setDueTime] = useState(initialDue.time);
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? "normal"); const [status, setStatus] = useState<TaskStatus>(task?.status ?? "open");
   const [taskTypeId, setTaskTypeId] = useState(task?.task_type_id ?? taskTypes[0]?.id ?? "");
   const [customerId, setCustomerId] = useState(task?.customer_id ?? selectedDefaultJob?.customer_id ?? defaultCustomerId ?? "");
@@ -50,7 +53,7 @@ function TaskDialogForm({ onOpenChange, onSaved, task, customers, jobs, employee
     const selectedJob = jobs.find((job) => job.id === jobId);
     if (jobId && customerId && selectedJob?.customer_id !== customerId) { setError("The selected job does not belong to the selected customer."); setSaving(false); return; }
     const values: TaskValues = { title, description: task?.description ?? null, assigned_employee_id: employeeId || null,
-      due_at: dueAt ? new Date(dueAt).toISOString() : null, priority, status, task_type_id: taskTypeId || null,
+      due_at: dueDate ? new Date(`${dueDate}T${dueTime || "17:00"}`).toISOString() : null, priority, status, task_type_id: taskTypeId || null,
       customer_id: customerId || selectedJob?.customer_id || null, job_id: jobId || null };
     try {
       const saved = task ? await updateTask(task.id, values) : await createTask(values);
@@ -66,7 +69,7 @@ function TaskDialogForm({ onOpenChange, onSaved, task, customers, jobs, employee
     <div className="grid gap-5 py-6">
       <Field label="Title"><Input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Run to Costco for coffee and water" /></Field>
       <div className="grid gap-4 sm:grid-cols-2"><Field label="Assigned employee"><select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className={inputClass}><option value="">Unassigned</option>{employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}</select></Field>
-      <Field label="Due date and time"><Input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} /></Field></div>
+      <div className="grid grid-cols-[minmax(0,1fr)_8rem] gap-2"><Field label="Due date"><Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></Field><Field label="Due time"><Input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} disabled={!dueDate} /></Field>{dueDate ? <button type="button" onClick={() => { setDueDate(""); setDueTime(""); }} className="col-span-2 w-fit text-xs font-medium text-gray-500 hover:text-red-700">Clear due date</button> : null}</div></div>
       <div className="grid gap-4 sm:grid-cols-3"><Field label="Priority"><select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} className={inputClass}>{TASK_PRIORITIES.map((value) => <option key={value} value={value}>{label(value)}</option>)}</select></Field>
       <Field label="Status"><select value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} className={inputClass}>{TASK_STATUSES.map((value) => <option key={value} value={value}>{label(value)}</option>)}</select></Field>
       <Field label="Category / type"><select value={taskTypeId} onChange={(e) => setTaskTypeId(e.target.value)} className={inputClass}><option value="">General</option>{taskTypes.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</select></Field></div>
@@ -92,4 +95,10 @@ function TaskDialogForm({ onOpenChange, onSaved, task, customers, jobs, employee
 function Field({ label: text, children }: { label: string; children: React.ReactNode }) { return <label className="grid gap-2 text-sm font-medium text-gray-700"><span>{text}</span>{children}</label>; }
 const inputClass = "h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200";
 function label(value: string) { return value.split("_").map((word) => word[0].toUpperCase() + word.slice(1)).join(" "); }
-function toLocalInput(value?: string | null) { if (!value) return ""; const date = new Date(value); const offset = date.getTimezoneOffset() * 60000; return new Date(date.getTime() - offset).toISOString().slice(0, 16); }
+function toLocalDueParts(value?: string | null, fallbackDate?: string | null) {
+  if (!value) return { date: fallbackDate ?? "", time: fallbackDate ? "17:00" : "" };
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset() * 60000;
+  const local = new Date(date.getTime() - offset).toISOString();
+  return { date: local.slice(0, 10), time: local.slice(11, 16) };
+}
