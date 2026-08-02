@@ -47,7 +47,7 @@ export async function searchFoundationCrm(rawQuery: string): Promise<GlobalSearc
         .limit(RESULT_LIMIT),
       supabase
         .from("jobs")
-        .select("id, customer_name, qfloors_job_number, status, customer:customers!jobs_customer_id_fkey(full_name)")
+        .select("id, customer_name, qfloors_job_number, status, on_hold, hold_until, customer:customers!jobs_customer_id_fkey(full_name)")
         .is("archived_at", null)
         .or(`customer_name.ilike.${pattern},qfloors_job_number.ilike.${pattern}`)
         .order("updated_at", { ascending: false, nullsFirst: false })
@@ -129,9 +129,9 @@ export async function searchFoundationCrm(rawQuery: string): Promise<GlobalSearc
       type,
       id: job.id,
       title,
-      subtitle: job.status,
+      subtitle: job.on_hold ? `On Hold${job.hold_until ? ` until ${job.hold_until}` : ""} · ${job.status}` : job.status,
       href: `/leads/${job.id}`,
-      keywords: `${title} ${job.status}`,
+      keywords: `${title} ${job.status}${job.on_hold ? " on hold" : ""}`,
     });
   }
 

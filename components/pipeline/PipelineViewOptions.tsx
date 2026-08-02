@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { PipelineCardSize, PipelineSortOrder } from "@/app/pipeline/actions";
+import type { PipelineCardSize, PipelineHoldView, PipelineSortOrder } from "@/app/pipeline/actions";
 
 export type PipelineEmployeeOption = {
   id: string;
@@ -22,6 +22,7 @@ export type PipelineViewOptionsValue = {
   cardSize: PipelineCardSize;
   sortOrder: PipelineSortOrder;
   employeeIds: string[];
+  holdView: PipelineHoldView;
 };
 
 type Props = {
@@ -42,6 +43,12 @@ const sortOrders: Array<{ value: PipelineSortOrder; label: string }> = [
   { value: "newest", label: "Newest to oldest" },
   { value: "oldest", label: "Oldest to newest" },
   { value: "alphabetical", label: "Alphabetical A–Z" },
+];
+
+const holdViews: Array<{ value: PipelineHoldView; label: string; description: string }> = [
+  { value: "active", label: "Active", description: "Hide jobs that are temporarily on hold" },
+  { value: "on_hold", label: "On Hold", description: "Only long-term follow-up jobs" },
+  { value: "all", label: "All Open", description: "Show active and held jobs together" },
 ];
 
 export default function PipelineViewOptions({ open, value, employees, onOpenChange, onApply }: Props) {
@@ -82,6 +89,12 @@ export default function PipelineViewOptions({ open, value, employees, onOpenChan
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
+          <fieldset>
+            <legend className="text-sm font-semibold text-gray-900">Pipeline jobs</legend>
+            <p className="mt-1 text-xs text-gray-500">This selection is saved to your Foundation account.</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">{holdViews.map((option) => <button key={option.value} type="button" onClick={() => setDraft((current) => ({ ...current, holdView: option.value }))} className={`rounded-lg border px-3 py-3 text-left transition ${draft.holdView === option.value ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}><span className="block text-sm font-semibold">{option.label}</span><span className={`mt-1 block text-[11px] leading-4 ${draft.holdView === option.value ? "text-gray-300" : "text-gray-500"}`}>{option.description}</span></button>)}</div>
+          </fieldset>
+
           <fieldset>
             <legend className="text-sm font-semibold text-gray-900">Job size</legend>
             <p className="mt-1 text-xs text-gray-500">Your selection follows your Foundation account.</p>

@@ -15,6 +15,9 @@ export type PipelineJob = Pick<
   | "contract_amount"
   | "installation_required"
   | "created_at"
+  | "on_hold"
+  | "hold_reason"
+  | "hold_until"
 > & Pick<Job, "customer">;
 
 export type PipelineJobWithProduction = PipelineJob & {

@@ -95,6 +95,7 @@ export default function PipelineCard({
             P {production.completed_steps}/{production.total_steps}{production.needs_attention ? " !" : ""}
           </span>
         ) : null}
+        {job.on_hold ? <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200" title={`${job.hold_reason ?? "On hold"}${job.hold_until ? ` until ${formatDate(job.hold_until)}` : ""}`}>Hold</span> : null}
       </div>
 
       {cardSize !== "small" ? <div className={`flex min-w-0 items-center gap-1.5 pl-5 text-gray-500 ${cardSize === "medium" ? "mt-0.5 text-[10px] leading-4" : "mt-1 text-[11px] leading-4"}`}>

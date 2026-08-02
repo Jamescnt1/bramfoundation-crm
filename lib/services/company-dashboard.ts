@@ -40,6 +40,10 @@ export type DashboardJob = {
   installation_required: boolean;
   created_at: string;
   updated_at: string | null;
+  on_hold: boolean;
+  hold_reason: string | null;
+  hold_until: string | null;
+  hold_note: string | null;
   customer: { id: string; full_name: string } | null;
 };
 
@@ -167,7 +171,7 @@ export async function getCompanyDashboardData(
         .order("name"),
       supabase
         .from("jobs")
-        .select("id, customer_name, status, salesperson, assigned_employee_id, next_action, next_action_due, qfloors_job_number, phone, email, address, contract_amount, company_contact_id, job_site_contact_id, installation_required, created_at, updated_at, customer:customers!jobs_customer_id_fkey(id, full_name)")
+        .select("id, customer_name, status, salesperson, assigned_employee_id, next_action, next_action_due, qfloors_job_number, phone, email, address, contract_amount, company_contact_id, job_site_contact_id, installation_required, created_at, updated_at, on_hold, hold_reason, hold_until, hold_note, customer:customers!jobs_customer_id_fkey(id, full_name)")
         .is("archived_at", null)
         .order("updated_at", { ascending: false, nullsFirst: false }),
       supabase
@@ -228,7 +232,7 @@ export async function getCompanyDashboardData(
   ]);
 
   const stageFor = (status: string | null) => stages.find((stage) => stage.slug === status || stage.label === status) ?? stages.find((stage) => stage.slug === "new_lead");
-  const activeJobs = jobs.filter((job) => !stageFor(job.status)?.terminal);
+  const activeJobs = jobs.filter((job) => !stageFor(job.status)?.terminal && !job.on_hold);
   const openTasks = tasks.filter((task) => !task.completed && !["completed", "cancelled"].includes(task.status));
   const overdueTasks = openTasks.filter((task) => isTaskOverdue(task, now, todayKey));
   const todayAppointments = appointments.filter((appointment) => {
@@ -239,7 +243,7 @@ export async function getCompanyDashboardData(
   const pipeline = Object.fromEntries(
     stages.map((stage) => [
       stage.slug,
-      jobs.filter((job) => stageFor(job.status)?.slug === stage.slug),
+      jobs.filter((job) => !job.on_hold && stageFor(job.status)?.slug === stage.slug),
     ]),
   ) as Record<string, DashboardJob[]>;
 
@@ -383,6 +387,10 @@ function buildAttentionItems({
     const stage = stages.find((item) => item.slug === job.status || item.label === job.status) ?? stages.find((item) => item.slug === "new_lead");
     const updated = new Date(job.updated_at ?? job.created_at);
     if (stage?.terminal) continue;
+
+    if (job.on_hold && job.hold_until && job.hold_until <= dateKey(todayStart)) {
+      items.push({ id: `hold-follow-up-${job.id}`, kind: "hold_follow_up_due", title: "On Hold Follow-up Due", subject: jobLabel(job), detail: `${job.hold_reason ?? "Follow-up required"}${job.hold_note ? ` — ${job.hold_note}` : ""}. Follow-up date: ${new Date(`${job.hold_until}T12:00:00`).toLocaleDateString()}.`, assignedEmployee: job.salesperson || "Unassigned", href: `/leads/${job.id}`, severity: "important" });
+    }
 
     addJobRuleItem(items, enabledRules, "missing_qf_number",
       Boolean(stage?.qf_number_required && !job.qfloors_job_number),

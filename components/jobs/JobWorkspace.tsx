@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CalendarPlus, CheckSquare, Copy, MoreHorizontal, Pencil, UserRound } from "lucide-react";
+import { CalendarPlus, CheckSquare, CirclePause, Copy, MoreHorizontal, Pencil, Play, UserRound } from "lucide-react";
 import AttachmentManager from "@/components/attachments/AttachmentManager";
 import type { JobAttachment } from "@/components/attachments/types";
 import AppointmentCard from "@/components/calendar/AppointmentCard";
@@ -38,6 +38,8 @@ import type { MaterialCategory, MaterialScope, ProductionSummary } from "@/compo
 import ProductionProgress from "@/components/production/ProductionProgress";
 import ProductionWorkspace from "@/components/production/ProductionWorkspace";
 import { addMaterialScopeAction } from "@/app/leads/[id]/production/actions";
+import JobHoldDialog from "@/components/jobs/JobHoldDialog";
+import { releaseJobHoldAction } from "@/app/leads/[id]/hold/actions";
 
 type Props = {
   activeTab: JobWorkspaceTab;
@@ -114,6 +116,11 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusError, setStatusError] = useState("");
   const [pendingStatus, setPendingStatus] = useState<PipelineStage | null>(null);
+  const [holdDialogOpen, setHoldDialogOpen] = useState(false);
+  const [onHold, setOnHold] = useState(job.on_hold);
+  const [holdReason, setHoldReason] = useState(job.hold_reason);
+  const [holdUntil, setHoldUntil] = useState(job.hold_until);
+  const [holdNote, setHoldNote] = useState(job.hold_note);
   const openTasks = tasks.filter((task) => !task.completed);
   const overdueTasks = openTasks.filter((task) => task.due_date && new Date(`${task.due_date}T23:59:59`) < new Date());
   const upcoming = appointments
@@ -199,6 +206,10 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
       setCurrentQfNumber(updated.qfloors_job_number);
       setCurrentContractAmount(updated.contract_amount);
       setCurrentInstallationRequired(updated.installation_required);
+      setOnHold(false);
+      setHoldReason(null);
+      setHoldUntil(null);
+      setHoldNote(null);
       setPendingStatus(null);
       router.refresh();
     } catch (error) {
@@ -279,6 +290,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                 </span>
               ) : null}
               <span className="text-xs text-gray-600">Assigned to <strong className="text-gray-900">{employeeName}</strong></span>
+              {onHold ? <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">On Hold until {holdUntil ? formatDate(holdUntil) : "follow-up"}{holdReason ? ` · ${holdReason}` : ""}</span> : null}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -290,6 +302,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
               <DropdownMenuContent align="end">
                 {customer ? <DropdownMenuItem onClick={() => window.location.assign(`/customers/${customer.id}`)}><UserRound /> Open Customer</DropdownMenuItem> : null}
                 <DropdownMenuItem onClick={() => window.location.assign(`/leads/${job.id}/copy`)}><Copy /> Copy Job</DropdownMenuItem>
+                {canChangeStatus ? onHold ? <DropdownMenuItem onClick={async () => { try { await releaseJobHoldAction(job.id); setOnHold(false); setHoldReason(null); setHoldUntil(null); setHoldNote(null); router.refresh(); } catch (error) { setStatusError(error instanceof Error ? error.message : "Unable to return job to the pipeline."); } }}><Play /> Return to Active Pipeline</DropdownMenuItem> : <DropdownMenuItem onClick={() => setHoldDialogOpen(true)}><CirclePause /> Place On Hold</DropdownMenuItem> : null}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -301,6 +314,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
           <Fact label="Next action due" value={job.next_action_due ? formatDate(job.next_action_due) : "No due date"} />
         </dl>
       </header>
+      <JobHoldDialog open={holdDialogOpen} jobId={job.id} currentReason={holdReason} currentUntil={holdUntil} currentNote={holdNote} onOpenChange={setHoldDialogOpen} onSaved={(values) => { setOnHold(true); setHoldReason(values.reason); setHoldUntil(values.until); setHoldNote(values.note); router.refresh(); }} />
 
       <nav className="sticky top-0 z-20 mt-3 flex gap-1 overflow-x-auto rounded-t-lg border border-gray-200 border-b-0 bg-gray-100 px-2 pt-2 shadow-sm" role="tablist" aria-label="Job workspace sections">
         {nav.map(([id, label]) => (

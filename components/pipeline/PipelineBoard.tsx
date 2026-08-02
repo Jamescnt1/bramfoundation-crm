@@ -17,7 +17,7 @@ import {
 import type { PipelineJobWithProduction } from "@/components/pipeline/types";
 import { changeJobPipelineStatus } from "@/app/actions/job-status";
 import { formatJobDisplayName } from "@/lib/job-display";
-import { updatePipelineCardSizeAction, updatePipelineSortOrderAction, type PipelineCardSize, type PipelineSortOrder } from "@/app/pipeline/actions";
+import { updatePipelineCardSizeAction, updatePipelineHoldViewAction, updatePipelineSortOrderAction, type PipelineCardSize, type PipelineHoldView, type PipelineSortOrder } from "@/app/pipeline/actions";
 
 type PipelineBoardProps = {
   initialJobs: PipelineJobWithProduction[];
@@ -28,15 +28,17 @@ type PipelineBoardProps = {
   employees: PipelineEmployeeOption[];
   initialCardSize: PipelineCardSize;
   initialSortOrder: PipelineSortOrder;
+  initialHoldView: PipelineHoldView;
 };
 
-export default function PipelineBoard({ initialJobs, canChangeStatus, stages, installationJobIds, workOrderReadyJobIds, employees, initialCardSize, initialSortOrder }: PipelineBoardProps) {
+export default function PipelineBoard({ initialJobs, canChangeStatus, stages, installationJobIds, workOrderReadyJobIds, employees, initialCardSize, initialSortOrder, initialHoldView }: PipelineBoardProps) {
   const router = useRouter();
   const boardRef = useRef<HTMLDivElement>(null);
   const panState = useRef<{ pointerId: number; startX: number; scrollLeft: number } | null>(null);
   const [jobs, setJobs] = useState(initialJobs);
   const [cardSize, setCardSize] = useState<PipelineCardSize>(initialCardSize);
   const [sortOrder, setSortOrder] = useState<PipelineSortOrder>(initialSortOrder);
+  const [holdView, setHoldView] = useState<PipelineHoldView>(initialHoldView);
   const [employeeIds, setEmployeeIds] = useState<string[]>([]);
   const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
@@ -50,13 +52,14 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
   } | null>(null);
 
   const visibleJobs = useMemo(() => {
-    if (employeeIds.length === 0) return jobs;
-    return jobs.filter((job) =>
+    const byHold = jobs.filter((job) => holdView === "all" || (holdView === "on_hold" ? job.on_hold : !job.on_hold));
+    if (employeeIds.length === 0) return byHold;
+    return byHold.filter((job) =>
       job.assigned_employee_id
         ? employeeIds.includes(job.assigned_employee_id)
         : employeeIds.includes("unassigned"),
     );
-  }, [employeeIds, jobs]);
+  }, [employeeIds, holdView, jobs]);
 
   const jobsByStage = useMemo(() => {
     const groups = Object.fromEntries(
@@ -117,14 +120,16 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
     if (event.clientX > bounds.right - edge) board.scrollLeft += 18;
   }
 
-  async function applyViewOptions(next: { cardSize: PipelineCardSize; sortOrder: PipelineSortOrder; employeeIds: string[] }) {
+  async function applyViewOptions(next: { cardSize: PipelineCardSize; sortOrder: PipelineSortOrder; employeeIds: string[]; holdView: PipelineHoldView }) {
     setEmployeeIds(next.employeeIds);
     await Promise.all([
       next.cardSize !== cardSize ? updatePipelineCardSizeAction(next.cardSize) : Promise.resolve(),
       next.sortOrder !== sortOrder ? updatePipelineSortOrderAction(next.sortOrder) : Promise.resolve(),
+      next.holdView !== holdView ? updatePipelineHoldViewAction(next.holdView) : Promise.resolve(),
     ]);
     setCardSize(next.cardSize);
     setSortOrder(next.sortOrder);
+    setHoldView(next.holdView);
   }
 
   if (stages.length === 0) {
@@ -200,6 +205,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
               qfloors_job_number: qfNumber ?? job.qfloors_job_number,
               contract_amount: contractAmount ?? job.contract_amount,
               installation_required: installationRequired ?? job.installation_required,
+              on_hold: false,
             }
           : job,
       ),
@@ -257,7 +263,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-gray-500">
-          Drag cards between stages. Grab empty board space to move across the pipeline.
+          Drag cards between stages. Grab empty board space to move across the pipeline. {jobs.filter((job) => job.on_hold).length ? `${jobs.filter((job) => job.on_hold).length} job${jobs.filter((job) => job.on_hold).length === 1 ? "" : "s"} on hold.` : ""}
         </p>
         <button
           type="button"
@@ -267,6 +273,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
           <SlidersHorizontal className="h-4 w-4" />
           Filter
           <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-gray-600">{cardSize}</span>
+          {holdView !== "active" ? <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold uppercase text-blue-700">{holdView === "on_hold" ? "On Hold" : "All"}</span> : null}
           {employeeIds.length ? (
             <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-black px-1.5 py-0.5 text-[10px] font-bold text-white" aria-label={`${employeeIds.length} active employee filters`}>
               {employeeIds.length}
@@ -314,7 +321,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
       {viewOptionsOpen ? (
         <PipelineViewOptions
           open
-          value={{ cardSize, sortOrder, employeeIds }}
+          value={{ cardSize, sortOrder, employeeIds, holdView }}
           employees={employees}
           onOpenChange={setViewOptionsOpen}
           onApply={applyViewOptions}

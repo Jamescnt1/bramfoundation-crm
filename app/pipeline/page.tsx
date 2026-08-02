@@ -51,6 +51,7 @@ export default async function PipelinePage() {
             employees={employees.map(({ id, name, color }) => ({ id, name, color }))}
             initialCardSize={currentEmployee.pipeline_card_size}
             initialSortOrder={currentEmployee.pipeline_sort_order}
+            initialHoldView={currentEmployee.pipeline_hold_view}
           />
         )}
       </div>

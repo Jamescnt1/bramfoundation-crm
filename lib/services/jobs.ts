@@ -24,6 +24,12 @@ export type Job = {
   updated_at: string | null;
   archived_at: string | null;
   archived_by: string | null;
+  on_hold: boolean;
+  hold_reason: string | null;
+  hold_until: string | null;
+  hold_note: string | null;
+  held_by: string | null;
+  held_at: string | null;
   customer: {
     id: string;
     full_name: string;
@@ -175,6 +181,12 @@ const jobColumns = `
   updated_at
   ,archived_at
   ,archived_by
+  ,on_hold
+  ,hold_reason
+  ,hold_until
+  ,hold_note
+  ,held_by
+  ,held_at
   ,customer:customers!jobs_customer_id_fkey (
     id,
     full_name
