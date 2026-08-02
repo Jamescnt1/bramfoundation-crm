@@ -97,12 +97,12 @@ export default function ProductionWorkspace({
   }
 
   return <section className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50/70 shadow-sm">
-    <header className="border-b border-gray-200 bg-white px-4 py-4 sm:px-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div><h3 className="font-semibold text-gray-950">Production</h3><p className="mt-1 text-sm text-gray-500">Materials, scheduling, crews, and work orders for this job.</p></div>
+    <header className="border-b border-gray-200 bg-white px-4 py-3 sm:px-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div><h3 className="font-semibold text-gray-950">Production</h3><p className="mt-0.5 text-xs text-gray-500">Materials, scheduling, crews, and work orders for this job.</p></div>
         <div className="flex items-center gap-2"><span className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700">{summary.completed_steps} of {summary.total_steps} steps complete</span><Button type="button" onClick={beginAdd}><Plus /> Add Scope</Button></div>
       </div>
-      <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-gray-100 pt-3">
+      <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1.5 border-t border-gray-100 pt-2.5">
         <SummaryStat icon={<Package />} label={`${summary.materials_ready}/${summary.materials_total} materials ready`} attention={summary.materials_ready < summary.materials_total} />
         <SummaryStat icon={<CalendarDays />} label={`${summary.installations_scheduled}/${summary.installations_required} installations scheduled`} attention={summary.installations_scheduled < summary.installations_required} />
         <SummaryStat icon={<Send />} label={`${summary.work_orders_sent}/${summary.work_orders_required} work orders sent`} attention={summary.work_orders_sent < summary.work_orders_required} />
@@ -112,7 +112,7 @@ export default function ProductionWorkspace({
 
     {error ? <div className="m-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
-    <div className="space-y-4 p-4 sm:p-5">
+    <div className="space-y-2.5 p-3 sm:p-4">
       {scopes.length ? scopes.map((scope) => {
         const linkedInstallationSummary = scope.appointments.find((item) => item.appointment_type === "installation" && item.status !== "cancelled");
         const linkedInstallation = linkedInstallationSummary ? appointments.find((item) => item.id === linkedInstallationSummary.id) : null;
@@ -120,30 +120,31 @@ export default function ProductionWorkspace({
         const workOrderSent = linkedInstallation ? ["sent", "acknowledged"].includes(linkedInstallation.work_order_status) : false;
         const scheduled = Boolean(linkedInstallationSummary);
         return <article key={scope.id} className={`overflow-hidden rounded-xl border bg-white shadow-sm ${scope.material_status === "issue" ? "border-red-300" : "border-gray-200"}`}>
-          <div className="flex items-start justify-between gap-3 px-4 py-4 sm:px-5">
-            <div className="flex min-w-0 items-start gap-3">
-              <span className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-xs font-bold text-white ${categoryColor(scope.category.color_key)}`}>{scope.category.abbreviation}</span>
-              <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="font-semibold text-gray-950">{scope.category.name}{scope.description ? ` — ${scope.description}` : ""}</h4><StatusBadge scope={scope} /></div><p className="mt-1 text-xs text-gray-500">{scope.eta_date ? `Material expected ${formatDate(scope.eta_date)}` : scope.ordering_required ? "Material ETA not entered" : "Material ordering not required"}</p></div>
+          <div className="flex items-start justify-between gap-3 px-3 py-2.5 sm:px-4">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className={`inline-flex h-8 min-w-8 items-center justify-center rounded-full px-1.5 text-[11px] font-bold text-white ${categoryColor(scope.category.color_key)}`}>{scope.category.abbreviation}</span>
+              <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold text-gray-950">{scope.category.name}{scope.description ? ` — ${scope.description}` : ""}</h4><StatusBadge scope={scope} /></div><p className="mt-0.5 text-[11px] text-gray-500">{scope.eta_date ? `Material expected ${formatDate(scope.eta_date)}` : scope.ordering_required ? "Material ETA not entered" : "Material ordering not required"}</p></div>
             </div>
             <ScopeMenu scope={scope} linkedInstallationId={linkedInstallationSummary?.id} linkedJobWalkId={linkedJobWalk?.id} busy={busyId !== null} onEdit={() => beginEdit(scope)} onIssue={() => openStatus(scope, "issue")} onExclude={() => openStatus(scope, "excluded")} onReset={() => void saveStatus(scope, "needs_ordering", null, null)} onUnlink={(id) => void unlinkAppointment(scope, id)} onDelete={() => void removeScope(scope)} />
           </div>
 
-          {scope.material_status === "issue" ? <div className="mx-4 mb-4 flex gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-800 sm:mx-5"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="font-semibold">Production issue needs attention</p><p className="mt-0.5 text-xs leading-5">{scope.issue_note || "No issue details entered."}</p></div></div> : null}
+          {scope.material_status === "issue" ? <div className="mx-3 mb-2 flex gap-2 rounded-md border border-red-200 bg-red-50 px-2.5 py-2 text-xs text-red-800 sm:mx-4"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /><div><p className="font-semibold">Production issue needs attention</p><p className="mt-0.5 leading-4">{scope.issue_note || "No issue details entered."}</p></div></div> : null}
 
-          <div className="border-y border-gray-100 bg-gray-50/70 px-3 py-4 sm:px-5"><ScopeMilestones scope={scope} scheduled={scheduled} workOrderSent={workOrderSent} jobWalkComplete={Boolean(linkedJobWalk?.status === "completed")} /></div>
+          <div className="grid border-t border-gray-100 lg:grid-cols-[minmax(360px,1.05fr)_minmax(0,1fr)] lg:items-stretch">
+          <div className="bg-gray-50/70 px-3 py-2.5 sm:px-4 lg:border-r lg:border-gray-100"><ScopeMilestones scope={scope} scheduled={scheduled} workOrderSent={workOrderSent} jobWalkComplete={Boolean(linkedJobWalk?.status === "completed")} /></div>
 
-          <div className="grid gap-4 px-4 py-4 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="grid gap-2 border-t border-gray-100 px-3 py-2.5 sm:px-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:border-t-0">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Installation</p>
-              {linkedInstallation ? <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm"><span className="font-semibold text-gray-950">{linkedInstallation.installer_crew?.name ?? "Unassigned crew"}</span><span className="inline-flex items-center gap-1.5 text-gray-600"><CalendarDays className="h-4 w-4" />{formatRange(linkedInstallation.starts_at, linkedInstallation.ends_at)}</span><span className={`inline-flex items-center gap-1.5 font-medium ${workOrderSent ? "text-emerald-700" : "text-amber-700"}`}><ClipboardList className="h-4 w-4" />{workOrderSent ? "Work order sent" : "Work order pending"}</span></div> : <p className="mt-2 text-sm text-gray-500">No crew or installation date scheduled for this scope.</p>}
-              {scope.job_walk_required ? <p className="mt-2 text-xs text-gray-500">Job walk: {linkedJobWalk ? linkedJobWalk.status === "completed" ? "Completed" : `Scheduled ${formatDateTime(linkedJobWalk.starts_at)}` : "Not scheduled"}</p> : null}
+              {linkedInstallation ? <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"><span className="font-semibold text-gray-950">{linkedInstallation.installer_crew?.name ?? "Unassigned crew"}</span><span className="inline-flex items-center gap-1 text-gray-600"><CalendarDays className="h-3.5 w-3.5" />{formatRange(linkedInstallation.starts_at, linkedInstallation.ends_at)}</span><span className={`inline-flex items-center gap-1 font-medium ${workOrderSent ? "text-emerald-700" : "text-amber-700"}`}><ClipboardList className="h-3.5 w-3.5" />{workOrderSent ? "Work order sent" : "Work order pending"}</span></div> : <p className="mt-1 text-xs text-gray-500">No crew or installation date scheduled.</p>}
+              {scope.job_walk_required ? <p className="mt-1 text-[11px] text-gray-500">Job walk: {linkedJobWalk ? linkedJobWalk.status === "completed" ? "Completed" : `Scheduled ${formatDateTime(linkedJobWalk.starts_at)}` : "Not scheduled"}</p> : null}
             </div>
-            <div className="flex flex-wrap gap-2">
-              {linkedInstallation ? <Button type="button" variant="outline" onClick={() => onEditInstallation(linkedInstallation)}><Pencil /> Edit schedule</Button> : null}
-              {linkedInstallation && scope.work_order_required ? <Button type="button" variant={workOrderSent ? "outline" : "default"} disabled={busyId !== null} onClick={() => void setWorkOrder(linkedInstallation, !workOrderSent)}><Send />{workOrderSent ? "Mark not sent" : "Send work order"}</Button> : null}
+            <div className="flex flex-wrap gap-1.5 [&_button]:h-8 [&_button]:px-2.5 [&_button]:text-xs">
+              {linkedInstallation ? <Button type="button" variant="outline" onClick={() => onEditInstallation(linkedInstallation)}><Pencil /> Edit</Button> : null}
+              {linkedInstallation && scope.work_order_required ? <Button type="button" variant={workOrderSent ? "outline" : "default"} disabled={busyId !== null} onClick={() => void setWorkOrder(linkedInstallation, !workOrderSent)}><Send />{workOrderSent ? "Not sent" : "Send W.O."}</Button> : null}
               <NextAction scope={scope} scheduled={scheduled} jobWalkScheduled={Boolean(linkedJobWalk)} busy={busyId !== null} onStatus={openStatus} onSchedule={onSchedule} />
             </div>
-          </div>
+          </div></div>
         </article>;
       }) : <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center"><p className="font-semibold text-gray-950">No production scopes yet</p><p className="mt-1 text-sm text-gray-500">Add a material, demo, or labor scope to begin production planning.</p><Button type="button" className="mt-4" onClick={beginAdd}><Plus /> Add first scope</Button></div>}
       {!installationRequired ? <p className="text-xs text-gray-500">This job is marked as materials-only or customer-installed.</p> : null}
@@ -170,7 +171,7 @@ function ScopeMilestones({ scope, scheduled, workOrderSent, jobWalkComplete }: {
     { label: "Work Order", complete: excluded || workOrderSent || !scope.work_order_required, required: scope.work_order_required },
     { label: "Job Walk", complete: excluded || jobWalkComplete || !scope.job_walk_required, required: scope.job_walk_required },
   ];
-  return <div className="grid grid-cols-5 gap-1">{steps.map((step, index) => <div key={step.label} className="relative flex min-w-0 flex-col items-center text-center">{index ? <span className={`absolute top-3 right-1/2 left-[-50%] h-px ${steps[index - 1].complete && step.complete ? "bg-emerald-500" : "bg-gray-300"}`} /> : null}<span className={`relative z-10 inline-flex h-6 w-6 items-center justify-center rounded-full border ${!step.required ? "border-gray-300 bg-gray-100 text-gray-400" : step.complete ? "border-emerald-600 bg-emerald-600 text-white" : scope.material_status === "issue" && index < 2 ? "border-red-400 bg-red-50 text-red-600" : "border-gray-300 bg-white text-gray-300"}`}>{step.complete ? <Check className="h-3.5 w-3.5" /> : <Circle className="h-2.5 w-2.5" />}</span><span className="mt-1.5 truncate text-[9px] font-semibold uppercase tracking-wide text-gray-500 sm:text-[10px]">{step.label}</span></div>)}</div>;
+  return <div className="grid grid-cols-5 gap-1">{steps.map((step, index) => <div key={step.label} className="relative flex min-w-0 flex-col items-center text-center">{index ? <span className={`absolute top-2.5 right-1/2 left-[-50%] h-px ${steps[index - 1].complete && step.complete ? "bg-emerald-500" : "bg-gray-300"}`} /> : null}<span className={`relative z-10 inline-flex h-5 w-5 items-center justify-center rounded-full border ${!step.required ? "border-gray-300 bg-gray-100 text-gray-400" : step.complete ? "border-emerald-600 bg-emerald-600 text-white" : scope.material_status === "issue" && index < 2 ? "border-red-400 bg-red-50 text-red-600" : "border-gray-300 bg-white text-gray-300"}`}>{step.complete ? <Check className="h-3 w-3" /> : <Circle className="h-2 w-2" />}</span><span className="mt-1 truncate text-[8px] font-semibold uppercase tracking-wide text-gray-500 sm:text-[9px]">{step.label}</span></div>)}</div>;
 }
 
 function NextAction({ scope, scheduled, jobWalkScheduled, busy, onStatus, onSchedule }: { scope: MaterialScope; scheduled: boolean; jobWalkScheduled: boolean; busy: boolean; onStatus: (scope: MaterialScope, status: MaterialStatus) => void; onSchedule: (scopeId?: string, type?: "installation" | "job_walk") => void }) {
