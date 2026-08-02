@@ -212,6 +212,9 @@
   }
   body {
     @apply bg-background text-foreground;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
     background-image:
       linear-gradient(135deg, rgb(255 255 255 / 55%), transparent 42%),
       linear-gradient(rgb(35 38 41 / 2%) 1px, transparent 1px);
@@ -219,7 +222,16 @@
   }
   html {
     @apply font-sans;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
   }
+}
+
+.foundation-app {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 @layer components {

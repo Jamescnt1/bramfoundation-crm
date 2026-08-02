@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import AppointmentCard from "@/components/calendar/AppointmentCard";
 import { formatDateKey, isSameDay } from "@/components/calendar/calendar-utils";
 import type { CalendarAppointment } from "@/components/calendar/types";
@@ -128,21 +128,13 @@ export default function CalendarScheduleView({
   return (
     <div
       ref={scrollRef}
-      className="max-h-[calc(100dvh-15.5rem)] min-h-[28rem] overflow-auto bg-white xl:max-h-[calc(100dvh-13.5rem)]"
+      className="max-h-[calc(100dvh-15.5rem)] min-h-[28rem] w-full min-w-0 overflow-y-auto overflow-x-hidden bg-white [--calendar-time-column:42px] sm:[--calendar-time-column:60px] lg:[--calendar-time-column:72px] xl:max-h-[calc(100dvh-13.5rem)]"
       aria-label="Appointment time grid"
     >
-      <div
-        className={`relative ${
-          days.length === 7
-            ? "min-w-[700px] sm:min-w-[980px]"
-            : days.length === 3
-              ? "min-w-[520px] sm:min-w-[700px]"
-              : "min-w-[300px] sm:min-w-[480px]"
-        }`}
-      >
+      <div className="relative w-full min-w-0">
         <div
           className="sticky top-0 z-30 grid border-b border-gray-200 bg-white shadow-sm"
-          style={{ gridTemplateColumns: `72px repeat(${days.length}, minmax(0, 1fr))` }}
+          style={{ gridTemplateColumns: `var(--calendar-time-column) repeat(${days.length}, minmax(0, 1fr))` } as CSSProperties}
         >
           <div className="border-r border-gray-200 bg-gray-50" />
           {days.map((day) => (
@@ -150,7 +142,7 @@ export default function CalendarScheduleView({
               key={formatDateKey(day)}
               type="button"
               onClick={() => onSelectDate(day)}
-              className={`border-r border-gray-200 px-3 py-2 text-center hover:bg-gray-50 ${
+              className={`min-w-0 overflow-hidden border-r border-gray-200 px-0.5 py-2 text-center hover:bg-gray-50 sm:px-2 ${
                 isSameDay(day, today)
                   ? "bg-blue-100"
                   : day.getDay() === 0 || day.getDay() === 6
@@ -170,7 +162,7 @@ export default function CalendarScheduleView({
 
         <div
           className="grid"
-          style={{ gridTemplateColumns: `72px repeat(${days.length}, minmax(0, 1fr))` }}
+          style={{ gridTemplateColumns: `var(--calendar-time-column) repeat(${days.length}, minmax(0, 1fr))` } as CSSProperties}
         >
           <div className="relative border-r border-gray-200 bg-gray-50" style={{ height: DAY_HEIGHT }}>
             {hours.map((hour) => (
