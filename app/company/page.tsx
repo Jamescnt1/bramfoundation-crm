@@ -20,6 +20,7 @@ export default async function CompanyDashboardPage() {
   if (!canViewCompanyDashboard(employee.role)) redirect("/my-dashboard");
 
   const data = await getCompanyDashboardData(employee);
+  const attentionItems = combineAttentionItems(data.attentionItems, data.managementItems);
 
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-8">
@@ -45,10 +46,7 @@ export default async function CompanyDashboardPage() {
           <EmployeeAccountabilityTable rows={data.accountability} />
         </DashboardSection>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
-          <DashboardSection title="Needs Attention" description={`Enabled company exceptions, prioritized by severity. No-activity threshold: ${data.thresholds.noActivityDays} days.`} href="/tasks"><AttentionList items={data.attentionItems.slice(0, 14)} /></DashboardSection>
-          <DashboardSection title="Needs My Attention" description="Enabled items related to the employee viewing this dashboard." href="/settings/company-dashboard"><AttentionList items={data.managementItems} emptyText="Nothing currently needs your attention." /></DashboardSection>
-        </div>
+        <DashboardSection className="mt-6" title="Needs Attention" description={`Company exceptions and items assigned to you, prioritized in one list. No-activity threshold: ${data.thresholds.noActivityDays} days.`} href="/settings/company-dashboard" linkLabel="Manage attention rules →"><AttentionList items={attentionItems} /></DashboardSection>
 
         <DashboardSection className="mt-6" title="Pipeline Health" description="Actual jobs grouped by stage, using the shared pipeline color system." href="/pipeline" linkLabel="Open full pipeline →">
           <PipelineHealth pipeline={data.pipeline} stages={data.stages} />
@@ -72,3 +70,18 @@ function QuickLink({ href, icon, children }: { href: string; icon: React.ReactNo
 }
 
 function localDateKey(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
+
+function combineAttentionItems<T extends { id: string; kind: string; href: string; title: string }>(companyItems: T[], personalItems: T[]) {
+  const companyHrefs = new Set(companyItems.map((item) => item.href));
+  const seen = new Set<string>();
+  return [...companyItems, ...personalItems]
+    .filter((item) => {
+      if ((item.kind === "jobs_assigned_to_me" || item.kind === "tasks_assigned_to_me") && companyHrefs.has(item.href)) return false;
+      const normalizedTitle = item.title.replace(/^My /, "");
+      const key = `${item.href}:${normalizedTitle}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 24);
+}

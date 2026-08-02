@@ -92,6 +92,8 @@ export type AttentionItem = {
   kind: string;
   title: string;
   detail: string;
+  subject: string | null;
+  assignedEmployee: string;
   href: string;
   severity: DashboardRuleSeverity;
 };
@@ -415,7 +417,9 @@ function buildAttentionItems({
         id: `task-${task.id}`,
         kind: overdueTaskRule.ruleKey,
         title: "Overdue Task",
-        detail: task.title,
+        subject: task.title,
+        detail: taskDueDetail(task),
+        assignedEmployee: task.assigned_to || "Unassigned",
         href: `/tasks?task=${task.id}`,
         severity: overdueTaskRule.severity,
       });
@@ -429,11 +433,13 @@ function buildAttentionItems({
         id: `appointment-${appointment.id}`,
         kind: appointmentRule.ruleKey,
         title: "Unassigned Appointment",
-        detail: formatAppointmentDisplayName({
+        subject: formatAppointmentDisplayName({
           appointmentType: appointment.appointment_type,
           customerName: appointment.job?.customer?.full_name,
           jobName: appointment.job?.customer_name,
         }),
+        detail: `Scheduled ${new Date(appointment.starts_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`,
+        assignedEmployee: "Unassigned",
         href: `/calendar?appointment=${appointment.id}&date=${dateKey(new Date(appointment.starts_at))}`,
         severity: appointmentRule.severity,
       });
@@ -485,7 +491,9 @@ function buildPersonalAttentionItems({
         id: `mine-task-${task.id}`,
         kind: assignedTasksRule.ruleKey,
         title: "Task Assigned to Me",
-        detail: task.title,
+        subject: task.title,
+        detail: taskDueDetail(task),
+        assignedEmployee: currentEmployee.name,
         href: `/tasks?task=${task.id}`,
         severity: assignedTasksRule.severity,
       });
@@ -512,7 +520,9 @@ function buildPersonalAttentionItems({
         id: `mine-overdue-${task.id}`,
         kind: overdueRule.ruleKey,
         title: "My Overdue Task",
-        detail: task.title,
+        subject: task.title,
+        detail: taskDueDetail(task),
+        assignedEmployee: currentEmployee.name,
         href: `/tasks?task=${task.id}`,
         severity: overdueRule.severity,
       });
@@ -525,7 +535,9 @@ function buildPersonalAttentionItems({
       id: "my-unread-mentions",
       kind: mentionRule.ruleKey,
       title: "Unread Mentions",
-      detail: `${unreadMentions.length} unread ${unreadMentions.length === 1 ? "mention" : "mentions"}`,
+      subject: `${unreadMentions.length} unread ${unreadMentions.length === 1 ? "mention" : "mentions"}`,
+      detail: "Open Internal Messages to review the conversation.",
+      assignedEmployee: currentEmployee.name,
       href: "/my-dashboard",
       severity: mentionRule.severity,
     });
@@ -555,10 +567,37 @@ function jobAttentionItem(
     id: `${rule.ruleKey}-${job.id}`,
     kind: rule.ruleKey,
     title,
-    detail: job.customer_name || "Untitled job",
+    subject: jobLabel(job),
+    detail: `Pipeline stage: ${formatLabel(job.status)}`,
+    assignedEmployee: job.salesperson || "Unassigned",
     href: `/leads/${job.id}`,
     severity: rule.severity,
   };
+}
+
+function jobLabel(job: DashboardJob) {
+  const customer = job.customer?.full_name?.trim();
+  const project = job.customer_name?.trim();
+  const name = customer && project && customer !== project
+    ? `${customer} — ${project}`
+    : project || customer || "Untitled job";
+  return job.qfloors_job_number ? `${name} · QF# ${job.qfloors_job_number}` : name;
+}
+
+function taskDueDetail(task: DashboardTask) {
+  const due = task.due_at ?? task.due_date;
+  if (!due) return "No due date set";
+  return `Due ${new Date(due.length === 10 ? `${due}T12:00:00` : due).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    ...(task.due_at ? { hour: "numeric", minute: "2-digit" } : {}),
+  })}`;
+}
+
+function formatLabel(value: string | null) {
+  if (!value) return "Not set";
+  return value.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 }
 
 function sortAttentionItems(items: AttentionItem[]) {
