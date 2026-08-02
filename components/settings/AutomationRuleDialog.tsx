@@ -21,8 +21,11 @@ export const AUTOMATION_EVENTS: { value: AutomationTriggerEvent; label: string }
   { value: "appointment_completed", label: "Appointment is completed" },
   { value: "task_completed", label: "Task is completed" },
   { value: "lead_untouched_daily", label: "Lead has been untouched for 24 hours" },
+  { value: "production_scope_created", label: "A production scope is created" },
+  { value: "material_issue", label: "A production issue is reported" },
   { value: "material_ordered", label: "A material is ordered" },
   { value: "material_ready", label: "A material is ready" },
+  { value: "material_excluded", label: "A material requirement is excluded" },
   { value: "all_materials_ordered", label: "All required materials are ordered" },
   { value: "all_materials_ready", label: "All required materials are ready" },
   { value: "work_order_sent", label: "A crew work order is sent" },
@@ -35,6 +38,7 @@ export default function AutomationRuleDialog({ open, rule, employees, roles, sta
   const [triggerValue, setTriggerValue] = useState(rule?.trigger_value ?? stages[0]?.slug ?? "new_lead");
   const [actionType, setActionType] = useState<AutomationActionType>(rule?.action_type ?? "create_task");
   const [taskTitle, setTaskTitle] = useState(rule?.task_title ?? "");
+  const [taskPriority, setTaskPriority] = useState<"low" | "normal" | "high" | "urgent">(rule?.task_priority ?? "normal");
   const [targetStatus, setTargetStatus] = useState<PipelineStage>(rule?.target_status ?? stages[0]?.slug ?? "new_lead");
   const [dueOffsetDays, setDueOffsetDays] = useState(rule?.due_offset_days ?? 0);
   const [assignmentType, setAssignmentType] = useState<AutomationAssignmentType>(rule?.assignment_type ?? "job_salesperson");
@@ -72,7 +76,7 @@ export default function AutomationRuleDialog({ open, rule, employees, roles, sta
     try {
       await onSave({ name, trigger_event: triggerEvent, trigger_value: valueOptions.length ? triggerValue : null,
         action_type: actionType, target_status: actionType === "update_job_status" ? targetStatus : null,
-        task_title: actionType === "create_task" ? taskTitle : null, due_offset_days: dueOffsetDays,
+        task_title: actionType === "create_task" ? taskTitle : null, task_priority: taskPriority, due_offset_days: dueOffsetDays,
         assignment_type: assignmentType, assigned_employee_id: assignedEmployeeId || null, active,
         cancel_on_pipeline_advance: cancelOnPipelineAdvance,
         email_template_id: actionType === "send_email" ? emailTemplateId : null,
@@ -92,6 +96,8 @@ export default function AutomationRuleDialog({ open, rule, employees, roles, sta
       <Field label="Then do this"><select value={actionType} onChange={(e) => setActionType(e.target.value as AutomationActionType)} className={selectClass}><option value="create_task">Create a task</option><option value="update_job_status">Update the related job’s pipeline stage</option><option value="send_email">Send a customer email</option></select></Field>
       {actionType === "create_task" ? <>
         <Field label="Task title"><Input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="Follow up with customer" /></Field>
+        {triggerEvent === "material_issue" ? <span className="-mt-3 text-xs text-gray-500">Use <code>{"{{issue}}"}</code> to include the reported issue in the task title.</span> : null}
+        <Field label="Task priority"><select value={taskPriority} onChange={(e) => setTaskPriority(e.target.value as typeof taskPriority)} className={selectClass}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></Field>
         <Field label="Send task after"><div className="flex items-center gap-3"><Input type="number" min={0} value={dueOffsetDays} onChange={(e) => setDueOffsetDays(Math.max(0, Number(e.target.value) || 0))} className="max-w-28"/><span className="text-sm text-gray-600">{dueOffsetDays ? `${dueOffsetDays} day(s)` : "Immediately"}</span></div><span className="text-xs font-normal text-gray-500">{dueOffsetDays ? `The task stays hidden and appears in the task list ${dueOffsetDays} day${dueOffsetDays === 1 ? "" : "s"} after this automation runs.` : "The task appears as soon as this automation runs."}</span></Field>
         <Field label="Assign task to"><select value={assignmentType} onChange={(e) => setAssignmentType(e.target.value as AutomationAssignmentType)} className={selectClass}><option value="job_salesperson">Related job salesperson / event employee</option><option value="specific_employee">Specific employee</option></select></Field>
         {assignmentType === "specific_employee" ? <Field label="Recipients"><div className="grid gap-4 rounded-lg border border-gray-200 p-4 sm:grid-cols-2"><RecipientGroup label="Employees" options={employees.map((employee) => ({ value: employee.id, label: employee.name }))} selected={employeeIds} onChange={(next) => { setEmployeeIds(next); setAssignedEmployeeId(next[0] ?? ""); }} /><RecipientGroup label="Roles" options={roles.map((role) => ({ value: role.key, label: role.name }))} selected={roleKeys} onChange={setRoleKeys} /></div><span className="text-xs font-normal text-gray-500">Role membership is resolved when the automation runs. Duplicate employees receive only one task.</span></Field> : null}

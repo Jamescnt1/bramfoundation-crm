@@ -6,6 +6,7 @@ export type AutomationTriggerEvent =
   | "job_created" | "job_status_changed" | "customer_created"
   | "appointment_scheduled" | "appointment_completed" | "task_completed"
   | "lead_untouched_daily" | "material_ordered" | "material_ready"
+  | "production_scope_created" | "material_issue" | "material_excluded"
   | "all_materials_ordered" | "all_materials_ready" | "work_order_sent"
   | "all_work_orders_sent";
 export type AutomationActionType = "create_task" | "update_job_status" | "send_email";
@@ -22,6 +23,7 @@ export type AutomationRule = {
   id: string; name: string; trigger_event: AutomationTriggerEvent; trigger_value: string | null;
   action_type: AutomationActionType; target_status: PipelineStage | null;
   trigger_status: PipelineStage | null; task_title: string | null; due_offset_days: number;
+  task_priority: "low" | "normal" | "high" | "urgent";
   assignment_type: AutomationAssignmentType; assigned_employee_id: string | null;
   cancel_on_pipeline_advance: boolean;
   active: boolean; sort_order: number; created_at: string; updated_at: string;
@@ -34,6 +36,7 @@ export type AutomationRuleValues = {
   name: string; trigger_event: AutomationTriggerEvent; trigger_value: string | null;
   action_type: AutomationActionType; target_status: PipelineStage | null;
   task_title: string | null; due_offset_days: number; assignment_type: AutomationAssignmentType;
+  task_priority: "low" | "normal" | "high" | "urgent";
   assigned_employee_id: string | null; cancel_on_pipeline_advance: boolean; active: boolean;
   email_template_id: string | null;
   employee_ids: string[];
@@ -41,7 +44,7 @@ export type AutomationRuleValues = {
 };
 
 const ruleColumns = `id, name, trigger_event, trigger_value, action_type, target_status,
-  trigger_status, task_title, due_offset_days, assignment_type, assigned_employee_id,
+  trigger_status, task_title, task_priority, due_offset_days, assignment_type, assigned_employee_id,
   cancel_on_pipeline_advance, active, sort_order, created_at, updated_at, email_template_id,
   employees (id, name), email_templates (id, name),
   automation_rule_recipients (id, recipient_type, employee_id, role_key)`;
@@ -115,6 +118,7 @@ function normalize(values: AutomationRuleValues) {
     action_type: values.action_type,
     target_status: values.action_type === "update_job_status" ? values.target_status : null,
     task_title: values.action_type === "create_task" ? values.task_title?.trim() || null : null,
+    task_priority: values.action_type === "create_task" ? values.task_priority : "normal",
     due_offset_days: Math.max(0, Math.trunc(values.due_offset_days)),
     assignment_type: values.assignment_type,
     assigned_employee_id: values.action_type === "create_task" && values.assignment_type === "specific_employee"
