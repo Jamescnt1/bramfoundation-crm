@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import PipelineStatusBadge from "@/components/pipeline/PipelineStatusBadge";
-import { getPipelineStage, isQfNumberRequired } from "@/components/pipeline/constants";
+import { isConfiguredQfNumberRequired, resolveConfiguredStage, type PipelineStageView } from "@/components/pipeline/constants";
 import type { Job } from "@/lib/services/jobs";
 import type { Customer } from "./types";
 import { EmailLink, PhoneLink } from "@/components/contact/ActionableContactLinks";
@@ -13,6 +13,7 @@ type CustomerHierarchyRowProps = {
   jobs: Job[];
   expanded: boolean;
   onToggle: () => void;
+  stages: PipelineStageView[];
 };
 
 export default function CustomerHierarchyRow({
@@ -20,10 +21,11 @@ export default function CustomerHierarchyRow({
   jobs,
   expanded,
   onToggle,
+  stages,
 }: CustomerHierarchyRowProps) {
   const activeJobs = jobs.filter((job) => {
-    const stage = getPipelineStage(job.status);
-    return stage !== "Complete" && stage !== "Lost";
+    const stage = resolveConfiguredStage(job.status, stages);
+    return !stage?.terminal;
   }).length;
 
   return (
@@ -99,14 +101,14 @@ export default function CustomerHierarchyRow({
                         {job.customer_name}
                       </Link>
                       <p className="mt-1 text-xs text-gray-500">
-                        <span className={isQfNumberRequired(job.status) && !job.qfloors_job_number?.trim() ? "font-semibold text-red-700" : ""}>
-                          {job.qfloors_job_number ? `QF# ${job.qfloors_job_number}` : isQfNumberRequired(job.status) ? "QF# required" : "QF# not assigned"}
+                        <span className={isConfiguredQfNumberRequired(job.status, stages) && !job.qfloors_job_number?.trim() ? "font-semibold text-red-700" : ""}>
+                          {job.qfloors_job_number ? `QF# ${job.qfloors_job_number}` : isConfiguredQfNumberRequired(job.status, stages) ? "QF# required" : "QF# not assigned"}
                         </span>
                         {job.address ? ` · ${job.address}` : ""}
                       </p>
                     </div>
 
-                    <PipelineStatusBadge status={job.status} />
+                    <PipelineStatusBadge status={job.status} stages={stages} />
                   </div>
                 </div>
               ))}

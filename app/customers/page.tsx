@@ -6,18 +6,21 @@ import {
   getJobs,
   type Job,
 } from "@/lib/services/jobs";
+import { getPipelineStages } from "@/lib/services/pipeline-stages";
 
 export const dynamic = "force-dynamic";
 
 export default async function CustomersPage() {
   let customers: Customer[] = [];
   let jobs: Job[] = [];
+  let stages: Awaited<ReturnType<typeof getPipelineStages>> = [];
   let errorMessage = "";
 
   try {
-    [customers, jobs] = await Promise.all([
+    [customers, jobs, stages] = await Promise.all([
       getCustomers(),
       getJobs(),
+      getPipelineStages(),
     ]);
   } catch (error) {
     errorMessage =
@@ -57,6 +60,7 @@ export default async function CustomersPage() {
           <CustomerList
             initialCustomers={customers}
             initialJobs={jobs}
+            stages={stages}
           />
         )}
       </div>

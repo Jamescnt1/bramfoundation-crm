@@ -4,15 +4,18 @@ import { useMemo, useState } from "react";
 import type { Job } from "@/lib/services/jobs";
 import CustomerHierarchyRow from "./CustomerHierarchyRow";
 import type { Customer } from "./types";
+import type { PipelineStageView } from "@/components/pipeline/constants";
 
 type CustomerListProps = {
   initialCustomers: Customer[];
   initialJobs: Job[];
+  stages: PipelineStageView[];
 };
 
 export default function CustomerList({
   initialCustomers,
   initialJobs,
+  stages,
 }: CustomerListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCustomerIds, setExpandedCustomerIds] = useState<Set<string>>(
@@ -126,6 +129,7 @@ export default function CustomerList({
               key={customer.id}
               customer={customer}
               jobs={jobs}
+              stages={stages}
               expanded={normalizedQuery ? true : expandedCustomerIds.has(customer.id)}
               onToggle={() => toggleCustomer(customer.id)}
             />
