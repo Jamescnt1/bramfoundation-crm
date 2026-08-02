@@ -128,7 +128,7 @@ export const DASHBOARD_RULES = [
     key: "unassigned_appointments",
     group: "needs_attention",
     label: "Unassigned Appointments",
-    description: "Upcoming appointments that do not have an assigned employee.",
+    description: "Upcoming calendar appointments without an assigned employee, or installations without an assigned installer crew. Customer contacts do not affect this warning.",
     defaultEnabled: true,
     defaultSeverity: "critical",
   },

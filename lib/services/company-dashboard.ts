@@ -63,9 +63,13 @@ export type DashboardAppointment = {
   status: string;
   starts_at: string;
   assigned_employee_id: string | null;
+  installer_crew_id: string | null;
+  assigned_employee: { id: string; name: string } | null;
+  installer_crew: { id: string; name: string } | null;
   job: {
     id: string;
     customer_name: string;
+    qfloors_job_number: string | null;
     customer: { id: string; full_name: string } | null;
   } | null;
 };
@@ -172,7 +176,7 @@ export async function getCompanyDashboardData(
         .order("created_at", { ascending: false }),
       supabase
         .from("appointments")
-        .select("id, job_id, appointment_type, status, starts_at, assigned_employee_id, job:jobs!appointments_job_id_fkey(id, customer_name, customer:customers!jobs_customer_id_fkey(id, full_name))")
+        .select("id, job_id, appointment_type, status, starts_at, assigned_employee_id, installer_crew_id, assigned_employee:employees!appointments_assigned_employee_id_fkey(id, name), installer_crew:installer_crews!appointments_installer_crew_id_fkey(id, name), job:jobs!appointments_job_id_fkey(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name))")
         .gte("starts_at", addDays(todayStart, -30).toISOString())
         .order("starts_at"),
       supabase
@@ -199,6 +203,12 @@ export async function getCompanyDashboardData(
   const tasks = (tasksResult.data ?? []) as DashboardTask[];
   const appointments = (appointmentsResult.data ?? []).map((appointment) => ({
     ...appointment,
+    assigned_employee: Array.isArray(appointment.assigned_employee)
+      ? appointment.assigned_employee[0] ?? null
+      : appointment.assigned_employee,
+    installer_crew: Array.isArray(appointment.installer_crew)
+      ? appointment.installer_crew[0] ?? null
+      : appointment.installer_crew,
     job: normalizeAppointmentJob(
       Array.isArray(appointment.job) ? appointment.job[0] ?? null : appointment.job,
     ),
@@ -428,19 +438,32 @@ function buildAttentionItems({
 
   const appointmentRule = enabledRules.get("unassigned_appointments");
   if (appointmentRule) {
-    for (const appointment of appointments.filter((item) => new Date(item.starts_at) >= todayStart && item.status !== "cancelled" && !item.assigned_employee_id)) {
+    for (const appointment of appointments.filter((item) => {
+      if (new Date(item.starts_at) < todayStart || item.status === "cancelled") return false;
+      return item.appointment_type === "installation"
+        ? !item.installer_crew_id
+        : !item.assigned_employee_id;
+    })) {
+      const isInstallation = appointment.appointment_type === "installation";
+      const scheduled = new Date(appointment.starts_at).toLocaleString("en-US", {
+        weekday: "short", month: "short", day: "numeric", year: "numeric",
+        hour: "numeric", minute: "2-digit",
+      });
+      const jobReference = appointment.job?.qfloors_job_number
+        ? ` · QF# ${appointment.job.qfloors_job_number}`
+        : "";
       items.push({
         id: `appointment-${appointment.id}`,
         kind: appointmentRule.ruleKey,
-        title: "Unassigned Appointment",
+        title: isInstallation ? "Installation Missing Crew" : "Appointment Missing Employee",
         subject: formatAppointmentDisplayName({
           appointmentType: appointment.appointment_type,
           customerName: appointment.job?.customer?.full_name,
           jobName: appointment.job?.customer_name,
         }),
-        detail: `Scheduled ${new Date(appointment.starts_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`,
-        assignedEmployee: "Unassigned",
-        href: `/calendar?appointment=${appointment.id}&date=${dateKey(new Date(appointment.starts_at))}`,
+        detail: `${isInstallation ? "No installer crew is selected" : "No employee is selected in the appointment's Assigned Employee field"}. Scheduled ${scheduled}${jobReference}.`,
+        assignedEmployee: isInstallation ? "Crew unassigned" : "Employee unassigned",
+        href: `/calendar?appointment=${appointment.id}&date=${dateKey(new Date(appointment.starts_at))}${isInstallation ? "&tab=installs" : ""}`,
         severity: appointmentRule.severity,
       });
     }

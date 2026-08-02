@@ -14,7 +14,7 @@ export default async function CompanyDashboardSettingsPage() {
       <div className="mx-auto max-w-5xl">
         <SettingsPageHeader
           title="Company Dashboard"
-          description="Choose which exceptions appear in the existing dashboard attention sections."
+          description="Choose which exceptions appear in the Company Dashboard attention list."
         />
         <CompanyDashboardRulesForm initialSettings={settings} />
       </div>
