@@ -17,7 +17,7 @@ import {
 import type { PipelineJobWithProduction } from "@/components/pipeline/types";
 import { changeJobPipelineStatus } from "@/app/actions/job-status";
 import { formatJobDisplayName } from "@/lib/job-display";
-import { updatePipelineCardSizeAction, type PipelineCardSize } from "@/app/pipeline/actions";
+import { updatePipelineCardSizeAction, updatePipelineSortOrderAction, type PipelineCardSize, type PipelineSortOrder } from "@/app/pipeline/actions";
 
 type PipelineBoardProps = {
   initialJobs: PipelineJobWithProduction[];
@@ -27,14 +27,16 @@ type PipelineBoardProps = {
   workOrderReadyJobIds: string[];
   employees: PipelineEmployeeOption[];
   initialCardSize: PipelineCardSize;
+  initialSortOrder: PipelineSortOrder;
 };
 
-export default function PipelineBoard({ initialJobs, canChangeStatus, stages, installationJobIds, workOrderReadyJobIds, employees, initialCardSize }: PipelineBoardProps) {
+export default function PipelineBoard({ initialJobs, canChangeStatus, stages, installationJobIds, workOrderReadyJobIds, employees, initialCardSize, initialSortOrder }: PipelineBoardProps) {
   const router = useRouter();
   const boardRef = useRef<HTMLDivElement>(null);
   const panState = useRef<{ pointerId: number; startX: number; scrollLeft: number } | null>(null);
   const [jobs, setJobs] = useState(initialJobs);
   const [cardSize, setCardSize] = useState<PipelineCardSize>(initialCardSize);
+  const [sortOrder, setSortOrder] = useState<PipelineSortOrder>(initialSortOrder);
   const [employeeIds, setEmployeeIds] = useState<string[]>([]);
   const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
@@ -66,8 +68,20 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
       if (stage) groups[stage.slug].push(job);
     }
 
+    for (const stageJobs of Object.values(groups)) {
+      stageJobs.sort((first, second) => {
+        if (sortOrder === "alphabetical") {
+          const firstName = formatJobDisplayName({ customerName: first.customer?.full_name, jobName: first.customer_name, qfNumber: first.qfloors_job_number });
+          const secondName = formatJobDisplayName({ customerName: second.customer?.full_name, jobName: second.customer_name, qfNumber: second.qfloors_job_number });
+          return firstName.localeCompare(secondName, undefined, { sensitivity: "base", numeric: true });
+        }
+        const difference = new Date(first.created_at).getTime() - new Date(second.created_at).getTime();
+        return sortOrder === "oldest" ? difference : -difference;
+      });
+    }
+
     return groups;
-  }, [stages, visibleJobs]);
+  }, [sortOrder, stages, visibleJobs]);
 
   function startPan(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.pointerType !== "mouse" || event.button !== 0) return;
@@ -103,12 +117,14 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
     if (event.clientX > bounds.right - edge) board.scrollLeft += 18;
   }
 
-  async function applyViewOptions(next: { cardSize: PipelineCardSize; employeeIds: string[] }) {
+  async function applyViewOptions(next: { cardSize: PipelineCardSize; sortOrder: PipelineSortOrder; employeeIds: string[] }) {
     setEmployeeIds(next.employeeIds);
-    if (next.cardSize !== cardSize) {
-      await updatePipelineCardSizeAction(next.cardSize);
-      setCardSize(next.cardSize);
-    }
+    await Promise.all([
+      next.cardSize !== cardSize ? updatePipelineCardSizeAction(next.cardSize) : Promise.resolve(),
+      next.sortOrder !== sortOrder ? updatePipelineSortOrderAction(next.sortOrder) : Promise.resolve(),
+    ]);
+    setCardSize(next.cardSize);
+    setSortOrder(next.sortOrder);
   }
 
   if (stages.length === 0) {
@@ -298,7 +314,7 @@ export default function PipelineBoard({ initialJobs, canChangeStatus, stages, in
       {viewOptionsOpen ? (
         <PipelineViewOptions
           open
-          value={{ cardSize, employeeIds }}
+          value={{ cardSize, sortOrder, employeeIds }}
           employees={employees}
           onOpenChange={setViewOptionsOpen}
           onApply={applyViewOptions}

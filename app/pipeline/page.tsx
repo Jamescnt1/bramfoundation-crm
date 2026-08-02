@@ -50,6 +50,7 @@ export default async function PipelinePage() {
             workOrderReadyJobIds={workOrderReadyJobIds}
             employees={employees.map(({ id, name, color }) => ({ id, name, color }))}
             initialCardSize={currentEmployee.pipeline_card_size}
+            initialSortOrder={currentEmployee.pipeline_sort_order}
           />
         )}
       </div>

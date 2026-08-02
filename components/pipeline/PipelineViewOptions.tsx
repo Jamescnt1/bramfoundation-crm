@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { PipelineCardSize } from "@/app/pipeline/actions";
+import type { PipelineCardSize, PipelineSortOrder } from "@/app/pipeline/actions";
 
 export type PipelineEmployeeOption = {
   id: string;
@@ -20,6 +20,7 @@ export type PipelineEmployeeOption = {
 
 export type PipelineViewOptionsValue = {
   cardSize: PipelineCardSize;
+  sortOrder: PipelineSortOrder;
   employeeIds: string[];
 };
 
@@ -35,6 +36,12 @@ const sizes: Array<{ value: PipelineCardSize; label: string; description: string
   { value: "small", label: "Small", description: "Names and critical warnings" },
   { value: "medium", label: "Medium", description: "Names, owner, and next action" },
   { value: "large", label: "Large", description: "Current comfortable view" },
+];
+
+const sortOrders: Array<{ value: PipelineSortOrder; label: string }> = [
+  { value: "newest", label: "Newest to oldest" },
+  { value: "oldest", label: "Oldest to newest" },
+  { value: "alphabetical", label: "Alphabetical A–Z" },
 ];
 
 export default function PipelineViewOptions({ open, value, employees, onOpenChange, onApply }: Props) {
@@ -94,6 +101,23 @@ export default function PipelineViewOptions({ open, value, employees, onOpenChan
                   <span className={`mt-1 hidden text-[11px] leading-4 sm:block ${draft.cardSize === size.value ? "text-gray-300" : "text-gray-500"}`}>
                     {size.description}
                   </span>
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend className="text-sm font-semibold text-gray-900">Sort jobs by</legend>
+            <p className="mt-1 text-xs text-gray-500">The order is saved to your Foundation account and applied inside every pipeline stage.</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {sortOrders.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setDraft((current) => ({ ...current, sortOrder: option.value }))}
+                  className={`rounded-lg border px-3 py-3 text-left text-sm font-semibold transition ${draft.sortOrder === option.value ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                >
+                  {option.label}
                 </button>
               ))}
             </div>
