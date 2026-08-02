@@ -19,6 +19,7 @@ import {
 } from "@/app/settings/automation-rules/actions";
 import type { PipelineStageView } from "@/components/pipeline/constants";
 import type { AppointmentTypeDefinition } from "@/lib/services/appointment-types";
+import type { TaskType } from "@/components/tasks/types";
 
 type AutomationRulesManagerProps = {
   initialRules: AutomationRule[];
@@ -27,6 +28,7 @@ type AutomationRulesManagerProps = {
   stages: PipelineStageView[];
   emailTemplates: { id: string; name: string }[];
   appointmentTypes: AppointmentTypeDefinition[];
+  taskTypes: TaskType[];
 };
 
 export default function AutomationRulesManager({
@@ -36,6 +38,7 @@ export default function AutomationRulesManager({
   stages,
   emailTemplates,
   appointmentTypes,
+  taskTypes,
 }: AutomationRulesManagerProps) {
   const [rules, setRules] = useState(initialRules);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -270,6 +273,7 @@ export default function AutomationRulesManager({
           stages={stages}
           emailTemplates={emailTemplates}
           appointmentTypes={appointmentTypes}
+          taskTypes={taskTypes}
           onOpenChange={setDialogOpen}
           onSave={saveRule}
         />
@@ -311,7 +315,8 @@ function formatAction(rule: AutomationRule) {
     const template = Array.isArray(rule.email_templates) ? rule.email_templates[0] : rule.email_templates;
     return `Send customer email: ${template?.name ?? "selected template"}`;
   }
-  return `Create task: ${rule.task_title}`;
+  const taskType = Array.isArray(rule.task_types) ? rule.task_types[0] : rule.task_types;
+  return `Create ${taskType?.name ?? "General"} task: ${rule.task_title}`;
 }
 
 function getErrorMessage(error: unknown) {

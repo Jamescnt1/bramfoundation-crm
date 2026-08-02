@@ -9,9 +9,9 @@ import { requirePermission } from "@/lib/services/employees";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const ruleColumns = `id, name, trigger_event, trigger_value, action_type, target_status,
-  trigger_status, task_title, task_priority, due_offset_days, assignment_type, assigned_employee_id,
+  trigger_status, task_title, task_priority, task_type_id, due_offset_days, assignment_type, assigned_employee_id,
   cancel_on_pipeline_advance, active, sort_order, created_at, updated_at, email_template_id,
-  employees (id, name), email_templates (id, name),
+  employees (id, name), email_templates (id, name), task_types (id, name),
   automation_rule_recipients (id, recipient_type, employee_id, role_key)`;
 
 export async function createAutomationRuleAction(values: AutomationRuleValues) {
@@ -201,6 +201,8 @@ function normalize(values: AutomationRuleValues) {
         : null,
     task_priority:
       values.action_type === "create_task" ? values.task_priority : "normal",
+    task_type_id:
+      values.action_type === "create_task" ? values.task_type_id : null,
     due_offset_days: Math.max(0, Math.trunc(values.due_offset_days)),
     assignment_type: values.assignment_type,
     assigned_employee_id:
