@@ -7,7 +7,12 @@ const healthStyles = {
   red: "bg-red-100 text-red-800",
 };
 
-export default function EmployeeAccountabilityTable({ rows }: { rows: AccountabilityRow[] }) {
+export default function EmployeeAccountabilityTable({ rows, compact = false }: { rows: AccountabilityRow[]; compact?: boolean }) {
+  if (compact) return (
+    <div className="max-h-[22rem] divide-y divide-gray-100 overflow-y-auto pr-1">
+      {rows.map((row) => <div key={row.id} className="py-2.5"><div className="flex items-center justify-between gap-2"><span className="min-w-0"><Link href={`/my-dashboard?employee=${row.id}`} className="block truncate text-sm font-semibold text-gray-950 hover:underline">{row.name}</Link><span className="block text-[11px] text-gray-500">{relativeTime(row.lastActivity)}</span></span><span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${healthStyles[row.health]}`}>{row.health}</span></div><div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600"><span><strong className="text-gray-900">{row.openTasks}</strong> tasks</span><span className={row.overdueTasks ? "font-semibold text-red-700" : ""}><strong>{row.overdueTasks}</strong> overdue</span><span><strong className="text-gray-900">{row.activeJobs}</strong> jobs</span><span><strong className="text-gray-900">{row.measuresToday}</strong> measures</span></div></div>)}
+    </div>
+  );
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[820px] text-left text-sm">

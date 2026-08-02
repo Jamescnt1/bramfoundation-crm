@@ -42,23 +42,19 @@ export default async function CompanyDashboardPage() {
           { label: "Waiting Approval", value: data.snapshot.waitingApproval, href: "/pipeline?stage=Waiting%20Approval", tone: data.snapshot.waitingApproval ? "amber" : "default" },
         ]} />
 
-        <DashboardSection className="mt-6" title="Employee Accountability" description="Workload, overdue commitments, and daily activity by employee.">
-          <EmployeeAccountabilityTable rows={data.accountability} />
-        </DashboardSection>
-
-        <DashboardSection className="mt-6" title="Needs Attention" description={`Company exceptions and items assigned to you, prioritized in one list. No-activity threshold: ${data.thresholds.noActivityDays} days.`} href="/settings/company-dashboard" linkLabel="Manage attention rules →"><AttentionList items={attentionItems} /></DashboardSection>
-
-        <DashboardSection className="mt-6" title="Pipeline Health" description="Actual jobs grouped by stage, using the shared pipeline color system." href="/pipeline" linkLabel="Open full pipeline →">
-          <PipelineHealth pipeline={data.pipeline} stages={data.stages} />
-        </DashboardSection>
-
-        <div className="mt-6 grid gap-6 xl:grid-cols-2">
-          <DashboardSection title="Recent Activity" description="Latest job and workflow events across the company."><RecentActivityFeed items={data.recentActivity} /></DashboardSection>
-          <DashboardSection title="Workload Balance" description="Active jobs plus open tasks by employee."><WorkloadBalance rows={data.workload} /></DashboardSection>
+        <div className="mt-4 grid items-start gap-4 xl:grid-cols-3">
+          <DashboardSection title="Sales Performance" description="Current workflow throughput by employee." href="/reports"><SalesPerformanceTable rows={data.salesPerformance} compact /></DashboardSection>
+          <DashboardSection title="Workload Balance" description="Active jobs plus open tasks by employee."><div className="max-h-[22rem] overflow-y-auto pr-1"><WorkloadBalance rows={data.workload} /></div></DashboardSection>
+          <DashboardSection title="Employee Accountability" description="Commitments and daily activity by employee."><EmployeeAccountabilityTable rows={data.accountability} compact /></DashboardSection>
         </div>
 
-        <DashboardSection className="mt-6" title="Sales Performance" description="Current workflow throughput by employee—not revenue reporting." href="/reports">
-          <SalesPerformanceTable rows={data.salesPerformance} />
+        <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+          <DashboardSection title="Recent Activity" description="Latest job and workflow events across the company."><div className="max-h-[24rem] overflow-y-auto pr-1"><RecentActivityFeed items={data.recentActivity} /></div></DashboardSection>
+          <DashboardSection title="Needs Attention" description={`Priority exceptions and assigned items. Inactivity: ${data.thresholds.noActivityDays} days.`} href="/settings/company-dashboard" linkLabel="Rules →"><div className="max-h-[24rem] overflow-y-auto pr-1"><AttentionList items={attentionItems} /></div></DashboardSection>
+        </div>
+
+        <DashboardSection className="mt-4" title="Pipeline Health" description="Actual jobs grouped by stage, using the shared pipeline color system." href="/pipeline" linkLabel="Open full pipeline →">
+          <PipelineHealth pipeline={data.pipeline} stages={data.stages} />
         </DashboardSection>
       </div>
     </main>
