@@ -202,7 +202,7 @@ export default function AutomationRulesManager({
                           <p className="mt-2 text-sm text-gray-700">{formatAction(rule)}</p>
                           <p className="mt-1 text-sm text-gray-500">
                             {rule.action_type === "create_task"
-                              ? `${formatDueTiming(rule.due_offset_days)} · ${formatAssignment(rule)}${rule.cancel_on_pipeline_advance ? " · Cancels when pipeline advances" : ""}`
+                              ? `${formatDueTiming(rule.due_offset_days)} · Manager warning ${rule.overdue_grace_days ? `${rule.overdue_grace_days} day${rule.overdue_grace_days === 1 ? "" : "s"} after due` : "when overdue"} · ${formatAssignment(rule)}${rule.cancel_on_pipeline_advance ? " · Cancels when pipeline advances" : ""}`
                               : "Runs immediately for the related job"}
                           </p>
                         </div>
@@ -283,8 +283,8 @@ export default function AutomationRulesManager({
 }
 
 function formatDueTiming(days: number) {
-  if (days === 0) return "Sends immediately";
-  return `Sends in ${days} day${days === 1 ? "" : "s"}`;
+  if (days === 0) return "Due today";
+  return `Due in ${days} day${days === 1 ? "" : "s"}`;
 }
 
 function formatAssignment(rule: AutomationRule) {

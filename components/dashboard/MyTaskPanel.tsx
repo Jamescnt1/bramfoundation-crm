@@ -96,7 +96,7 @@ export default function MyTaskPanel({ initialTasks, timeZone }: Props) {
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
                     <TaskBadge value={task.priority} priority />
                     {task.task_types?.name ? <TaskBadge value={task.task_types.name} /> : null}
-                    <span className="text-gray-500">{formatTaskDue(task.due_at, task.due_date, timeZone)}</span>
+                    <span className={task.due_at || task.due_date ? "font-semibold text-red-700" : "text-gray-500"}>{formatTaskDue(task.due_at, task.due_date, timeZone)}</span>
                   </div>
                   {task.latest_note?.body ? (
                     <p className="mt-1.5 line-clamp-2 text-xs leading-4 text-gray-500">

@@ -50,6 +50,7 @@ export type DashboardTask = {
   assigned_to: string | null;
   due_at: string | null;
   due_date: string | null;
+  overdue_grace_days: number;
   completed: boolean;
   status: string;
   created_at: string;
@@ -165,8 +166,7 @@ export async function getCompanyDashboardData(
         .order("updated_at", { ascending: false, nullsFirst: false }),
       supabase
         .from("job_tasks")
-        .select("id, title, assigned_employee_id, assigned_to, due_at, due_date, completed, status, created_at")
-        .or(`automation_rule_id.is.null,due_at.is.null,due_at.lte.${now.toISOString()}`)
+        .select("id, title, assigned_employee_id, assigned_to, due_at, due_date, overdue_grace_days, completed, status, created_at")
         .order("created_at", { ascending: false }),
       supabase
         .from("appointments")
@@ -631,8 +631,12 @@ function jobBelongsToEmployee(job: DashboardJob, employee: DashboardEmployee) {
 }
 
 function isTaskOverdue(task: DashboardTask, now: Date, todayKey: string) {
-  if (task.due_at) return new Date(task.due_at) < now;
-  return Boolean(task.due_date && task.due_date < todayKey);
+  const graceDays = Math.max(0, task.overdue_grace_days ?? 0);
+  if (task.due_at) return addDays(new Date(task.due_at), graceDays) < now;
+  if (!task.due_date) return false;
+  const warningDate = new Date(`${task.due_date}T00:00:00`);
+  warningDate.setDate(warningDate.getDate() + graceDays + 1);
+  return warningDate <= now || (graceDays === 0 && task.due_date < todayKey);
 }
 
 function healthFor(overdue: number, open: number): AccountabilityRow["health"] {

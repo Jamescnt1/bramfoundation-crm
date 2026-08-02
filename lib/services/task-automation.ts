@@ -23,6 +23,7 @@ export type AutomationRule = {
   id: string; name: string; trigger_event: AutomationTriggerEvent; trigger_value: string | null;
   action_type: AutomationActionType; target_status: PipelineStage | null;
   trigger_status: PipelineStage | null; task_title: string | null; due_offset_days: number;
+  overdue_grace_days: number;
   task_priority: "low" | "normal" | "high" | "urgent";
   task_type_id: string | null;
   task_types: { id: string; name: string } | { id: string; name: string }[] | null;
@@ -37,7 +38,7 @@ export type AutomationRule = {
 export type AutomationRuleValues = {
   name: string; trigger_event: AutomationTriggerEvent; trigger_value: string | null;
   action_type: AutomationActionType; target_status: PipelineStage | null;
-  task_title: string | null; due_offset_days: number; assignment_type: AutomationAssignmentType;
+  task_title: string | null; due_offset_days: number; overdue_grace_days: number; assignment_type: AutomationAssignmentType;
   task_priority: "low" | "normal" | "high" | "urgent";
   task_type_id: string | null;
   assigned_employee_id: string | null; cancel_on_pipeline_advance: boolean; active: boolean;
@@ -47,7 +48,7 @@ export type AutomationRuleValues = {
 };
 
 const ruleColumns = `id, name, trigger_event, trigger_value, action_type, target_status,
-  trigger_status, task_title, task_priority, task_type_id, due_offset_days, assignment_type, assigned_employee_id,
+  trigger_status, task_title, task_priority, task_type_id, due_offset_days, overdue_grace_days, assignment_type, assigned_employee_id,
   cancel_on_pipeline_advance, active, sort_order, created_at, updated_at, email_template_id,
   employees (id, name), email_templates (id, name), task_types (id, name),
   automation_rule_recipients (id, recipient_type, employee_id, role_key)`;
@@ -124,6 +125,7 @@ function normalize(values: AutomationRuleValues) {
     task_priority: values.action_type === "create_task" ? values.task_priority : "normal",
     task_type_id: values.action_type === "create_task" ? values.task_type_id : null,
     due_offset_days: Math.max(0, Math.trunc(values.due_offset_days)),
+    overdue_grace_days: Math.min(365, Math.max(0, Math.trunc(values.overdue_grace_days))),
     assignment_type: values.assignment_type,
     assigned_employee_id: values.action_type === "create_task" && values.assignment_type === "specific_employee"
       ? values.assigned_employee_id : null,

@@ -14,11 +14,9 @@ const columns = `id, job_id, customer_id, title, description, assigned_to,
  employees!job_tasks_assigned_employee_id_fkey(id, name), task_types(id, name, active, sort_order)`;
 
 export async function getTasks(filters?: { jobId?: string; customerId?: string }) {
-  const now = new Date().toISOString();
   let query = supabase
     .from("job_tasks")
     .select(columns)
-    .or(`automation_rule_id.is.null,due_at.is.null,due_at.lte.${now}`)
     .order("completed")
     .order("due_at", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });
