@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Employee } from "@/lib/services/employees";
-import type { AppointmentType } from "@/components/calendar/constants";
+import type { CalendarAppointment } from "@/components/calendar/types";
 
 export type WorkspaceTask = {
   id: string;
@@ -19,20 +19,7 @@ export type WorkspaceTask = {
   customers: { id: string; full_name: string } | null;
 };
 
-export type WorkspaceAppointment = {
-  id: string;
-  starts_at: string;
-  ends_at: string | null;
-  appointment_type: AppointmentType;
-  status: string;
-  location: string | null;
-  job: {
-    id: string;
-    customer_name: string;
-    qfloors_job_number: string | null;
-    customer: { id: string; full_name: string } | null;
-  } | null;
-};
+export type WorkspaceAppointment = CalendarAppointment;
 
 export type WorkspaceJob = {
   id: string;
@@ -47,8 +34,36 @@ export type WorkspaceJob = {
 export type EmployeeWorkspace = {
   tasks: WorkspaceTask[];
   appointments: WorkspaceAppointment[];
+  installations: WorkspaceAppointment[];
   jobs: WorkspaceJob[];
 };
+
+const workspaceAppointmentColumns = `
+  *,
+  appointment_type_record:appointment_types!appointments_appointment_type_fkey (
+    key, name, active
+  ),
+  assigned_employee:employees!appointments_assigned_employee_id_fkey (
+    id, name, color
+  ),
+  installer_crew:installer_crews!appointments_installer_crew_id_fkey (
+    id, name, color
+  ),
+  work_order_sender:employees!appointments_work_order_sent_by_fkey (
+    id, name
+  ),
+  job:jobs!appointments_job_id_fkey (
+    id, customer_id, customer_name, qfloors_job_number, address, status,
+    installation_required,
+    customer:customers!jobs_customer_id_fkey (id, full_name),
+    company_contact:customer_contacts!jobs_company_contact_id_fkey (
+      first_name, last_name, job_title, email, office_phone, mobile_phone
+    ),
+    job_site_contact:customer_contacts!jobs_job_site_contact_id_fkey (
+      first_name, last_name, job_title, email, office_phone, mobile_phone
+    )
+  )
+`;
 
 export async function getEmployeeWorkspace(
   employee: Employee,
@@ -58,7 +73,7 @@ export async function getEmployeeWorkspace(
   const appointmentWindowEnd = new Date(now);
   appointmentWindowEnd.setDate(appointmentWindowEnd.getDate() + 14);
 
-  const [tasksResult, appointmentsResult, jobsResult] = await Promise.all([
+  const [tasksResult, jobsResult] = await Promise.all([
     supabase
       .from("job_tasks")
       .select("id, job_id, customer_id, title, due_at, due_date, priority, status, completed, task_type_id, task_types(id, name), jobs(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name)), customers(id, full_name)")
@@ -67,13 +82,6 @@ export async function getEmployeeWorkspace(
       .order("completed", { ascending: true })
       .order("due_date", { ascending: true, nullsFirst: false }),
     supabase
-      .from("appointments")
-      .select("id, starts_at, ends_at, appointment_type, status, location, job:jobs!appointments_job_id_fkey(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name))")
-      .eq("assigned_employee_id", employee.id)
-      .gte("starts_at", now.toISOString())
-      .lte("starts_at", appointmentWindowEnd.toISOString())
-      .order("starts_at"),
-    supabase
       .from("jobs")
       .select("id, customer_name, status, next_action, next_action_due, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name)")
       .is("archived_at", null)
@@ -81,8 +89,34 @@ export async function getEmployeeWorkspace(
       .order("updated_at", { ascending: false }),
   ]);
 
-  const error = tasksResult.error ?? appointmentsResult.error ?? jobsResult.error;
+  const error = tasksResult.error ?? jobsResult.error;
   if (error) throw new Error(error.message);
+
+  const jobIds = (jobsResult.data ?? []).map((job) => job.id);
+  const appointmentsQuery = supabase
+    .from("appointments")
+    .select(workspaceAppointmentColumns)
+    .eq("assigned_employee_id", employee.id)
+    .neq("appointment_type", "installation")
+    .gte("starts_at", now.toISOString())
+    .lte("starts_at", appointmentWindowEnd.toISOString())
+    .order("starts_at");
+  const installationsQuery = jobIds.length
+    ? supabase
+        .from("appointments")
+        .select(workspaceAppointmentColumns)
+        .eq("appointment_type", "installation")
+        .in("job_id", jobIds)
+        .or(`starts_at.gte.${now.toISOString()},ends_at.gte.${now.toISOString()}`)
+        .lte("starts_at", appointmentWindowEnd.toISOString())
+        .order("starts_at")
+    : null;
+  const [appointmentsResult, installationsResult] = await Promise.all([
+    appointmentsQuery,
+    installationsQuery,
+  ]);
+  if (appointmentsResult.error) throw new Error(appointmentsResult.error.message);
+  if (installationsResult?.error) throw new Error(installationsResult.error.message);
 
   const normalizedTasks = (tasksResult.data ?? []).map((task) => ({
     ...task,
@@ -117,12 +151,8 @@ export async function getEmployeeWorkspace(
     latest_note: latestNotesByTask.get(task.id) ?? null,
   }));
 
-  const appointments = (appointmentsResult.data ?? []).map((appointment) => ({
-    ...appointment,
-    job: normalizeWorkspaceJobRelation(
-      Array.isArray(appointment.job) ? appointment.job[0] ?? null : appointment.job,
-    ),
-  })) as WorkspaceAppointment[];
+  const appointments = (appointmentsResult.data ?? []) as unknown as WorkspaceAppointment[];
+  const installations = (installationsResult?.data ?? []) as unknown as WorkspaceAppointment[];
 
   const jobs = (jobsResult.data ?? []).map((job) => ({
     ...job,
@@ -132,6 +162,7 @@ export async function getEmployeeWorkspace(
   return {
     tasks,
     appointments,
+    installations,
     jobs,
   };
 }
