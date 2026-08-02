@@ -62,7 +62,7 @@ export default function MyTaskPanel({ initialTasks, timeZone }: Props) {
   if (!taskCount) return <p className="py-6 text-sm text-gray-500">No open tasks assigned to you.</p>;
 
   return (
-    <div>
+    <div className="w-full min-w-0 max-w-full overflow-hidden">
       {error ? (
         <div role="alert" className="mb-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
           {error}
@@ -78,7 +78,7 @@ export default function MyTaskPanel({ initialTasks, timeZone }: Props) {
             <div className="divide-y divide-gray-100">
               {grouped[group].map((task) => (
                 <article key={task.id} className="py-2.5 sm:px-1">
-                  <div className="flex items-start gap-2">
+                  <div className="flex min-w-0 items-start gap-2">
                     <Link href={`/tasks?task=${task.id}`} className="min-w-0 flex-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black">
                       <p className="truncate text-sm font-medium text-gray-900">{task.title}</p>
                       <p className="mt-0.5 truncate text-xs text-gray-500">{task.jobs ? formatJobDisplayName({ customerName: task.jobs.customer?.full_name ?? task.customers?.full_name, jobName: task.jobs.customer_name, qfNumber: task.jobs.qfloors_job_number }) : task.customers?.full_name ?? "Business task"}</p>
@@ -88,7 +88,7 @@ export default function MyTaskPanel({ initialTasks, timeZone }: Props) {
                       value={task.status}
                       disabled={savingId === task.id}
                       onChange={(event) => void changeStatus(task, event.target.value as TaskStatus)}
-                      className="min-h-8 max-w-28 shrink-0 rounded-full border border-gray-200 bg-gray-50 px-2 text-[11px] font-semibold text-gray-700 outline-none focus:border-gray-500 disabled:opacity-60"
+                      className="min-h-8 w-24 max-w-[38%] shrink-0 rounded-full border border-gray-200 bg-gray-50 px-1.5 text-[11px] font-semibold text-gray-700 outline-none focus:border-gray-500 disabled:opacity-60 sm:w-28 sm:px-2"
                     >
                       {TASK_STATUSES.map((status) => <option key={status} value={status}>{label(status)}</option>)}
                     </select>
