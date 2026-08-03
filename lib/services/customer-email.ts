@@ -5,12 +5,89 @@ import { getCompanySettings } from "@/lib/services/company-settings";
 import { requirePermission } from "@/lib/services/employees";
 import { sendProviderEmail } from "@/lib/services/email-provider";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 const BUCKET = "job-attachments";
 const emailColumns = `id, job_id, customer_id, template_id, sent_by_employee_id, direction,
  sender, recipient, subject, body, status, is_automated, provider_message_id,
  failure_reason, sent_at, delivered_at, created_at,
  sent_by:employees!customer_emails_sent_by_employee_id_fkey(id,name)`;
+
+export type CustomerEmailReplySummary = {
+  id: string;
+  job_id: string;
+  job_name: string;
+  qf_number: string | null;
+  sender: string;
+  subject: string;
+  preview: string;
+  received_at: string;
+  is_read: boolean;
+};
+
+export async function getMyCustomerEmailReplies(limit = 8): Promise<CustomerEmailReplySummary[]> {
+  const employee = await requirePermission("customer_email.view");
+  const admin = createAdminClient();
+  const { data: jobs, error: jobError } = await admin.from("jobs")
+    .select("id,customer_name,qfloors_job_number,assigned_employee_id,salesperson")
+    .is("archived_at", null);
+  if (jobError) throw new Error(jobError.message);
+  const visibleJobs = (jobs ?? []).filter((job) => {
+    const assignedToEmployee = job.assigned_employee_id === employee.id || job.salesperson?.toLowerCase() === employee.name.toLowerCase();
+    const unassignedForAdmin = !job.assigned_employee_id && !job.salesperson && employee.role === "administrator";
+    return assignedToEmployee || unassignedForAdmin;
+  });
+  const jobById = new Map(visibleJobs.map((job) => [job.id, job]));
+  if (!visibleJobs.length) return [];
+
+  const { data, error } = await admin.from("customer_emails")
+    .select("id,job_id,sender,subject,body,created_at")
+    .eq("direction", "inbound")
+    .in("job_id", visibleJobs.map((job) => job.id))
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  const ids = (data ?? []).map((email) => email.id);
+  const { data: receipts, error: receiptError } = ids.length
+    ? await admin.from("customer_email_read_receipts").select("email_id").eq("employee_id", employee.id).in("email_id", ids)
+    : { data: [], error: null };
+  if (receiptError) throw new Error(receiptError.message);
+  const readIds = new Set((receipts ?? []).map((receipt) => receipt.email_id));
+
+  return (data ?? []).map((email) => {
+    const job = jobById.get(email.job_id);
+    return {
+      id: email.id,
+      job_id: email.job_id,
+      job_name: job?.customer_name ?? "Job",
+      qf_number: job?.qfloors_job_number ?? null,
+      sender: email.sender,
+      subject: email.subject,
+      preview: email.body.replace(/\s+/g, " ").trim().slice(0, 180),
+      received_at: email.created_at,
+      is_read: readIds.has(email.id),
+    };
+  });
+}
+
+export async function setCustomerEmailReplyRead(emailId: string, read: boolean) {
+  const employee = await requirePermission("customer_email.view");
+  const supabase = await createClient();
+  const { data: email, error: emailError } = await supabase.from("customer_emails")
+    .select("id").eq("id", emailId).eq("direction", "inbound").maybeSingle();
+  if (emailError) throw new Error(emailError.message);
+  if (!email) throw new Error("That customer reply is not available to you.");
+
+  if (read) {
+    const { error } = await supabase.from("customer_email_read_receipts")
+      .upsert({ email_id: emailId, employee_id: employee.id, read_at: new Date().toISOString() });
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase.from("customer_email_read_receipts")
+      .delete().eq("email_id", emailId).eq("employee_id", employee.id);
+    if (error) throw new Error(error.message);
+  }
+}
 
 export async function getJobCustomerEmails(jobId: string): Promise<CustomerEmail[]> {
   await requirePermission("customer_email.view");

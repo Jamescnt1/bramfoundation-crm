@@ -9,12 +9,14 @@ import CompactPipelineOverview from "@/components/dashboard/CompactPipelineOverv
 import MyTaskPanel from "@/components/dashboard/MyTaskPanel";
 import DashboardScheduleList from "@/components/dashboard/DashboardScheduleList";
 import { getCompanySettings } from "@/lib/services/company-settings";
+import CustomerEmailRepliesCard from "@/components/dashboard/CustomerEmailRepliesCard";
+import { getMyCustomerEmailReplies } from "@/lib/services/customer-email";
 
 export const dynamic = "force-dynamic";
 
 export default async function MyDashboardPage() {
   const employee = await requireEmployee();
-  const [workspace, stages, conversations, messagingEmployees, companySettings] = await Promise.all([getEmployeeWorkspace(employee), getPipelineStages(), getEmployeeConversations(), getMessagingEmployees(), getCompanySettings()]);
+  const [workspace, stages, conversations, messagingEmployees, companySettings, customerEmailReplies] = await Promise.all([getEmployeeWorkspace(employee), getPipelineStages(), getEmployeeConversations(), getMessagingEmployees(), getCompanySettings(), getMyCustomerEmailReplies()]);
   const pipelineGroups = stages.map((stage) => ({
     stage,
     jobs: workspace.jobs.filter(
@@ -58,7 +60,10 @@ export default async function MyDashboardPage() {
           </div>
 
           <div className="w-full min-w-0 max-w-full overflow-hidden">
-            <InternalMessagesDashboard initialConversations={conversations} currentEmployee={{ id: employee.id, name: employee.name, avatar_url: employee.avatar_url, color: employee.color }} employees={messagingEmployees} />
+            <div className="grid gap-3">
+              <CustomerEmailRepliesCard initialReplies={customerEmailReplies} />
+              <InternalMessagesDashboard initialConversations={conversations} currentEmployee={{ id: employee.id, name: employee.name, avatar_url: employee.avatar_url, color: employee.color }} employees={messagingEmployees} />
+            </div>
           </div>
 
         </div>
