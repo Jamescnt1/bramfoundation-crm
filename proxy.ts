@@ -27,17 +27,24 @@ export async function proxy(request: NextRequest) {
   const isResetPassword = request.nextUrl.pathname === "/reset-password";
   const isAuthConfirm = request.nextUrl.pathname === "/auth/confirm";
   const isLoginApi = request.nextUrl.pathname === "/api/auth/login";
-  const isPublicAuthRoute =
-    isLogin || isForgotPassword || isResetPassword || isAuthConfirm || isLoginApi;
+  const isCustomerEmailWebhook =
+    request.nextUrl.pathname === "/api/customer-email/webhook";
+  const isPublicRoute =
+    isLogin ||
+    isForgotPassword ||
+    isResetPassword ||
+    isAuthConfirm ||
+    isLoginApi ||
+    isCustomerEmailWebhook;
 
-  if (!user && !isPublicAuthRoute) {
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(url);
   }
 
-  if (user && !isLoginApi) {
+  if (user && !isLoginApi && !isCustomerEmailWebhook) {
     const { data: employee } = await supabase
       .from("employees")
       .select("active")
