@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { setInstallationWorkOrderSentAction } from "@/app/leads/[id]/installations/actions";
+import { productionPipelineErrorMessage } from "@/lib/production-pipeline-error";
 
 type StatusDialog = { scope: MaterialScope; status: MaterialStatus } | null;
 
@@ -191,7 +192,7 @@ function StatusBadge({ scope }: { scope: MaterialScope }) {
   const style = scope.material_status === "ready" ? "bg-emerald-50 text-emerald-700" : scope.material_status === "issue" ? "bg-red-50 text-red-700" : scope.material_status === "excluded" ? "bg-gray-100 text-gray-600" : scope.material_status === "ordered" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-800";
   return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${style}`}>{scope.material_status.split("_").join(" ")}</span>;
 }
-function message(error: unknown) { return error instanceof Error ? error.message : "Unable to update production."; }
+function message(error: unknown) { return productionPipelineErrorMessage(error, "Unable to update production."); }
 function formatDate(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${value}T00:00:00`)); }
 function formatDateTime(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(value)); }
 function formatRange(start: string, end: string | null) { const formatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }); const first = formatter.format(new Date(start)); const last = end ? formatter.format(new Date(end)) : first; return first === last ? first : `${first} – ${last}`; }

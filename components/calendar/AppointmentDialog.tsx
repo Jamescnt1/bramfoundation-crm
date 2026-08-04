@@ -28,6 +28,7 @@ import type { InstallerCrew } from "@/lib/services/installer-crews";
 import { formatJobDisplayName } from "@/lib/job-display";
 import { formatAppointmentType } from "@/lib/appointment-display";
 import type { AppointmentTypeDefinition } from "@/lib/services/appointment-types";
+import { productionPipelineErrorMessage } from "@/lib/production-pipeline-error";
 
 type AppointmentDialogProps = {
   open: boolean;
@@ -382,11 +383,7 @@ export default function AppointmentDialog({
       onOpenChange(false);
       router.refresh();
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to save the appointment.",
-      );
+      setErrorMessage(productionPipelineErrorMessage(error, "Unable to save the appointment."));
     } finally {
       setIsSaving(false);
     }
