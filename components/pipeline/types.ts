@@ -15,6 +15,7 @@ export type PipelineJob = Pick<
   | "contract_amount"
   | "installation_required"
   | "created_at"
+  | "pipeline_hide_after"
   | "on_hold"
   | "hold_reason"
   | "hold_until"

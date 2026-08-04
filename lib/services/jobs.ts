@@ -30,6 +30,8 @@ export type Job = {
   updated_at: string | null;
   archived_at: string | null;
   archived_by: string | null;
+  pipeline_terminal_entered_at: string | null;
+  pipeline_hide_after: string | null;
   on_hold: boolean;
   hold_reason: string | null;
   hold_until: string | null;
@@ -200,6 +202,8 @@ const jobColumns = `
   updated_at
   ,archived_at
   ,archived_by
+  ,pipeline_terminal_entered_at
+  ,pipeline_hide_after
   ,on_hold
   ,hold_reason
   ,hold_until

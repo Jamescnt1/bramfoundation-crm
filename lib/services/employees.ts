@@ -20,6 +20,7 @@ export type Employee = {
   pipeline_card_size: "small" | "medium" | "large";
   pipeline_sort_order: "newest" | "oldest" | "alphabetical";
   pipeline_hold_view: "active" | "on_hold" | "all";
+  pipeline_history_view: "active" | "closed" | "all";
   job_title: string | null;
   bio: string | null;
   created_at: string;
@@ -34,7 +35,7 @@ export const getCurrentEmployee = cache(async (): Promise<Employee | null> => {
 
   const { data, error } = await supabase
     .from("employees")
-    .select("id, auth_user_id, name, email, username, phone, role, active, avatar_url, color, default_calendar_view, remember_last_calendar_view, last_calendar_view, pipeline_card_size, pipeline_sort_order, pipeline_hold_view, job_title, bio, created_at, updated_at")
+    .select("id, auth_user_id, name, email, username, phone, role, active, avatar_url, color, default_calendar_view, remember_last_calendar_view, last_calendar_view, pipeline_card_size, pipeline_sort_order, pipeline_hold_view, pipeline_history_view, job_title, bio, created_at, updated_at")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
@@ -89,7 +90,7 @@ export async function getActiveEmployees(): Promise<Employee[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("employees")
-    .select("id, auth_user_id, name, email, username, phone, role, active, avatar_url, color, default_calendar_view, remember_last_calendar_view, last_calendar_view, pipeline_card_size, pipeline_sort_order, pipeline_hold_view, job_title, bio, created_at, updated_at")
+    .select("id, auth_user_id, name, email, username, phone, role, active, avatar_url, color, default_calendar_view, remember_last_calendar_view, last_calendar_view, pipeline_card_size, pipeline_sort_order, pipeline_hold_view, pipeline_history_view, job_title, bio, created_at, updated_at")
     .eq("active", true)
     .order("name");
 

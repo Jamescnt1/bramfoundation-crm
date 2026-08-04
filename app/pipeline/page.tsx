@@ -52,6 +52,7 @@ export default async function PipelinePage() {
             initialCardSize={currentEmployee.pipeline_card_size}
             initialSortOrder={currentEmployee.pipeline_sort_order}
             initialHoldView={currentEmployee.pipeline_hold_view}
+            initialHistoryView={currentEmployee.pipeline_history_view}
           />
         )}
       </div>
