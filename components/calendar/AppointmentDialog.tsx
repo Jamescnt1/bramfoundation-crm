@@ -95,7 +95,7 @@ function formatContactName(contact: Job["company_contact"]) {
 }
 
 function formatProjectContact(job: Job) {
-  return job.project_contact ? formatContactName(job.project_contact) : job.project_customer_name || job.customer_name || "Not selected";
+  return job.project_contact_name || (job.project_contact ? formatContactName(job.project_contact) : job.project_customer_name || job.customer_name || "Not provided");
 }
 
 export default function AppointmentDialog({
@@ -496,7 +496,8 @@ export default function AppointmentDialog({
                         <dd className="mt-0.5 font-semibold text-gray-900">
                           {formatProjectContact(selectedJob)}
                         </dd>
-                        {!selectedJob.project_contact && (selectedJob.phone || selectedJob.email) ? <dd className="mt-0.5 text-gray-500">{[selectedJob.phone, selectedJob.email].filter(Boolean).join(" · ")}</dd> : null}
+                        {selectedJob.project_contact_description ? <dd className="mt-0.5 text-gray-500">{selectedJob.project_contact_description}</dd> : null}
+                        {selectedJob.project_contact_phone || (!selectedJob.project_contact && (selectedJob.phone || selectedJob.email)) ? <dd className="mt-0.5 text-gray-500">{[selectedJob.project_contact_phone ?? selectedJob.phone, selectedJob.email].filter(Boolean).join(" · ")}</dd> : null}
                       </div>
                       {selectedJob.job_site_contact ? <div><dt className="font-medium text-gray-500">Job Site Contact</dt><dd className="mt-0.5 font-semibold text-gray-900">{formatContactName(selectedJob.job_site_contact)}</dd></div> : null}
                     </dl>

@@ -27,7 +27,9 @@ export type CreateLeadInput = {
     nextActionDue: string;
     notes: string;
     companyContactId: string;
-    projectContactId: string;
+    projectContactName: string;
+    projectContactPhone: string;
+    projectContactDescription: string;
     jobSiteContactId: string;
     installationRequired: boolean;
   };
@@ -136,7 +138,9 @@ export async function createLeadAction(input: CreateLeadInput) {
       next_action_due: clean(input.job.nextActionDue),
       notes: clean(input.job.notes),
       company_contact_id: clean(input.job.companyContactId),
-      project_contact_id: clean(input.job.projectContactId),
+      project_contact_name: clean(input.job.projectContactName),
+      project_contact_phone: clean(input.job.projectContactPhone),
+      project_contact_description: clean(input.job.projectContactDescription),
       job_site_contact_id: clean(input.job.jobSiteContactId),
       installation_required: input.job.installationRequired,
     })

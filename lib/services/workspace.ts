@@ -53,7 +53,7 @@ const workspaceAppointmentColumns = `
     id, name
   ),
   job:jobs!appointments_job_id_fkey (
-    id, customer_id, customer_name, project_customer_name, phone, email, qfloors_job_number, address, status,
+    id, customer_id, customer_name, project_customer_name, project_contact_name, project_contact_phone, project_contact_description, phone, email, qfloors_job_number, address, status,
     installation_required,
     customer:customers!jobs_customer_id_fkey (id, full_name),
     company_contact:customer_contacts!jobs_company_contact_id_fkey (

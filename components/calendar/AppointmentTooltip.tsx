@@ -246,7 +246,7 @@ export default function AppointmentTooltip({
 
                 <dt className="font-medium text-gray-500">Project contact</dt>
                 <dd className="break-words text-gray-900">
-                  {projectContact ? contactName(projectContact, "Not assigned") : [appointment.job?.project_customer_name || appointment.job?.customer_name, appointment.job?.phone, appointment.job?.email].filter(Boolean).join(" · ") || "Not assigned"}
+                  {appointment.job?.project_contact_name ? [appointment.job.project_contact_name, appointment.job.project_contact_description, appointment.job.project_contact_phone].filter(Boolean).join(" · ") : projectContact ? contactName(projectContact, "Not assigned") : [appointment.job?.project_customer_name || appointment.job?.customer_name, appointment.job?.phone, appointment.job?.email].filter(Boolean).join(" · ") || "Not provided"}
                 </dd>
 
                 {siteContact ? <><dt className="font-medium text-gray-500">Site contact</dt><dd className="break-words text-gray-900">{contactName(siteContact, "Not assigned")}</dd></> : null}

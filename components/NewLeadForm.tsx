@@ -47,7 +47,9 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [companyContactId, setCompanyContactId] = useState(copySource?.company_contact_id ?? "");
-  const [projectContactId, setProjectContactId] = useState(copySource?.project_contact_id ?? "");
+  const [projectContactName, setProjectContactName] = useState(copySource?.project_contact_name ?? (copySource?.project_contact ? `${copySource.project_contact.first_name} ${copySource.project_contact.last_name}`.trim() : ""));
+  const [projectContactPhone, setProjectContactPhone] = useState(copySource?.project_contact_phone ?? copySource?.project_contact?.mobile_phone ?? copySource?.project_contact?.office_phone ?? "");
+  const [projectContactDescription, setProjectContactDescription] = useState(copySource?.project_contact_description ?? copySource?.project_contact?.job_title ?? "");
   const [jobSiteContactId, setJobSiteContactId] = useState(copySource?.job_site_contact_id ?? "");
   const [hasSeparateSiteContact, setHasSeparateSiteContact] = useState(Boolean(copySource?.job_site_contact_id));
   const [availableContacts, setAvailableContacts] = useState(contacts);
@@ -78,7 +80,6 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
     setCustomerMode(mode);
     setCustomerId("");
     setCompanyContactId("");
-    setProjectContactId("");
     setJobSiteContactId("");
     setHasSeparateSiteContact(false);
     setErrorMessage("");
@@ -87,7 +88,6 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
   function handleCustomerSelect(customer: Customer | null) {
     setCustomerId(customer?.id ?? "");
     setCompanyContactId("");
-    setProjectContactId("");
     setJobSiteContactId("");
     setHasSeparateSiteContact(false);
     setErrorMessage("");
@@ -151,7 +151,9 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
           nextActionDue,
           notes,
           companyContactId,
-          projectContactId,
+          projectContactName,
+          projectContactPhone,
+          projectContactDescription,
           jobSiteContactId: hasSeparateSiteContact ? jobSiteContactId : "",
           installationRequired,
         },
@@ -302,6 +304,14 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
           <input id="projectAddress" type="text" disabled={isSaving} value={projectAddress} onChange={(event) => setProjectAddress(event.target.value)} placeholder="Unit or property address for this job" className={inputClass} />
         </Field>
 
+        <fieldset className="grid gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:col-span-2 sm:grid-cols-2">
+          <legend className="px-1 text-sm font-semibold text-gray-900">Project / Job Contact</legend>
+          <p className="text-xs text-gray-500 sm:col-span-2">Any additional person connected to this job—for example a homeowner, manager, designer, daughter, or neighbor.</p>
+          <Field label="Name" htmlFor="projectContactName"><input id="projectContactName" disabled={isSaving} value={projectContactName} onChange={(event) => setProjectContactName(event.target.value)} className={inputClass} /></Field>
+          <Field label="Phone" htmlFor="projectContactPhone"><input id="projectContactPhone" type="tel" disabled={isSaving} value={projectContactPhone} onChange={(event) => setProjectContactPhone(event.target.value)} className={inputClass} /></Field>
+          <Field label="Description / Role" htmlFor="projectContactDescription"><input id="projectContactDescription" disabled={isSaving} value={projectContactDescription} onChange={(event) => setProjectContactDescription(event.target.value)} placeholder="Designer, homeowner, daughter, neighbor…" className={inputClass} /></Field>
+        </fieldset>
+
         <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm sm:col-span-2">
           <input
             type="checkbox"
@@ -334,31 +344,17 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
                 setCompanyContactId(id);
               }}
             />
-            <ContactPicker
-              label="Project / Job Contact"
-              value={projectContactId}
-              contacts={availableContacts}
-              customers={customers}
-              parentCustomerId={selectedCustomer.id}
-              disabled={isSaving}
-              description="Homeowner, end user, tenant, manager, designer, or other project stakeholder."
-              onChange={(id, created) => {
-                if (created) rememberContact(created);
-                setProjectContactId(id);
-              }}
-            />
-            {companyContactId ? <div className="sm:col-start-2"><button type="button" onClick={() => setProjectContactId(companyContactId)} className="text-xs font-medium text-blue-700">Same as Company Contact</button></div> : null}
             <div className="sm:col-span-2">
               <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm">
                 <input type="checkbox" checked={hasSeparateSiteContact} onChange={(event) => { setHasSeparateSiteContact(event.target.checked); if (!event.target.checked) setJobSiteContactId(""); }} disabled={isSaving} className="mt-0.5 h-4 w-4 rounded border-gray-300" />
                 <span><span className="block font-medium text-gray-900">Add a separate Job Site Contact</span><span className="mt-0.5 block text-gray-500">Only needed when field access or coordination is handled by someone different.</span></span>
               </label>
-              {hasSeparateSiteContact ? <div className="mt-3"><ContactPicker label="Job Site Contact" value={jobSiteContactId} contacts={availableContacts} customers={customers} parentCustomerId={selectedCustomer.id} disabled={isSaving} description="Superintendent, site manager, access contact, or field coordinator." onChange={(id, created) => { if (created) rememberContact(created); setJobSiteContactId(id); }} /><div className="mt-2 flex flex-wrap gap-2">{companyContactId ? <button type="button" onClick={() => setJobSiteContactId(companyContactId)} className="text-xs font-medium text-blue-700">Same as Company Contact</button> : null}{projectContactId ? <button type="button" onClick={() => setJobSiteContactId(projectContactId)} className="text-xs font-medium text-blue-700">Same as Project Contact</button> : null}</div></div> : null}
+              {hasSeparateSiteContact ? <div className="mt-3"><ContactPicker label="Job Site Contact" value={jobSiteContactId} contacts={availableContacts} customers={customers} parentCustomerId={selectedCustomer.id} disabled={isSaving} description="Superintendent, site manager, access contact, or field coordinator." onChange={(id, created) => { if (created) rememberContact(created); setJobSiteContactId(id); }} /><div className="mt-2 flex flex-wrap gap-2">{companyContactId ? <button type="button" onClick={() => setJobSiteContactId(companyContactId)} className="text-xs font-medium text-blue-700">Same as Company Contact</button> : null}</div></div> : null}
             </div>
           </div>
         ) : customerMode === "new" ? (
           <p className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500 sm:col-span-2">
-            Create the customer and job first, then assign Company, Project / Job, and optional Job Site contacts from Edit Job Info.
+            Create the customer and job first, then assign the Company and optional Job Site contacts from Edit Job Info. The Project / Job Contact above is saved immediately.
           </p>
         ) : null}
 

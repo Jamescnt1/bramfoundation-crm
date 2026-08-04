@@ -6,6 +6,9 @@ export type Job = {
   assigned_employee_id: string | null;
   company_contact_id: string | null;
   project_contact_id: string | null;
+  project_contact_name: string | null;
+  project_contact_phone: string | null;
+  project_contact_description: string | null;
   job_site_contact_id: string | null;
   customer_name: string;
   project_customer_name: string | null;
@@ -87,6 +90,9 @@ export type CreateJobValues = {
   assigned_employee_id?: string | null;
   company_contact_id?: string | null;
   project_contact_id?: string | null;
+  project_contact_name?: string | null;
+  project_contact_phone?: string | null;
+  project_contact_description?: string | null;
   job_site_contact_id?: string | null;
   customer_name: string;
   project_customer_name?: string | null;
@@ -168,6 +174,9 @@ const jobColumns = `
   assigned_employee_id,
   company_contact_id,
   project_contact_id,
+  project_contact_name,
+  project_contact_phone,
+  project_contact_description,
   job_site_contact_id,
   customer_name,
   project_customer_name,
@@ -505,6 +514,9 @@ export async function createJob(
         (await findEmployeeIdByName(values.salesperson)),
       company_contact_id: values.company_contact_id ?? null,
       project_contact_id: values.project_contact_id ?? null,
+      project_contact_name: values.project_contact_name?.trim() || null,
+      project_contact_phone: values.project_contact_phone?.trim() || null,
+      project_contact_description: values.project_contact_description?.trim() || null,
       job_site_contact_id: values.job_site_contact_id ?? null,
       customer_name: values.customer_name.trim(),
       project_customer_name: values.project_customer_name?.trim() || null,
@@ -622,6 +634,10 @@ export async function updateJob(
   if (values.project_contact_id !== undefined) {
     updates.project_contact_id = values.project_contact_id;
   }
+
+  if (values.project_contact_name !== undefined) updates.project_contact_name = values.project_contact_name?.trim() || null;
+  if (values.project_contact_phone !== undefined) updates.project_contact_phone = values.project_contact_phone?.trim() || null;
+  if (values.project_contact_description !== undefined) updates.project_contact_description = values.project_contact_description?.trim() || null;
 
   if (values.job_site_contact_id !== undefined) {
     updates.job_site_contact_id = values.job_site_contact_id;

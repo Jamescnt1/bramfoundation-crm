@@ -61,6 +61,9 @@ export type CalendarAppointment = {
     customer_id: string | null;
     customer_name: string;
     project_customer_name: string | null;
+    project_contact_name: string | null;
+    project_contact_phone: string | null;
+    project_contact_description: string | null;
     phone: string | null;
     email: string | null;
     qfloors_job_number: string | null;

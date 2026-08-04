@@ -70,7 +70,9 @@ export default function EditLeadForm({
   const [address, setAddress] = useState(job.address ?? "");
   const [assignedEmployeeId, setAssignedEmployeeId] = useState(job.assigned_employee_id ?? "");
   const [companyContactId, setCompanyContactId] = useState(job.company_contact_id ?? "");
-  const [projectContactId, setProjectContactId] = useState(job.project_contact_id ?? "");
+  const [projectContactName, setProjectContactName] = useState(job.project_contact_name ?? (job.project_contact ? `${job.project_contact.first_name} ${job.project_contact.last_name}`.trim() : ""));
+  const [projectContactPhone, setProjectContactPhone] = useState(job.project_contact_phone ?? job.project_contact?.mobile_phone ?? job.project_contact?.office_phone ?? "");
+  const [projectContactDescription, setProjectContactDescription] = useState(job.project_contact_description ?? job.project_contact?.job_title ?? "");
   const [jobSiteContactId, setJobSiteContactId] = useState(job.job_site_contact_id ?? "");
   const [hasSeparateSiteContact, setHasSeparateSiteContact] = useState(Boolean(job.job_site_contact_id));
   const [availableContacts, setAvailableContacts] = useState(contacts);
@@ -120,7 +122,9 @@ export default function EditLeadForm({
       const nextAddress = address.trim() || null;
       const nextAssignedEmployeeId = assignedEmployeeId || null;
       const nextCompanyContactId = companyContactId || null;
-      const nextProjectContactId = projectContactId || null;
+      const nextProjectContactName = projectContactName.trim() || null;
+      const nextProjectContactPhone = projectContactPhone.trim() || null;
+      const nextProjectContactDescription = projectContactDescription.trim() || null;
       const nextJobSiteContactId = hasSeparateSiteContact ? jobSiteContactId || null : null;
       const nextSalesperson = salesperson || null;
       const nextActionValue = nextAction.trim() || null;
@@ -143,9 +147,10 @@ export default function EditLeadForm({
       if (nextCompanyContactId !== job.company_contact_id) {
         updates.company_contact_id = nextCompanyContactId;
       }
-      if (nextProjectContactId !== job.project_contact_id) {
-        updates.project_contact_id = nextProjectContactId;
-      }
+      if (nextProjectContactName !== job.project_contact_name) updates.project_contact_name = nextProjectContactName;
+      if (nextProjectContactPhone !== job.project_contact_phone) updates.project_contact_phone = nextProjectContactPhone;
+      if (nextProjectContactDescription !== job.project_contact_description) updates.project_contact_description = nextProjectContactDescription;
+      if (job.project_contact_id) updates.project_contact_id = null;
       if (nextJobSiteContactId !== job.job_site_contact_id) {
         updates.job_site_contact_id = nextJobSiteContactId;
       }
@@ -267,6 +272,14 @@ export default function EditLeadForm({
           className="mt-2 w-full resize-y rounded-lg border border-gray-300 px-3 py-2 disabled:bg-gray-100" />
       </div>
 
+      <fieldset className="grid gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:grid-cols-2">
+        <legend className="px-1 text-sm font-semibold text-gray-900">Project / Job Contact</legend>
+        <p className="text-xs text-gray-500 sm:col-span-2">Any additional person connected to this job—for example a homeowner, manager, designer, daughter, or neighbor.</p>
+        <div><label htmlFor="projectContactName" className="block text-sm font-medium text-gray-700">Name</label><input id="projectContactName" disabled={isSaving} value={projectContactName} onChange={(event) => setProjectContactName(event.target.value)} className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 disabled:bg-gray-100" /></div>
+        <div><label htmlFor="projectContactPhone" className="block text-sm font-medium text-gray-700">Phone</label><input id="projectContactPhone" type="tel" disabled={isSaving} value={projectContactPhone} onChange={(event) => setProjectContactPhone(event.target.value)} className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 disabled:bg-gray-100" /></div>
+        <div className="sm:col-span-2"><label htmlFor="projectContactDescription" className="block text-sm font-medium text-gray-700">Description / Role</label><input id="projectContactDescription" disabled={isSaving} value={projectContactDescription} onChange={(event) => setProjectContactDescription(event.target.value)} placeholder="Designer, homeowner, daughter, neighbor…" className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 disabled:bg-gray-100" /></div>
+      </fieldset>
+
       <div>
         <label htmlFor="assignedEmployee" className="block text-sm font-medium text-gray-700">Assigned Employee</label>
         <select id="assignedEmployee" disabled={isSaving} value={assignedEmployeeId} onChange={(event) => setAssignedEmployeeId(event.target.value)}
@@ -292,23 +305,9 @@ export default function EditLeadForm({
               setCompanyContactId(id);
             }}
           />
-          <ContactPicker
-            label="Project / Job Contact"
-            value={projectContactId}
-            contacts={availableContacts}
-            customers={customers}
-            parentCustomerId={job.customer_id}
-            disabled={isSaving}
-            description="Homeowner, end user, tenant, manager, designer, or other project stakeholder."
-            onChange={(id, created) => {
-              if (created) rememberContact(created);
-              setProjectContactId(id);
-            }}
-          />
-          {companyContactId ? <div className="sm:col-start-2"><button type="button" onClick={() => setProjectContactId(companyContactId)} className="text-xs font-medium text-blue-700">Same as Company Contact</button></div> : null}
           <div className="sm:col-span-2">
             <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm"><input type="checkbox" checked={hasSeparateSiteContact} onChange={(event) => { setHasSeparateSiteContact(event.target.checked); if (!event.target.checked) setJobSiteContactId(""); }} disabled={isSaving} className="mt-0.5 h-4 w-4 rounded border-gray-300"/><span><span className="block font-medium text-gray-900">Add a separate Job Site Contact</span><span className="mt-0.5 block text-gray-500">Only needed when field access or coordination is handled by someone different.</span></span></label>
-            {hasSeparateSiteContact ? <div className="mt-3"><ContactPicker label="Job Site Contact" value={jobSiteContactId} contacts={availableContacts} customers={customers} parentCustomerId={job.customer_id} disabled={isSaving} description="Superintendent, site manager, access contact, or field coordinator." onChange={(id, created) => { if (created) rememberContact(created); setJobSiteContactId(id); }} /><div className="mt-2 flex flex-wrap gap-3">{companyContactId ? <button type="button" onClick={() => setJobSiteContactId(companyContactId)} className="text-xs font-medium text-blue-700">Same as Company Contact</button> : null}{projectContactId ? <button type="button" onClick={() => setJobSiteContactId(projectContactId)} className="text-xs font-medium text-blue-700">Same as Project Contact</button> : null}</div></div> : null}
+            {hasSeparateSiteContact ? <div className="mt-3"><ContactPicker label="Job Site Contact" value={jobSiteContactId} contacts={availableContacts} customers={customers} parentCustomerId={job.customer_id} disabled={isSaving} description="Superintendent, site manager, access contact, or field coordinator." onChange={(id, created) => { if (created) rememberContact(created); setJobSiteContactId(id); }} /><div className="mt-2 flex flex-wrap gap-3">{companyContactId ? <button type="button" onClick={() => setJobSiteContactId(companyContactId)} className="text-xs font-medium text-blue-700">Same as Company Contact</button> : null}</div></div> : null}
           </div>
         </div>
       ) : null}

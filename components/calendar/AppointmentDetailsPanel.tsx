@@ -105,7 +105,7 @@ export default function AppointmentDetailsPanel({
               </div>
               <div>
                 <p className="font-semibold uppercase tracking-wide text-gray-500">Project / job contact</p>
-                <ContactDetails contact={appointment.job?.project_contact ?? null} fallbackName={appointment.job?.project_customer_name ?? appointment.job?.customer_name} fallbackPhone={appointment.job?.phone} fallbackEmail={appointment.job?.email} />
+                <ContactDetails contact={appointment.job?.project_contact_name ? null : appointment.job?.project_contact ?? null} fallbackName={appointment.job?.project_contact_name ?? appointment.job?.project_customer_name ?? appointment.job?.customer_name} fallbackPhone={appointment.job?.project_contact_phone ?? appointment.job?.phone} fallbackEmail={appointment.job?.email} fallbackDescription={appointment.job?.project_contact_description} />
               </div>
               {appointment.job?.job_site_contact ? <div>
                 <p className="font-semibold uppercase tracking-wide text-gray-500">Job site contact</p>
@@ -137,9 +137,9 @@ export default function AppointmentDetailsPanel({
   );
 }
 
-function ContactDetails({ contact, fallbackName, fallbackPhone, fallbackEmail }: { contact: NonNullable<NonNullable<CalendarAppointment["job"]>["company_contact"]> | null; fallbackName?: string | null; fallbackPhone?: string | null; fallbackEmail?: string | null }) {
+function ContactDetails({ contact, fallbackName, fallbackPhone, fallbackEmail, fallbackDescription }: { contact: NonNullable<NonNullable<CalendarAppointment["job"]>["company_contact"]> | null; fallbackName?: string | null; fallbackPhone?: string | null; fallbackEmail?: string | null; fallbackDescription?: string | null }) {
   if (!contact && !fallbackName && !fallbackPhone && !fallbackEmail) return <p className="mt-1 text-gray-500">Not assigned</p>;
-  if (!contact) return <div className="mt-1"><p className="font-medium text-gray-900">{fallbackName ?? "Project contact"}</p><div className="flex flex-wrap gap-x-2"><PhoneLink value={fallbackPhone} label={fallbackName ?? "Project contact"} className="min-h-7"/><EmailLink value={fallbackEmail} label={fallbackName ?? "Project contact"} className="min-h-7"/></div></div>;
+  if (!contact) return <div className="mt-1"><p className="font-medium text-gray-900">{fallbackName ?? "Project contact"}{fallbackDescription ? ` · ${fallbackDescription}` : ""}</p><div className="flex flex-wrap gap-x-2"><PhoneLink value={fallbackPhone} label={fallbackName ?? "Project contact"} className="min-h-7"/><EmailLink value={fallbackEmail} label={fallbackName ?? "Project contact"} className="min-h-7"/></div></div>;
   const name = `${contact.first_name} ${contact.last_name}`.trim();
   return (
     <div className="mt-1">
