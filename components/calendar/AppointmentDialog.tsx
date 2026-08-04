@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BriefcaseBusiness, CalendarPlus, Check, Search } from "lucide-react";
 import type { AppointmentType } from "@/components/calendar/constants";
 import type { CalendarAppointment } from "@/components/calendar/types";
 import { Button } from "@/components/ui/button";
@@ -131,6 +132,8 @@ export default function AppointmentDialog({
   const [installationScope, setInstallationScope] = useState("");
   const [materialScopeIds, setMaterialScopeIds] = useState<string[]>([]);
   const [jobId, setJobId] = useState("");
+  const [jobPickerOpen, setJobPickerOpen] = useState(false);
+  const [jobQuery, setJobQuery] = useState("");
   const [customTitle, setCustomTitle] = useState("");
   const [endTimeManuallyEdited, setEndTimeManuallyEdited] = useState(false);
   const [allDay, setAllDay] = useState(false);
@@ -180,6 +183,8 @@ export default function AppointmentDialog({
       setInstallationScope(appointment.installation_scope ?? "");
       setMaterialScopeIds(appointmentScopeIds);
       setJobId(appointment.job_id ?? "");
+      setJobPickerOpen(false);
+      setJobQuery("");
       setCustomTitle(appointment.job_id ? "" : appointment.title ?? "");
       setEndTimeManuallyEdited(true);
       setAllDay(Boolean(appointment.all_day));
@@ -206,6 +211,8 @@ export default function AppointmentDialog({
       setInstallationScope("");
       setMaterialScopeIds(defaultMaterialScopeIds);
       setJobId(defaultJobId ?? "");
+      setJobPickerOpen(false);
+      setJobQuery("");
       setCustomTitle("");
       setEndTimeManuallyEdited(false);
       setAllDay(false);
@@ -253,6 +260,36 @@ export default function AppointmentDialog({
       setLocation(selectedJob.address);
     }
   }
+
+  function selectJob(nextJobId: string) {
+    const nextJob = jobs.find((job) => job.id === nextJobId);
+    setJobId(nextJobId);
+    setJobPickerOpen(false);
+    setJobQuery("");
+    setMaterialScopeIds([]);
+    setInstallationScope("");
+    if (nextJob?.address && appointmentType !== "material_selection") {
+      setLocationMode("job");
+      setLocation(nextJob.address);
+    } else {
+      setLocationMode("custom");
+      setLocation("");
+    }
+  }
+
+  const selectedJob = jobs.find((job) => job.id === jobId);
+  const filteredJobs = useMemo(() => {
+    const normalized = jobQuery.trim().toLowerCase();
+    return jobs.filter((job) => !normalized || [
+      job.customer?.full_name,
+      job.customer_name,
+      job.project_customer_name,
+      job.qfloors_job_number,
+      job.address,
+      job.company_contact ? formatContactName(job.company_contact) : null,
+      formatProjectContact(job),
+    ].some((value) => value?.toLowerCase().includes(normalized))).slice(0, 40);
+  }, [jobQuery, jobs]);
 
   function handleStartTimeChange(nextStartTime: string) {
     setStartTime(nextStartTime);
@@ -445,30 +482,31 @@ export default function AppointmentDialog({
                 <label htmlFor="appointment-job" className="text-sm font-medium text-gray-900">
                   Customer / job
                 </label>
-                <select
-                  id="appointment-job"
-                  value={jobId}
-                  onChange={(event) => {
-                    const nextJobId = event.target.value;
-                    const nextJob = jobs.find((job) => job.id === nextJobId);
-                    setJobId(nextJobId);
-                    if (nextJob?.address && appointmentType !== "material_selection") {
-                      setLocationMode("job");
-                      setLocation(nextJob.address);
-                    } else {
-                      setLocationMode("custom");
-                      setLocation("");
-                    }
-                  }}
-                  className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-base text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200 sm:h-9 sm:text-sm"
-                >
-                  <option value="">General appointment</option>
-                  {jobs.map((job) => (
-                    <option key={job.id} value={job.id}>
-                      {formatJobDisplayName({ customerName: job.customer?.full_name, jobName: job.customer_name, qfNumber: job.qfloors_job_number })}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <button
+                    id="appointment-job"
+                    type="button"
+                    aria-haspopup="listbox"
+                    aria-expanded={jobPickerOpen}
+                    onClick={() => setJobPickerOpen((current) => !current)}
+                    className="flex min-h-10 w-full items-center justify-between gap-3 rounded-md border border-gray-200 bg-white px-3 py-2 text-left text-sm text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      {selectedJob ? <BriefcaseBusiness className="h-4 w-4 shrink-0 text-[#3f6e8c]" /> : <CalendarPlus className="h-4 w-4 shrink-0 text-gray-500" />}
+                      <span className="truncate">{selectedJob ? formatJobDisplayName({ customerName: selectedJob.customer?.full_name, jobName: selectedJob.customer_name, qfNumber: selectedJob.qfloors_job_number }) : "General appointment / other event"}</span>
+                    </span>
+                    <Search className="h-4 w-4 shrink-0 text-gray-400" />
+                  </button>
+                  {jobPickerOpen ? <div className="absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white p-2 shadow-xl">
+                    <div className="relative"><Search className="pointer-events-none absolute top-2.5 left-3 h-4 w-4 text-gray-400" /><input autoFocus value={jobQuery} onChange={(event) => setJobQuery(event.target.value)} placeholder="Search customer, job, QF#, contact, or address" className="w-full rounded-md border border-gray-300 py-2 pr-3 pl-9 text-sm outline-none focus:border-gray-500" /></div>
+                    <div className="mt-1 max-h-60 overflow-y-auto" role="listbox">
+                      <button type="button" role="option" aria-selected={!jobId} onClick={() => selectJob("")} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left hover:bg-gray-50"><CalendarPlus className="h-4 w-4 text-gray-500" /><span className="flex-1"><span className="block text-sm font-medium text-gray-900">General appointment / other event</span><span className="block text-xs text-gray-500">Not connected to a customer job</span></span>{!jobId ? <Check className="h-4 w-4 text-emerald-600" /> : null}</button>
+                      <div className="my-1 border-t border-gray-100" />
+                      {filteredJobs.map((job) => <button key={job.id} type="button" role="option" aria-selected={job.id === jobId} onClick={() => selectJob(job.id)} className="flex w-full items-start gap-2 rounded-md px-3 py-2 text-left hover:bg-gray-50"><BriefcaseBusiness className="mt-0.5 h-4 w-4 shrink-0 text-[#3f6e8c]" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-gray-900">{formatJobDisplayName({ customerName: job.customer?.full_name, jobName: job.customer_name, qfNumber: job.qfloors_job_number })}</span><span className="block truncate text-xs text-gray-500">{[job.address, job.project_contact_name].filter(Boolean).join(" · ") || "No address provided"}</span></span>{job.id === jobId ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> : null}</button>)}
+                      {!filteredJobs.length ? <p className="px-3 py-5 text-center text-sm text-gray-500">No matching customer jobs.</p> : null}
+                    </div>
+                  </div> : null}
+                </div>
                 {!jobId ? (
                   <Input
                     value={customTitle}
@@ -478,7 +516,6 @@ export default function AppointmentDialog({
                   />
                 ) : null}
                 {jobId ? (() => {
-                  const selectedJob = jobs.find((job) => job.id === jobId);
                   if (!selectedJob) return null;
                   return (
                     <dl className="grid gap-2 rounded-md border border-gray-200 bg-gray-50 p-3 text-xs sm:grid-cols-2">
