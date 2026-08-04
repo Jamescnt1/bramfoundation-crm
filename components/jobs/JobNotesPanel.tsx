@@ -75,15 +75,17 @@ export default function JobNotesPanel({ jobId, initialNotes, currentEmployeeId, 
       <div className="divide-y divide-gray-100">
         {ordered.map((note) => {
           const own = note.author_employee_id === currentEmployeeId;
+          const fromJobForm = note.source === "job_form";
           const edited = Math.abs(new Date(note.updated_at).getTime() - new Date(note.created_at).getTime()) > 1000;
           return (
             <article key={note.id} className="py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs text-gray-500"><strong className="text-gray-900">{note.author?.name ?? "Former employee"}</strong> · {format(note.created_at)}
+                <p className="text-xs text-gray-500"><strong className="text-gray-900">{fromJobForm ? "Job information note" : note.author?.name ?? "Former employee"}</strong> · {format(note.created_at)}
                   {edited ? <span title={`Edited ${format(note.updated_at)}`}> · Edited {format(note.updated_at)}</span> : null}</p>
                 <div className="flex gap-2">
-                  {canEdit && (own || currentEmployeeRole === "administrator") ? <button type="button" onClick={() => { setEditingId(note.id); setEditBody(note.body); }} className="text-xs font-semibold text-gray-600 hover:text-black">Edit</button> : null}
-                  {canDelete ? <button type="button" disabled={busy} onClick={() => void remove(note.id)} className="text-xs font-semibold text-red-600">Delete</button> : null}
+                  {fromJobForm ? <span className="text-xs font-medium text-gray-500">Edit in Edit Job Info</span> : null}
+                  {!fromJobForm && canEdit && (own || currentEmployeeRole === "administrator") ? <button type="button" onClick={() => { setEditingId(note.id); setEditBody(note.body); }} className="text-xs font-semibold text-gray-600 hover:text-black">Edit</button> : null}
+                  {!fromJobForm && canDelete ? <button type="button" disabled={busy} onClick={() => void remove(note.id)} className="text-xs font-semibold text-red-600">Delete</button> : null}
                 </div>
               </div>
               {editingId === note.id ? (

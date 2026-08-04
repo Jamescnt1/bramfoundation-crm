@@ -8,13 +8,14 @@ export type JobNote = {
   job_id: string;
   author_employee_id: string | null;
   body: string;
+  source: "manual" | "job_form";
   created_at: string;
   updated_at: string;
   author: { id: string; name: string } | null;
 };
 
 const columns = `
-  id, job_id, author_employee_id, body, created_at, updated_at,
+  id, job_id, author_employee_id, body, source, created_at, updated_at,
   author:employees!job_notes_author_employee_id_fkey (id, name)
 `;
 
@@ -49,6 +50,7 @@ export async function updateJobNote(noteId: string, jobId: string, body: string)
   const actor = await requirePermission("job_notes.edit");
   const admin = createAdminClient();
   const note = await requireNote(admin, noteId, jobId);
+  if (note.source === "job_form") throw new Error("Edit this note through Edit Job Info.");
   if (actor.role !== "administrator" && note.author_employee_id !== actor.id) {
     throw new Error("You can only edit your own job notes.");
   }
@@ -64,7 +66,8 @@ export async function updateJobNote(noteId: string, jobId: string, body: string)
 export async function deleteJobNote(noteId: string, jobId: string) {
   const actor = await requirePermission("job_notes.delete");
   const admin = createAdminClient();
-  await requireNote(admin, noteId, jobId);
+  const note = await requireNote(admin, noteId, jobId);
+  if (note.source === "job_form") throw new Error("Remove this note through Edit Job Info.");
   const { error } = await admin.from("job_notes").update({
     deleted_at: new Date().toISOString(),
     deleted_by_employee_id: actor.id,
@@ -92,7 +95,7 @@ async function requireActiveJob(admin: ReturnType<typeof createAdminClient>, job
 }
 
 async function requireNote(admin: ReturnType<typeof createAdminClient>, noteId: string, jobId: string) {
-  const { data, error } = await admin.from("job_notes").select("id, author_employee_id").eq("id", noteId).eq("job_id", jobId).is("deleted_at", null).maybeSingle();
+  const { data, error } = await admin.from("job_notes").select("id, author_employee_id, source").eq("id", noteId).eq("job_id", jobId).is("deleted_at", null).maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Job note not found.");
   return data;
