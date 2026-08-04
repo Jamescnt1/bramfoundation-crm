@@ -45,7 +45,7 @@ export default function AppShell({
   ) return <>{children}</>;
 
   return (
-    <div className="flex min-h-screen w-full max-w-full overflow-x-clip">
+    <div className="flex min-h-screen w-full min-w-0 max-w-full overflow-x-hidden overscroll-x-none [@supports(overflow:clip)]:overflow-x-clip">
       <AppSidebar employee={employee} />
 
       {mobileNavigationOpen ? (
@@ -95,8 +95,8 @@ export default function AppShell({
         </div>
       ) : null}
 
-      <div className="w-full min-w-0 max-w-full flex-1 overflow-x-clip">
-        <header className="flex h-16 items-center justify-between gap-3 border-b border-gray-700 bg-gray-900 px-4 text-white shadow-sm md:h-20 md:px-8">
+      <div className="w-full min-w-0 max-w-full flex-1 overflow-x-hidden [@supports(overflow:clip)]:overflow-x-clip">
+        <header className="flex h-16 w-full min-w-0 max-w-full items-center justify-between gap-3 border-b border-gray-700 bg-gray-900 px-4 text-white shadow-sm md:h-20 md:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
@@ -163,7 +163,7 @@ export default function AppShell({
             </div>
           </div>
         </header>
-        <div className="w-full min-w-0 max-w-full overflow-x-clip">{children}</div>
+        <div className="w-full min-w-0 max-w-full overflow-x-hidden [@supports(overflow:clip)]:overflow-x-clip">{children}</div>
       </div>
       {employee && profilePhotoOpen ? (
         <ProfilePhotoDialog employee={employee} open onOpenChange={setProfilePhotoOpen} />
