@@ -62,7 +62,7 @@ export default function AutomationRuleDialog({ open, rule, employees, roles, sta
       .filter((key): key is string => Boolean(key)),
   );
   const [cancelOnPipelineAdvance, setCancelOnPipelineAdvance] = useState(
-    rule?.cancel_on_pipeline_advance ?? false,
+    rule?.cancel_on_pipeline_advance ?? true,
   );
   const [active, setActive] = useState(rule?.active ?? true);
   const [emailTemplateId, setEmailTemplateId] = useState(rule?.email_template_id ?? "");
@@ -71,6 +71,7 @@ export default function AutomationRuleDialog({ open, rule, employees, roles, sta
   const valueOptions = getTriggerValues(triggerEvent, stages, appointmentTypes);
   function changeEvent(next: AutomationTriggerEvent) {
     setTriggerEvent(next); setTriggerValue(getTriggerValues(next, stages, appointmentTypes)[0]?.value ?? "");
+    if (!rule) setCancelOnPipelineAdvance(next === "job_status_changed");
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
