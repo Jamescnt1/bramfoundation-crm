@@ -341,14 +341,17 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
             <WorkspaceSectionHeader title="Overview" description="Operational summary and the next work requiring attention." />
             <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
               <div className="space-y-3">
-                <WorkspaceCard title="Contacts & Location">
-                  <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
-                    <ContactFact label="Company Contact" contact={job.company_contact} />
-                    <ContactFact label="Job Site Contact" contact={job.job_site_contact} />
-                    <div className="space-y-3">
-                      <Fact label="Project location" value={job.address ? <AddressLink value={job.address} className="min-h-0" /> : "Not provided"} />
-                      <Fact label="Created" value={formatDate(job.created_at)} />
-                    </div>
+                <WorkspaceCard title="Project Contacts">
+                  <div className="grid gap-3 lg:grid-cols-3">
+                    <ContactCard title="Company Contact" context={customer?.full_name ?? "Customer / account"} contact={job.company_contact} fallbackPhone={customer?.phone} fallbackEmail={customer?.email} editHref={`/leads/${job.id}/edit`} />
+                    <ContactCard title="Project / Job Contact" context={job.project_customer_name ?? job.customer_name} contact={job.project_contact} fallbackPhone={job.phone} fallbackEmail={job.email} editHref={`/leads/${job.id}/edit`} />
+                    <ContactCard title="Job Site Contact" context="Optional field contact" contact={job.job_site_contact} editHref={`/leads/${job.id}/edit`} optional />
+                  </div>
+                  <div className="mt-3 grid gap-3 border-t border-gray-100 pt-3 sm:grid-cols-2">
+                    <Fact label="Project / Job Name" value={job.customer_name} />
+                    <Fact label="Project Customer Name" value={job.project_customer_name ?? "Not provided"} />
+                    <Fact label="Project Location" value={job.address ? <AddressLink value={job.address} className="min-h-0" /> : "Not provided"} />
+                    <Fact label="Created" value={formatDate(job.created_at)} />
                   </div>
                 </WorkspaceCard>
 
@@ -531,7 +534,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
           <section>
             <WorkspaceSectionHeader title="Communications" description="Customer email and secure internal discussion remain clearly separated." />
             <div className="mt-2 space-y-3">
-              {customerEmailError ? <WorkspaceError text={customerEmailError} /> : <CustomerEmailPanel compact jobId={job.id} recipient={customer?.email ?? job.email ?? ""} emails={customerEmails} templates={emailTemplates} attachments={attachments} canSend={canSendCustomerEmail} />}
+              {customerEmailError ? <WorkspaceError text={customerEmailError} /> : <CustomerEmailPanel compact jobId={job.id} recipient={job.project_contact?.email ?? job.email ?? job.company_contact?.email ?? customer?.email ?? ""} recipientOptions={[{ label: "Project Contact", email: job.project_contact?.email ?? job.email ?? "" }, { label: "Company Contact", email: job.company_contact?.email ?? customer?.email ?? "" }, { label: "Site Contact", email: job.job_site_contact?.email ?? "" }].filter((item) => item.email)} emails={customerEmails} templates={emailTemplates} attachments={attachments} canSend={canSendCustomerEmail} />}
               {currentEmployee ? <InternalMessagePanel compact initialConversation={conversation} currentEmployee={{ id: currentEmployee.id, name: currentEmployee.name, avatar_url: currentEmployee.avatar_url, color: currentEmployee.color }} employees={employees.map((employee) => ({ id: employee.id, name: employee.name, avatar_url: employee.avatar_url, color: employee.color })) as MessagingEmployee[]} jobId={job.id} attachments={attachments} /> : <WorkspaceError text="Your employee profile could not be loaded for internal messaging." />}
             </div>
           </section>
@@ -600,18 +603,12 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
 
 function QuickButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) { return <button type="button" onClick={onClick} className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 [&_svg]:h-3.5 [&_svg]:w-3.5">{children}</button>; }
 function Fact({ label, value }: { label: string; value: React.ReactNode }) { return <div className="min-w-0"><dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{label}</dt><dd className="mt-0.5 break-words text-sm font-medium leading-5 text-gray-900" title={typeof value === "string" ? value : undefined}>{value}</dd></div>; }
-function ContactFact({ label, contact }: { label: string; contact: JobContactSummary | null }) {
-  if (!contact) return <Fact label={label} value="Not selected" />;
-  const name = `${contact.first_name} ${contact.last_name}`.trim();
-  const phone = contact.mobile_phone ?? contact.office_phone;
+function ContactCard({ title, context, contact, fallbackPhone, fallbackEmail, editHref, optional = false }: { title: string; context: string; contact: JobContactSummary | null; fallbackPhone?: string | null; fallbackEmail?: string | null; editHref: string; optional?: boolean }) {
+  const name = contact ? `${contact.first_name} ${contact.last_name}`.trim() : null;
   return (
-    <div className="min-w-0">
-      <dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{label}</dt>
-      <dd className="mt-0.5 text-sm font-medium leading-5 text-gray-900">{name}</dd>
-      <div className="mt-1 flex flex-col items-start gap-0.5">
-        <PhoneLink value={phone} label={name} className="min-h-7 text-xs text-gray-600" />
-        <EmailLink value={contact.email} label={name} className="min-h-7 text-xs text-gray-600" />
-      </div>
+    <div className="min-w-0 rounded-lg border border-gray-200 bg-gray-50 p-3">
+      <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{title}</p><p className="mt-0.5 truncate text-xs text-gray-500">{context}</p></div><Link href={editHref} className="shrink-0 text-[11px] font-semibold text-blue-700 hover:underline">Edit</Link></div>
+      {contact ? <><p className="mt-2 text-sm font-semibold text-gray-950">{name}</p>{contact.job_title ? <p className="text-xs text-gray-500">{contact.job_title}</p> : null}<div className="mt-1.5 flex flex-col items-start gap-0.5"><PhoneLink value={contact.mobile_phone} label={`${name} mobile`} className="min-h-6 text-xs text-gray-600" />{contact.office_phone && contact.office_phone !== contact.mobile_phone ? <PhoneLink value={contact.office_phone} label={`${name} office`} className="min-h-6 text-xs text-gray-600" /> : null}<EmailLink value={contact.email} label={name ?? title} className="min-h-6 text-xs text-gray-600" /></div></> : fallbackPhone || fallbackEmail ? <><p className="mt-2 text-xs font-medium text-amber-700">Named contact not selected</p><div className="mt-1 flex flex-col items-start"><PhoneLink value={fallbackPhone} label={context} className="min-h-6 text-xs text-gray-600"/><EmailLink value={fallbackEmail} label={context} className="min-h-6 text-xs text-gray-600"/></div></> : <p className="mt-3 text-xs text-gray-500">{optional ? "No separate site contact needed." : "Not selected."}</p>}
     </div>
   );
 }

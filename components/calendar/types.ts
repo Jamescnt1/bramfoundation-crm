@@ -60,6 +60,7 @@ export type CalendarAppointment = {
     id: string;
     customer_id: string | null;
     customer_name: string;
+    project_customer_name: string | null;
     qfloors_job_number: string | null;
     address: string | null;
     status: string | null;
@@ -69,6 +70,14 @@ export type CalendarAppointment = {
       full_name: string;
     } | null;
     company_contact: {
+      first_name: string;
+      last_name: string;
+      job_title: string | null;
+      email: string | null;
+      office_phone: string | null;
+      mobile_phone: string | null;
+    } | null;
+    project_contact: {
       first_name: string;
       last_name: string;
       job_title: string | null;

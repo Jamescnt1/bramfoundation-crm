@@ -32,12 +32,16 @@ export async function getAppointmentsForCalendar(): Promise<CalendarAppointment[
         id,
         customer_id,
         customer_name,
+        project_customer_name,
         qfloors_job_number,
         address,
         status,
         installation_required,
         customer:customers!jobs_customer_id_fkey (id, full_name),
         company_contact:customer_contacts!jobs_company_contact_id_fkey (
+          first_name, last_name, job_title, email, office_phone, mobile_phone
+        ),
+        project_contact:customer_contacts!jobs_project_contact_id_fkey (
           first_name, last_name, job_title, email, office_phone, mobile_phone
         ),
         job_site_contact:customer_contacts!jobs_job_site_contact_id_fkey (

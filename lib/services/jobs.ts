@@ -5,8 +5,10 @@ export type Job = {
   customer_id: string | null;
   assigned_employee_id: string | null;
   company_contact_id: string | null;
+  project_contact_id: string | null;
   job_site_contact_id: string | null;
   customer_name: string;
+  project_customer_name: string | null;
   phone: string | null;
   email: string | null;
   address: string | null;
@@ -35,6 +37,7 @@ export type Job = {
     full_name: string;
   } | null;
   company_contact: JobContactSummary | null;
+  project_contact: JobContactSummary | null;
   job_site_contact: JobContactSummary | null;
 };
 
@@ -83,8 +86,10 @@ export type CreateJobValues = {
   customer_id?: string | null;
   assigned_employee_id?: string | null;
   company_contact_id?: string | null;
+  project_contact_id?: string | null;
   job_site_contact_id?: string | null;
   customer_name: string;
+  project_customer_name?: string | null;
   phone?: string | null;
   email?: string | null;
   address?: string | null;
@@ -162,8 +167,10 @@ const jobColumns = `
   customer_id,
   assigned_employee_id,
   company_contact_id,
+  project_contact_id,
   job_site_contact_id,
   customer_name,
+  project_customer_name,
   phone,
   email,
   address,
@@ -194,6 +201,9 @@ const jobColumns = `
   ,company_contact:customer_contacts!jobs_company_contact_id_fkey (
     id, customer_id, first_name, last_name, job_title, email, office_phone, mobile_phone
   )
+  ,project_contact:customer_contacts!jobs_project_contact_id_fkey (
+    id, customer_id, first_name, last_name, job_title, email, office_phone, mobile_phone
+  )
   ,job_site_contact:customer_contacts!jobs_job_site_contact_id_fkey (
     id, customer_id, first_name, last_name, job_title, email, office_phone, mobile_phone
   )
@@ -202,6 +212,7 @@ const jobColumns = `
 function normalizeJob(job: Record<string, unknown>): Job {
   const relation = job.customer;
   const companyContact = job.company_contact;
+  const projectContact = job.project_contact;
   const siteContact = job.job_site_contact;
 
   return {
@@ -210,6 +221,7 @@ function normalizeJob(job: Record<string, unknown>): Job {
       job.contract_amount == null ? null : String(job.contract_amount),
     customer: Array.isArray(relation) ? relation[0] ?? null : relation ?? null,
     company_contact: Array.isArray(companyContact) ? companyContact[0] ?? null : companyContact ?? null,
+    project_contact: Array.isArray(projectContact) ? projectContact[0] ?? null : projectContact ?? null,
     job_site_contact: Array.isArray(siteContact) ? siteContact[0] ?? null : siteContact ?? null,
   } as Job;
 }
@@ -492,8 +504,10 @@ export async function createJob(
         values.assigned_employee_id ??
         (await findEmployeeIdByName(values.salesperson)),
       company_contact_id: values.company_contact_id ?? null,
+      project_contact_id: values.project_contact_id ?? null,
       job_site_contact_id: values.job_site_contact_id ?? null,
       customer_name: values.customer_name.trim(),
+      project_customer_name: values.project_customer_name?.trim() || null,
       phone: values.phone?.trim() || null,
       email: values.email?.trim() || null,
       address: values.address?.trim() || null,
@@ -605,6 +619,10 @@ export async function updateJob(
     updates.company_contact_id = values.company_contact_id;
   }
 
+  if (values.project_contact_id !== undefined) {
+    updates.project_contact_id = values.project_contact_id;
+  }
+
   if (values.job_site_contact_id !== undefined) {
     updates.job_site_contact_id = values.job_site_contact_id;
   }
@@ -612,6 +630,10 @@ export async function updateJob(
   if (values.customer_name !== undefined) {
     updates.customer_name =
       values.customer_name.trim();
+  }
+
+  if (values.project_customer_name !== undefined) {
+    updates.project_customer_name = values.project_customer_name?.trim() || null;
   }
 
   if (values.phone !== undefined) {

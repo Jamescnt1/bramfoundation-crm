@@ -64,15 +64,24 @@ export default function EditLeadForm({
   const [isBilled, setIsBilled] = useState(Boolean(job.billed_at));
   const [installationRequired, setInstallationRequired] = useState(job.installation_required);
   const [jobName, setJobName] = useState(job.customer_name);
+  const [projectCustomerName, setProjectCustomerName] = useState(job.project_customer_name ?? "");
+  const [projectPhone, setProjectPhone] = useState(job.phone ?? "");
+  const [projectEmail, setProjectEmail] = useState(job.email ?? "");
   const [address, setAddress] = useState(job.address ?? "");
   const [assignedEmployeeId, setAssignedEmployeeId] = useState(job.assigned_employee_id ?? "");
   const [companyContactId, setCompanyContactId] = useState(job.company_contact_id ?? "");
+  const [projectContactId, setProjectContactId] = useState(job.project_contact_id ?? "");
   const [jobSiteContactId, setJobSiteContactId] = useState(job.job_site_contact_id ?? "");
+  const [hasSeparateSiteContact, setHasSeparateSiteContact] = useState(Boolean(job.job_site_contact_id));
   const [availableContacts, setAvailableContacts] = useState(contacts);
 
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  function rememberContact(contact: CustomerContact) {
+    setAvailableContacts((current) => current.some((item) => item.id === contact.id) ? current.map((item) => item.id === contact.id ? contact : item) : [...current, contact]);
+  }
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -105,10 +114,14 @@ export default function EditLeadForm({
     try {
       const updates: UpdateJobValues = {};
       const nextJobName = jobName.trim();
+      const nextProjectCustomerName = projectCustomerName.trim() || null;
+      const nextProjectPhone = projectPhone.trim() || null;
+      const nextProjectEmail = projectEmail.trim() || null;
       const nextAddress = address.trim() || null;
       const nextAssignedEmployeeId = assignedEmployeeId || null;
       const nextCompanyContactId = companyContactId || null;
-      const nextJobSiteContactId = jobSiteContactId || null;
+      const nextProjectContactId = projectContactId || null;
+      const nextJobSiteContactId = hasSeparateSiteContact ? jobSiteContactId || null : null;
       const nextSalesperson = salesperson || null;
       const nextActionValue = nextAction.trim() || null;
       const nextActionDueValue = nextActionDue || null;
@@ -120,12 +133,18 @@ export default function EditLeadForm({
         : null;
 
       if (nextJobName !== job.customer_name) updates.customer_name = nextJobName;
+      if (nextProjectCustomerName !== job.project_customer_name) updates.project_customer_name = nextProjectCustomerName;
+      if (nextProjectPhone !== job.phone) updates.phone = nextProjectPhone;
+      if (nextProjectEmail !== job.email) updates.email = nextProjectEmail;
       if (nextAddress !== job.address) updates.address = nextAddress;
       if (nextAssignedEmployeeId !== job.assigned_employee_id) {
         updates.assigned_employee_id = nextAssignedEmployeeId;
       }
       if (nextCompanyContactId !== job.company_contact_id) {
         updates.company_contact_id = nextCompanyContactId;
+      }
+      if (nextProjectContactId !== job.project_contact_id) {
+        updates.project_contact_id = nextProjectContactId;
       }
       if (nextJobSiteContactId !== job.job_site_contact_id) {
         updates.job_site_contact_id = nextJobSiteContactId;
@@ -233,6 +252,16 @@ export default function EditLeadForm({
       </div>
 
       <div>
+        <label htmlFor="projectCustomerName" className="block text-sm font-medium text-gray-700">Project Customer Name</label>
+        <input id="projectCustomerName" disabled={isSaving} value={projectCustomerName} onChange={(event) => setProjectCustomerName(event.target.value)} placeholder="Example: Starbucks #140, homeowner, tenant, or end customer" className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 disabled:bg-gray-100" />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div><label htmlFor="projectPhone" className="block text-sm font-medium text-gray-700">Project Phone (fallback)</label><input id="projectPhone" type="tel" disabled={isSaving} value={projectPhone} onChange={(event) => setProjectPhone(event.target.value)} className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 disabled:bg-gray-100" /></div>
+        <div><label htmlFor="projectEmail" className="block text-sm font-medium text-gray-700">Project Email (fallback)</label><input id="projectEmail" type="email" disabled={isSaving} value={projectEmail} onChange={(event) => setProjectEmail(event.target.value)} className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 disabled:bg-gray-100" /></div>
+      </div>
+
+      <div>
         <label htmlFor="jobAddress" className="block text-sm font-medium text-gray-700">Job Address / Details</label>
         <textarea id="jobAddress" rows={3} disabled={isSaving} value={address} onChange={(event) => setAddress(event.target.value)}
           className="mt-2 w-full resize-y rounded-lg border border-gray-300 px-3 py-2 disabled:bg-gray-100" />
@@ -259,23 +288,28 @@ export default function EditLeadForm({
             disabled={isSaving}
             description="Project manager or employee at the parent customer."
             onChange={(id, created) => {
-              if (created) setAvailableContacts((current) => [...current, created]);
+              if (created) rememberContact(created);
               setCompanyContactId(id);
             }}
           />
           <ContactPicker
-            label="Job Site Contact"
-            value={jobSiteContactId}
+            label="Project / Job Contact"
+            value={projectContactId}
             contacts={availableContacts}
             customers={customers}
             parentCustomerId={job.customer_id}
             disabled={isSaving}
-            description="Homeowner, tenant, business owner, or on-site contact."
+            description="Homeowner, end user, tenant, manager, designer, or other project stakeholder."
             onChange={(id, created) => {
-              if (created) setAvailableContacts((current) => [...current, created]);
-              setJobSiteContactId(id);
+              if (created) rememberContact(created);
+              setProjectContactId(id);
             }}
           />
+          {companyContactId ? <div className="sm:col-start-2"><button type="button" onClick={() => setProjectContactId(companyContactId)} className="text-xs font-medium text-blue-700">Same as Company Contact</button></div> : null}
+          <div className="sm:col-span-2">
+            <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm"><input type="checkbox" checked={hasSeparateSiteContact} onChange={(event) => { setHasSeparateSiteContact(event.target.checked); if (!event.target.checked) setJobSiteContactId(""); }} disabled={isSaving} className="mt-0.5 h-4 w-4 rounded border-gray-300"/><span><span className="block font-medium text-gray-900">Add a separate Job Site Contact</span><span className="mt-0.5 block text-gray-500">Only needed when field access or coordination is handled by someone different.</span></span></label>
+            {hasSeparateSiteContact ? <div className="mt-3"><ContactPicker label="Job Site Contact" value={jobSiteContactId} contacts={availableContacts} customers={customers} parentCustomerId={job.customer_id} disabled={isSaving} description="Superintendent, site manager, access contact, or field coordinator." onChange={(id, created) => { if (created) rememberContact(created); setJobSiteContactId(id); }} /><div className="mt-2 flex flex-wrap gap-3">{companyContactId ? <button type="button" onClick={() => setJobSiteContactId(companyContactId)} className="text-xs font-medium text-blue-700">Same as Company Contact</button> : null}{projectContactId ? <button type="button" onClick={() => setJobSiteContactId(projectContactId)} className="text-xs font-medium text-blue-700">Same as Project Contact</button> : null}</div></div> : null}
+          </div>
         </div>
       ) : null}
 

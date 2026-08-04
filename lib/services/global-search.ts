@@ -47,9 +47,9 @@ export async function searchFoundationCrm(rawQuery: string): Promise<GlobalSearc
         .limit(RESULT_LIMIT),
       supabase
         .from("jobs")
-        .select("id, customer_name, qfloors_job_number, status, on_hold, hold_until, customer:customers!jobs_customer_id_fkey(full_name)")
+        .select("id, customer_name, project_customer_name, qfloors_job_number, status, on_hold, hold_until, customer:customers!jobs_customer_id_fkey(full_name)")
         .is("archived_at", null)
-        .or(`customer_name.ilike.${pattern},qfloors_job_number.ilike.${pattern}`)
+        .or(`customer_name.ilike.${pattern},project_customer_name.ilike.${pattern},qfloors_job_number.ilike.${pattern}`)
         .order("updated_at", { ascending: false, nullsFirst: false })
         .limit(RESULT_LIMIT * 2),
       supabase
@@ -129,9 +129,9 @@ export async function searchFoundationCrm(rawQuery: string): Promise<GlobalSearc
       type,
       id: job.id,
       title,
-      subtitle: job.on_hold ? `On Hold${job.hold_until ? ` until ${job.hold_until}` : ""} · ${job.status}` : job.status,
+      subtitle: [job.project_customer_name, job.on_hold ? `On Hold${job.hold_until ? ` until ${job.hold_until}` : ""} · ${job.status}` : job.status].filter(Boolean).join(" · "),
       href: `/leads/${job.id}`,
-      keywords: `${title} ${job.status}${job.on_hold ? " on hold" : ""}`,
+      keywords: `${title} ${job.project_customer_name ?? ""} ${job.status}${job.on_hold ? " on hold" : ""}`,
     });
   }
 

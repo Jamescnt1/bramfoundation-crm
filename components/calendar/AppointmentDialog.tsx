@@ -488,11 +488,12 @@ export default function AppointmentDialog({
                         </dd>
                       </div>
                       <div>
-                        <dt className="font-medium text-gray-500">Job Site Contact</dt>
+                        <dt className="font-medium text-gray-500">Project / Job Contact</dt>
                         <dd className="mt-0.5 font-semibold text-gray-900">
-                          {formatContactName(selectedJob.job_site_contact)}
+                          {formatContactName(selectedJob.project_contact)}
                         </dd>
                       </div>
+                      {selectedJob.job_site_contact ? <div><dt className="font-medium text-gray-500">Job Site Contact</dt><dd className="mt-0.5 font-semibold text-gray-900">{formatContactName(selectedJob.job_site_contact)}</dd></div> : null}
                     </dl>
                   );
                 })() : null}

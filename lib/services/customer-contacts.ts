@@ -67,7 +67,7 @@ export async function getContactJobs(contactId: string): Promise<Job[]> {
   const { data, error } = await supabase
     .from("jobs")
     .select("*, customer:customers!jobs_customer_id_fkey(id, full_name)")
-    .or(`company_contact_id.eq.${contactId},job_site_contact_id.eq.${contactId}`)
+    .or(`company_contact_id.eq.${contactId},project_contact_id.eq.${contactId},job_site_contact_id.eq.${contactId}`)
     .is("archived_at", null)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);

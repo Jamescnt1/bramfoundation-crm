@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 type Props = { jobId: string; recipient: string; emails: CustomerEmail[]; templates: EmailTemplate[];
-  attachments: JobAttachment[]; canSend: boolean; compact?: boolean };
+  recipientOptions?: { label: string; email: string }[]; attachments: JobAttachment[]; canSend: boolean; compact?: boolean };
 
-export default function CustomerEmailPanel({ jobId, recipient, emails, templates, attachments, canSend, compact = false }: Props) {
+export default function CustomerEmailPanel({ jobId, recipient, recipientOptions = [], emails, templates, attachments, canSend, compact = false }: Props) {
   const [to, setTo] = useState(recipient); const [subject, setSubject] = useState(""); const [body, setBody] = useState("");
   const [templateId, setTemplateId] = useState(""); const [attachmentIds, setAttachmentIds] = useState<string[]>([]);
   const [sending, setSending] = useState(false); const [notice, setNotice] = useState(""); const [error, setError] = useState("");
@@ -33,6 +33,7 @@ export default function CustomerEmailPanel({ jobId, recipient, emails, templates
       <div className="flex items-center gap-2"><Mail className="h-5 w-5 text-blue-600"/><div><h3 className="font-semibold text-gray-950">Customer Email</h3><p className="text-sm text-gray-500">Customer-facing and recorded on this job.</p></div></div>
       {canSend ? <div className="mt-5 grid gap-4">
         <label className="grid gap-1.5 text-sm font-medium">To<Input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="customer@example.com"/></label>
+        {recipientOptions.length ? <div className="-mt-2 flex flex-wrap gap-2">{recipientOptions.map((option) => <button key={`${option.label}-${option.email}`} type="button" onClick={() => setTo(option.email)} className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100">{option.label}</button>)}</div> : null}
         <label className="grid gap-1.5 text-sm font-medium">Template<select value={templateId} onChange={(e) => chooseTemplate(e.target.value)} className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm"><option value="">Write manually</option>{templates.map((item) => <option key={item.id} value={item.id}>{item.category} — {item.name}</option>)}</select></label>
         <label className="grid gap-1.5 text-sm font-medium">Subject<Input value={subject} onChange={(e) => setSubject(e.target.value)}/></label>
         <label className="grid gap-1.5 text-sm font-medium">Message<textarea value={body} onChange={(e) => setBody(e.target.value)} rows={9} className="rounded-lg border border-gray-300 p-3 text-sm" placeholder="Write the customer email..."/></label>

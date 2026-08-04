@@ -34,6 +34,7 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
   const [newCustomerAddress, setNewCustomerAddress] = useState("");
 
   const [projectName, setProjectName] = useState("");
+  const [projectCustomerName, setProjectCustomerName] = useState(copySource?.project_customer_name ?? "");
   const [qfNumber, setQfNumber] = useState("");
   const [projectPhone, setProjectPhone] = useState(copySource?.phone ?? "");
   const [projectEmail, setProjectEmail] = useState(copySource?.email ?? "");
@@ -46,9 +47,15 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [companyContactId, setCompanyContactId] = useState(copySource?.company_contact_id ?? "");
+  const [projectContactId, setProjectContactId] = useState(copySource?.project_contact_id ?? "");
   const [jobSiteContactId, setJobSiteContactId] = useState(copySource?.job_site_contact_id ?? "");
+  const [hasSeparateSiteContact, setHasSeparateSiteContact] = useState(Boolean(copySource?.job_site_contact_id));
   const [availableContacts, setAvailableContacts] = useState(contacts);
   const [installationRequired, setInstallationRequired] = useState(copySource?.installation_required ?? true);
+
+  function rememberContact(contact: CustomerContact) {
+    setAvailableContacts((current) => current.some((item) => item.id === contact.id) ? current.map((item) => item.id === contact.id ? contact : item) : [...current, contact]);
+  }
 
   const selectedCustomer =
     customers.find((customer) => customer.id === customerId) ?? null;
@@ -71,14 +78,18 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
     setCustomerMode(mode);
     setCustomerId("");
     setCompanyContactId("");
+    setProjectContactId("");
     setJobSiteContactId("");
+    setHasSeparateSiteContact(false);
     setErrorMessage("");
   }
 
   function handleCustomerSelect(customer: Customer | null) {
     setCustomerId(customer?.id ?? "");
     setCompanyContactId("");
+    setProjectContactId("");
     setJobSiteContactId("");
+    setHasSeparateSiteContact(false);
     setErrorMessage("");
   }
 
@@ -129,6 +140,7 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
         },
         job: {
           name: trimmedProjectName,
+          projectCustomerName,
           qfNumber,
           phone: projectPhone,
           email: projectEmail,
@@ -139,7 +151,8 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
           nextActionDue,
           notes,
           companyContactId,
-          jobSiteContactId,
+          projectContactId,
+          jobSiteContactId: hasSeparateSiteContact ? jobSiteContactId : "",
           installationRequired,
         },
         copySourceJobId: copySource?.id ?? null,
@@ -257,6 +270,10 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
           />
         </Field>
 
+        <Field label="Project Customer Name" htmlFor="projectCustomerName">
+          <input id="projectCustomerName" type="text" disabled={isSaving} value={projectCustomerName} onChange={(event) => setProjectCustomerName(event.target.value)} placeholder="Example: Starbucks #140, homeowner, tenant, or end customer" className={inputClass} />
+        </Field>
+
         {isCopy ? (
           <Field label="QF#" htmlFor="qfNumber" required>
             <input
@@ -273,10 +290,10 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
         ) : null}
 
         <div className="grid gap-6 sm:col-span-2 sm:grid-cols-2">
-          <Field label="Project Contact Phone" htmlFor="projectPhone">
+          <Field label="Project Phone (fallback)" htmlFor="projectPhone">
             <input id="projectPhone" type="tel" disabled={isSaving} value={projectPhone} onChange={(event) => setProjectPhone(event.target.value)} placeholder={selectedCustomer?.phone ?? "Optional; customer phone is used if blank"} className={inputClass} />
           </Field>
-          <Field label="Project Contact Email" htmlFor="projectEmail">
+          <Field label="Project Email (fallback)" htmlFor="projectEmail">
             <input id="projectEmail" type="email" disabled={isSaving} value={projectEmail} onChange={(event) => setProjectEmail(event.target.value)} placeholder={selectedCustomer?.email ?? "Optional; customer email is used if blank"} className={inputClass} />
           </Field>
         </div>
@@ -313,27 +330,35 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
               disabled={isSaving}
               description="Optional company employee or project manager."
               onChange={(id, created) => {
-                if (created) setAvailableContacts((current) => [...current, created]);
+                if (created) rememberContact(created);
                 setCompanyContactId(id);
               }}
             />
             <ContactPicker
-              label="Job Site Contact"
-              value={jobSiteContactId}
+              label="Project / Job Contact"
+              value={projectContactId}
               contacts={availableContacts}
               customers={customers}
               parentCustomerId={selectedCustomer.id}
               disabled={isSaving}
-              description="Optional homeowner, tenant, or on-site contact."
+              description="Homeowner, end user, tenant, manager, designer, or other project stakeholder."
               onChange={(id, created) => {
-                if (created) setAvailableContacts((current) => [...current, created]);
-                setJobSiteContactId(id);
+                if (created) rememberContact(created);
+                setProjectContactId(id);
               }}
             />
+            {companyContactId ? <div className="sm:col-start-2"><button type="button" onClick={() => setProjectContactId(companyContactId)} className="text-xs font-medium text-blue-700">Same as Company Contact</button></div> : null}
+            <div className="sm:col-span-2">
+              <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm">
+                <input type="checkbox" checked={hasSeparateSiteContact} onChange={(event) => { setHasSeparateSiteContact(event.target.checked); if (!event.target.checked) setJobSiteContactId(""); }} disabled={isSaving} className="mt-0.5 h-4 w-4 rounded border-gray-300" />
+                <span><span className="block font-medium text-gray-900">Add a separate Job Site Contact</span><span className="mt-0.5 block text-gray-500">Only needed when field access or coordination is handled by someone different.</span></span>
+              </label>
+              {hasSeparateSiteContact ? <div className="mt-3"><ContactPicker label="Job Site Contact" value={jobSiteContactId} contacts={availableContacts} customers={customers} parentCustomerId={selectedCustomer.id} disabled={isSaving} description="Superintendent, site manager, access contact, or field coordinator." onChange={(id, created) => { if (created) rememberContact(created); setJobSiteContactId(id); }} /><div className="mt-2 flex flex-wrap gap-2">{companyContactId ? <button type="button" onClick={() => setJobSiteContactId(companyContactId)} className="text-xs font-medium text-blue-700">Same as Company Contact</button> : null}{projectContactId ? <button type="button" onClick={() => setJobSiteContactId(projectContactId)} className="text-xs font-medium text-blue-700">Same as Project Contact</button> : null}</div></div> : null}
+            </div>
           </div>
         ) : customerMode === "new" ? (
           <p className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500 sm:col-span-2">
-            Create the customer and job first, then add organization and site contacts from Edit Job Info.
+            Create the customer and job first, then assign Company, Project / Job, and optional Job Site contacts from Edit Job Info.
           </p>
         ) : null}
 

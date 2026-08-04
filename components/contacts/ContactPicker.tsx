@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Search, X } from "lucide-react";
+import { Pencil, Plus, Search, X } from "lucide-react";
 import type { Customer } from "@/components/customers/types";
 import ContactFormDialog from "@/components/contacts/ContactFormDialog";
 import {
@@ -35,6 +35,7 @@ export default function ContactPicker({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const selected = contacts.find((contact) => contact.id === value) ?? null;
   const options = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -61,7 +62,7 @@ export default function ContactPicker({
               <p className="truncate text-sm font-medium text-gray-900">{formatContactName(selected)}</p>
               <p className="truncate text-xs text-gray-500">{selected.mobile_phone ?? selected.office_phone ?? selected.email ?? selected.customer?.full_name}</p>
             </div>
-            <button type="button" disabled={disabled} onClick={() => onChange("")} className="ml-2 rounded p-1 text-gray-400 hover:bg-gray-100" aria-label={`Clear ${label}`}><X className="h-4 w-4" /></button>
+            <div className="ml-2 flex items-center"><button type="button" disabled={disabled} onClick={() => setEditOpen(true)} className="rounded p-1 text-gray-400 hover:bg-gray-100" aria-label={`Edit ${label}`}><Pencil className="h-4 w-4" /></button><button type="button" disabled={disabled} onClick={() => onChange("")} className="rounded p-1 text-gray-400 hover:bg-gray-100" aria-label={`Clear ${label}`}><X className="h-4 w-4" /></button></div>
           </div>
         ) : (
           <button type="button" disabled={disabled || !parentCustomerId} onClick={() => setOpen((current) => !current)} className="flex min-h-10 w-full items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-left text-sm text-gray-500 disabled:bg-gray-100">
@@ -94,6 +95,7 @@ export default function ContactPicker({
         onClose={() => setCreateOpen(false)}
         onSaved={(contact) => onChange(contact.id, contact)}
       />
+      <ContactFormDialog key={`edit-${selected?.id}-${editOpen}`} open={editOpen} customers={customers} defaultCustomerId={selected?.customer_id ?? parentCustomerId} contact={selected} lockCustomer={restrictToParent} onClose={() => setEditOpen(false)} onSaved={(contact) => onChange(contact.id, contact)} />
     </div>
   );
 }

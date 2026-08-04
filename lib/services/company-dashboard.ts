@@ -36,6 +36,7 @@ export type DashboardJob = {
   address: string | null;
   contract_amount: string | null;
   company_contact_id: string | null;
+  project_contact_id: string | null;
   job_site_contact_id: string | null;
   installation_required: boolean;
   created_at: string;
@@ -171,7 +172,7 @@ export async function getCompanyDashboardData(
         .order("name"),
       supabase
         .from("jobs")
-        .select("id, customer_name, status, salesperson, assigned_employee_id, next_action, next_action_due, qfloors_job_number, phone, email, address, contract_amount, company_contact_id, job_site_contact_id, installation_required, created_at, updated_at, on_hold, hold_reason, hold_until, hold_note, customer:customers!jobs_customer_id_fkey(id, full_name)")
+        .select("id, customer_name, status, salesperson, assigned_employee_id, next_action, next_action_due, qfloors_job_number, phone, email, address, contract_amount, company_contact_id, project_contact_id, job_site_contact_id, installation_required, created_at, updated_at, on_hold, hold_reason, hold_until, hold_note, customer:customers!jobs_customer_id_fkey(id, full_name)")
         .is("archived_at", null)
         .order("updated_at", { ascending: false, nullsFirst: false }),
       supabase
@@ -400,8 +401,6 @@ function buildAttentionItems({
       job, "Missing Contract Amount");
     addJobRuleItem(items, enabledRules, "missing_company_contact",
       !job.company_contact_id, job, "Missing Company Contact");
-    addJobRuleItem(items, enabledRules, "missing_job_site_contact",
-      !job.job_site_contact_id, job, "Missing Job Site Contact");
     addJobRuleItem(items, enabledRules, "missing_job_address",
       !job.address?.trim(), job, "Missing Job Address");
     addJobRuleItem(items, enabledRules, "missing_layout",

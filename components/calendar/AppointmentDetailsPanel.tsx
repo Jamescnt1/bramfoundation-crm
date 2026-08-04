@@ -104,9 +104,13 @@ export default function AppointmentDetailsPanel({
                 <ContactDetails contact={appointment.job?.company_contact ?? null} />
               </div>
               <div>
+                <p className="font-semibold uppercase tracking-wide text-gray-500">Project / job contact</p>
+                <ContactDetails contact={appointment.job?.project_contact ?? null} />
+              </div>
+              {appointment.job?.job_site_contact ? <div>
                 <p className="font-semibold uppercase tracking-wide text-gray-500">Job site contact</p>
                 <ContactDetails contact={appointment.job?.job_site_contact ?? null} />
-              </div>
+              </div> : null}
             </div>
 
             <div><p className="font-medium text-gray-500">Notes</p><p className="mt-2 whitespace-pre-wrap leading-6 text-gray-900">{appointment.notes || "No notes provided."}</p></div>

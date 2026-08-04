@@ -16,6 +16,7 @@ export type CreateLeadInput = {
   };
   job: {
     name: string;
+    projectCustomerName: string;
     qfNumber?: string;
     phone: string;
     email: string;
@@ -26,6 +27,7 @@ export type CreateLeadInput = {
     nextActionDue: string;
     notes: string;
     companyContactId: string;
+    projectContactId: string;
     jobSiteContactId: string;
     installationRequired: boolean;
   };
@@ -122,6 +124,7 @@ export async function createLeadAction(input: CreateLeadInput) {
       customer_id: customerId,
       assigned_employee_id: assignedEmployeeId,
       customer_name: jobName,
+      project_customer_name: clean(input.job.projectCustomerName),
       qfloors_job_number: qfNumber,
       phone: clean(input.job.phone) ?? customer.phone,
       email: clean(input.job.email) ?? customer.email,
@@ -133,6 +136,7 @@ export async function createLeadAction(input: CreateLeadInput) {
       next_action_due: clean(input.job.nextActionDue),
       notes: clean(input.job.notes),
       company_contact_id: clean(input.job.companyContactId),
+      project_contact_id: clean(input.job.projectContactId),
       job_site_contact_id: clean(input.job.jobSiteContactId),
       installation_required: input.job.installationRequired,
     })

@@ -54,14 +54,6 @@ export const DASHBOARD_RULES = [
     defaultSeverity: "informational",
   },
   {
-    key: "missing_job_site_contact",
-    group: "needs_attention",
-    label: "Missing Job Site Contact",
-    description: "Jobs that do not identify the person available at the work site.",
-    defaultEnabled: false,
-    defaultSeverity: "informational",
-  },
-  {
     key: "missing_job_address",
     group: "needs_attention",
     label: "Missing Job Address",

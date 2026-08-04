@@ -156,6 +156,7 @@ export default function AppointmentTooltip({
       jobName: appointment.job?.customer_name,
     });
   const companyContact = appointment.job?.company_contact;
+  const projectContact = appointment.job?.project_contact;
   const siteContact = appointment.job?.job_site_contact;
   const contactName = (
     contact: typeof companyContact,
@@ -207,6 +208,8 @@ export default function AppointmentTooltip({
                   {appointment.job?.customer_name || "Not linked"}
                 </dd>
 
+                {appointment.job?.project_customer_name ? <><dt className="font-medium text-gray-500">Project customer</dt><dd className="break-words text-gray-900">{appointment.job.project_customer_name}</dd></> : null}
+
                 <dt className="font-medium text-gray-500">QF#</dt>
                 <dd className="text-gray-900">
                   {appointment.job?.qfloors_job_number || "Not assigned"}
@@ -241,10 +244,12 @@ export default function AppointmentTooltip({
                   {contactName(companyContact, "Not assigned")}
                 </dd>
 
-                <dt className="font-medium text-gray-500">Site contact</dt>
+                <dt className="font-medium text-gray-500">Project contact</dt>
                 <dd className="break-words text-gray-900">
-                  {contactName(siteContact, "Not assigned")}
+                  {contactName(projectContact, "Not assigned")}
                 </dd>
+
+                {siteContact ? <><dt className="font-medium text-gray-500">Site contact</dt><dd className="break-words text-gray-900">{contactName(siteContact, "Not assigned")}</dd></> : null}
 
                 {appointment.location || appointment.job?.address ? (
                   <>
