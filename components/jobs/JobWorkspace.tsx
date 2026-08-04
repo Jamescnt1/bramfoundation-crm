@@ -308,10 +308,11 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
           </div>
         </div>
         {statusError ? <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{statusError}</div> : null}
-        <dl className="mt-3 grid gap-x-5 gap-y-2 border-t border-gray-100 pt-3 sm:grid-cols-2 lg:grid-cols-3">
+        <dl className="mt-3 grid gap-x-5 gap-y-2 border-t border-gray-100 pt-3 sm:grid-cols-2 lg:grid-cols-4">
           <Fact label="Customer" value={customer?.full_name ?? job.customer_name} />
           <Fact label="Project address" value={job.address ? <AddressLink value={job.address} className="min-h-0" /> : "Not provided"} />
           <Fact label="Next action due" value={job.next_action_due ? formatDate(job.next_action_due) : "No due date"} />
+          <Fact label="Created" value={formatDate(job.created_at)} />
         </dl>
       </header>
       <JobHoldDialog open={holdDialogOpen} jobId={job.id} currentReason={holdReason} currentUntil={holdUntil} currentNote={holdNote} onOpenChange={setHoldDialogOpen} onSaved={(values) => { setOnHold(true); setHoldReason(values.reason); setHoldUntil(values.until); setHoldNote(values.note); router.refresh(); }} />
@@ -344,14 +345,8 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                 <WorkspaceCard title="Project Contacts">
                   <div className="grid gap-3 lg:grid-cols-3">
                     <ContactCard title="Company Contact" context={customer?.full_name ?? "Customer / account"} contact={job.company_contact} fallbackPhone={customer?.phone} fallbackEmail={customer?.email} editHref={`/leads/${job.id}/edit`} />
-                    <ContactCard title="Project / Job Contact" context={job.project_customer_name ?? job.customer_name} contact={job.project_contact} fallbackPhone={job.phone} fallbackEmail={job.email} editHref={`/leads/${job.id}/edit`} />
+                    <ContactCard title="Project / Job Contact" context={job.project_customer_name ?? job.customer_name} contact={job.project_contact} fallbackPhone={job.phone} fallbackEmail={job.email} address={job.address} editHref={`/leads/${job.id}/edit`} />
                     <ContactCard title="Job Site Contact" context="Optional field contact" contact={job.job_site_contact} editHref={`/leads/${job.id}/edit`} optional />
-                  </div>
-                  <div className="mt-3 grid gap-3 border-t border-gray-100 pt-3 sm:grid-cols-2">
-                    <Fact label="Project / Job Name" value={job.customer_name} />
-                    <Fact label="Project Customer Name" value={job.project_customer_name ?? "Not provided"} />
-                    <Fact label="Project Location" value={job.address ? <AddressLink value={job.address} className="min-h-0" /> : "Not provided"} />
-                    <Fact label="Created" value={formatDate(job.created_at)} />
                   </div>
                 </WorkspaceCard>
 
@@ -603,12 +598,13 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
 
 function QuickButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) { return <button type="button" onClick={onClick} className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 [&_svg]:h-3.5 [&_svg]:w-3.5">{children}</button>; }
 function Fact({ label, value }: { label: string; value: React.ReactNode }) { return <div className="min-w-0"><dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{label}</dt><dd className="mt-0.5 break-words text-sm font-medium leading-5 text-gray-900" title={typeof value === "string" ? value : undefined}>{value}</dd></div>; }
-function ContactCard({ title, context, contact, fallbackPhone, fallbackEmail, editHref, optional = false }: { title: string; context: string; contact: JobContactSummary | null; fallbackPhone?: string | null; fallbackEmail?: string | null; editHref: string; optional?: boolean }) {
+function ContactCard({ title, context, contact, fallbackPhone, fallbackEmail, address, editHref, optional = false }: { title: string; context: string; contact: JobContactSummary | null; fallbackPhone?: string | null; fallbackEmail?: string | null; address?: string | null; editHref: string; optional?: boolean }) {
   const name = contact ? `${contact.first_name} ${contact.last_name}`.trim() : null;
   return (
     <div className="min-w-0 rounded-lg border border-gray-200 bg-gray-50 p-3">
       <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{title}</p><p className="mt-0.5 truncate text-xs text-gray-500">{context}</p></div><Link href={editHref} className="shrink-0 text-[11px] font-semibold text-blue-700 hover:underline">Edit</Link></div>
       {contact ? <><p className="mt-2 text-sm font-semibold text-gray-950">{name}</p>{contact.job_title ? <p className="text-xs text-gray-500">{contact.job_title}</p> : null}<div className="mt-1.5 flex flex-col items-start gap-0.5"><PhoneLink value={contact.mobile_phone} label={`${name} mobile`} className="min-h-6 text-xs text-gray-600" />{contact.office_phone && contact.office_phone !== contact.mobile_phone ? <PhoneLink value={contact.office_phone} label={`${name} office`} className="min-h-6 text-xs text-gray-600" /> : null}<EmailLink value={contact.email} label={name ?? title} className="min-h-6 text-xs text-gray-600" /></div></> : fallbackPhone || fallbackEmail ? <><p className="mt-2 text-xs font-medium text-amber-700">Named contact not selected</p><div className="mt-1 flex flex-col items-start"><PhoneLink value={fallbackPhone} label={context} className="min-h-6 text-xs text-gray-600"/><EmailLink value={fallbackEmail} label={context} className="min-h-6 text-xs text-gray-600"/></div></> : <p className="mt-3 text-xs text-gray-500">{optional ? "No separate site contact needed." : "Not selected."}</p>}
+      {address ? <div className="mt-2 border-t border-gray-200 pt-2"><p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Project Address</p><AddressLink value={address} className="mt-0.5 min-h-0 text-xs text-gray-600" /></div> : null}
     </div>
   );
 }
