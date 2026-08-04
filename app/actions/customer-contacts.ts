@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireEmployee, requirePermission } from "@/lib/services/employees";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { CustomerContactValues } from "@/lib/services/customer-contacts";
 
 function clean(value: string | null | undefined) {
@@ -64,19 +65,35 @@ export async function updateCustomerContactAction(
 }
 
 export async function archiveCustomerContactAction(contactId: string) {
-  await requirePermission("delete_customers");
-  const employee = await requireEmployee();
-  const supabase = await createClient();
-  const { data: contact, error: loadError } = await supabase
-    .from("customer_contacts")
-    .select("customer_id")
-    .eq("id", contactId)
-    .single();
-  if (loadError) throw new Error(loadError.message);
-  const { error } = await supabase
-    .from("customer_contacts")
-    .update({ active: false, archived_at: new Date().toISOString(), archived_by: employee.id })
-    .eq("id", contactId);
-  if (error) throw new Error(error.message);
-  refresh(contact.customer_id);
+  try {
+    await requirePermission("delete_customers");
+    const employee = await requireEmployee();
+    const admin = createAdminClient();
+    const { data: contact, error: loadError } = await admin
+      .from("customer_contacts")
+      .select("customer_id, archived_at")
+      .eq("id", contactId)
+      .maybeSingle();
+    if (loadError) throw new Error(loadError.message);
+    if (!contact) return { ok: false as const, error: "This contact could not be found." };
+    if (!contact.archived_at) {
+      const { data: archived, error } = await admin
+        .from("customer_contacts")
+        .update({ active: false, archived_at: new Date().toISOString(), archived_by: employee.id })
+        .eq("id", contactId)
+        .is("archived_at", null)
+        .select("id")
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!archived) return { ok: false as const, error: "This contact was already changed. Refresh the page and try again." };
+    }
+    refresh(contact.customer_id);
+    return { ok: true as const };
+  } catch (error) {
+    console.error("Unable to archive customer contact", error);
+    return {
+      ok: false as const,
+      error: "Unable to remove this contact from the customer. Please try again.",
+    };
+  }
 }

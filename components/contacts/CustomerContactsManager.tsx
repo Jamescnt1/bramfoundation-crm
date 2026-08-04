@@ -42,7 +42,11 @@ export default function CustomerContactsManager({
     if (!window.confirm(`Archive ${formatContactName(contact)}? Linked jobs will keep their history, but this contact will no longer be selectable.`)) return;
     setError("");
     try {
-      await archiveCustomerContactAction(contact.id);
+      const result = await archiveCustomerContactAction(contact.id);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
       setContacts((current) => current.filter((item) => item.id !== contact.id));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to archive contact.");
