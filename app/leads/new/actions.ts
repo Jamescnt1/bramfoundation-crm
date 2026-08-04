@@ -21,6 +21,7 @@ export type CreateLeadInput = {
     phone: string;
     email: string;
     address: string;
+    lockBoxCode: string;
     leadSource: string;
     salesperson: string;
     nextAction: string;
@@ -131,6 +132,7 @@ export async function createLeadAction(input: CreateLeadInput) {
       phone: clean(input.job.phone) ?? customer.phone,
       email: clean(input.job.email) ?? customer.email,
       address: clean(input.job.address) ?? customer.address,
+      lock_box_code: clean(input.job.lockBoxCode),
       lead_source: leadSource,
       salesperson,
       status: "New Lead",

@@ -39,6 +39,7 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
   const [projectPhone, setProjectPhone] = useState(copySource?.phone ?? "");
   const [projectEmail, setProjectEmail] = useState(copySource?.email ?? "");
   const [projectAddress, setProjectAddress] = useState(copySource?.address ?? "");
+  const [lockBoxCode, setLockBoxCode] = useState(copySource?.lock_box_code ?? "");
   const [leadSource, setLeadSource] = useState(copySource?.lead_source ?? "");
   const [salesperson, setSalesperson] = useState(copySource?.salesperson ?? "");
   const [nextAction, setNextAction] = useState("");
@@ -145,6 +146,7 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
           phone: projectPhone,
           email: projectEmail,
           address: projectAddress,
+          lockBoxCode,
           leadSource,
           salesperson,
           nextAction,
@@ -302,6 +304,10 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
 
         <Field label="Project Address" htmlFor="projectAddress">
           <input id="projectAddress" type="text" disabled={isSaving} value={projectAddress} onChange={(event) => setProjectAddress(event.target.value)} placeholder="Unit or property address for this job" className={inputClass} />
+        </Field>
+
+        <Field label="Lock Box / Access Code" htmlFor="lockBoxCode">
+          <input id="lockBoxCode" type="text" disabled={isSaving} value={lockBoxCode} onChange={(event) => setLockBoxCode(event.target.value)} placeholder="Optional" className={inputClass} />
         </Field>
 
         <fieldset className="grid gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:col-span-2 sm:grid-cols-2">

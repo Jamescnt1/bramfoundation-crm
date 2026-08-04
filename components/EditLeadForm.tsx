@@ -68,6 +68,7 @@ export default function EditLeadForm({
   const [projectPhone, setProjectPhone] = useState(job.phone ?? "");
   const [projectEmail, setProjectEmail] = useState(job.email ?? "");
   const [address, setAddress] = useState(job.address ?? "");
+  const [lockBoxCode, setLockBoxCode] = useState(job.lock_box_code ?? "");
   const [assignedEmployeeId, setAssignedEmployeeId] = useState(job.assigned_employee_id ?? "");
   const [companyContactId, setCompanyContactId] = useState(job.company_contact_id ?? "");
   const [projectContactName, setProjectContactName] = useState(job.project_contact_name ?? (job.project_contact ? `${job.project_contact.first_name} ${job.project_contact.last_name}`.trim() : ""));
@@ -120,6 +121,7 @@ export default function EditLeadForm({
       const nextProjectPhone = projectPhone.trim() || null;
       const nextProjectEmail = projectEmail.trim() || null;
       const nextAddress = address.trim() || null;
+      const nextLockBoxCode = lockBoxCode.trim() || null;
       const nextAssignedEmployeeId = assignedEmployeeId || null;
       const nextCompanyContactId = companyContactId || null;
       const nextProjectContactName = projectContactName.trim() || null;
@@ -141,6 +143,7 @@ export default function EditLeadForm({
       if (nextProjectPhone !== job.phone) updates.phone = nextProjectPhone;
       if (nextProjectEmail !== job.email) updates.email = nextProjectEmail;
       if (nextAddress !== job.address) updates.address = nextAddress;
+      if (nextLockBoxCode !== job.lock_box_code) updates.lock_box_code = nextLockBoxCode;
       if (nextAssignedEmployeeId !== job.assigned_employee_id) {
         updates.assigned_employee_id = nextAssignedEmployeeId;
       }
@@ -270,6 +273,11 @@ export default function EditLeadForm({
         <label htmlFor="jobAddress" className="block text-sm font-medium text-gray-700">Job Address / Details</label>
         <textarea id="jobAddress" rows={3} disabled={isSaving} value={address} onChange={(event) => setAddress(event.target.value)}
           className="mt-2 w-full resize-y rounded-lg border border-gray-300 px-3 py-2 disabled:bg-gray-100" />
+      </div>
+
+      <div>
+        <label htmlFor="lockBoxCode" className="block text-sm font-medium text-gray-700">Lock Box / Access Code</label>
+        <input id="lockBoxCode" disabled={isSaving} value={lockBoxCode} onChange={(event) => setLockBoxCode(event.target.value)} placeholder="Optional" className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 disabled:bg-gray-100" />
       </div>
 
       <fieldset className="grid gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:grid-cols-2">

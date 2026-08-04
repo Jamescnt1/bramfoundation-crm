@@ -15,6 +15,7 @@ export type Job = {
   phone: string | null;
   email: string | null;
   address: string | null;
+  lock_box_code: string | null;
   lead_source: string | null;
   status: string;
   salesperson: string | null;
@@ -99,6 +100,7 @@ export type CreateJobValues = {
   phone?: string | null;
   email?: string | null;
   address?: string | null;
+  lock_box_code?: string | null;
   lead_source?: string | null;
   status?: string;
   salesperson?: string | null;
@@ -183,6 +185,7 @@ const jobColumns = `
   phone,
   email,
   address,
+  lock_box_code,
   lead_source,
   status,
   salesperson,
@@ -523,6 +526,7 @@ export async function createJob(
       phone: values.phone?.trim() || null,
       email: values.email?.trim() || null,
       address: values.address?.trim() || null,
+      lock_box_code: values.lock_box_code?.trim() || null,
       lead_source: values.lead_source || null,
       status: (await normalizePipelineStatus(values.status ?? "New Lead")),
       salesperson: values.salesperson || null,
@@ -666,6 +670,8 @@ export async function updateJob(
     updates.address =
       values.address?.trim() || null;
   }
+
+  if (values.lock_box_code !== undefined) updates.lock_box_code = values.lock_box_code?.trim() || null;
 
   if (values.lead_source !== undefined) {
     updates.lead_source =
