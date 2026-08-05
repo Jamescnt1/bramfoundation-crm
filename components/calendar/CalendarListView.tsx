@@ -34,7 +34,7 @@ export default function CalendarListView({
             <p className="text-sm font-semibold text-gray-900">
               {new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" }).format(new Date(appointment.starts_at))}
             </p>
-            <p className="mt-1 text-xs text-gray-500">{appointment.job ? formatJobDisplayName({ customerName: appointment.job.customer?.full_name, jobName: appointment.job.customer_name, qfNumber: appointment.job.qfloors_job_number }) : "General appointment"}</p>
+            <p className="mt-1 text-xs text-gray-500">{appointment.job ? formatJobDisplayName({ customerName: appointment.job.customer?.full_name, jobName: appointment.job.customer_name, qfNumber: appointment.job.qfloors_job_number }) : appointment.title?.trim() || "Standalone appointment"}</p>
           </div>
           <AppointmentCard
             appointment={appointment}

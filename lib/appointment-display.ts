@@ -1,6 +1,7 @@
 import type { AppointmentType } from "@/components/calendar/constants";
 
 export type AppointmentDisplayValues = {
+  title?: string | null;
   appointmentType?: AppointmentType | null;
   appointmentTypeLabel?: string | null;
   customerName?: string | null;
@@ -35,10 +36,11 @@ export function formatAppointmentType(
 
 /**
  * The single appointment display convention used throughout the CRM.
- * Linked appointments use Customer - Job - Appointment Type. General
- * appointments fall back to General appointment - Appointment Type.
+ * Linked appointments use Customer - Job - Appointment Type. Standalone
+ * appointments use their entered name, followed by the appointment type.
  */
 export function formatAppointmentDisplayName({
+  title,
   appointmentType,
   appointmentTypeLabel,
   customerName,
@@ -47,9 +49,11 @@ export function formatAppointmentDisplayName({
   const type = formatAppointmentType(appointmentType, appointmentTypeLabel);
   const customer = customerName?.trim();
   const job = jobName?.trim();
+  const enteredTitle = title?.trim();
 
   if (customer && job) return `${customer} - ${job} - ${type}`;
   if (job) return `${job} - ${type}`;
   if (customer) return `${customer} - ${type}`;
-  return `General appointment - ${type}`;
+  if (enteredTitle) return `${enteredTitle} - ${type}`;
+  return type;
 }

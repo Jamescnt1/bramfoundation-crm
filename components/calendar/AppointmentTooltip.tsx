@@ -151,6 +151,7 @@ export default function AppointmentTooltip({
   const displayName =
     displayNameOverride ??
     formatAppointmentDisplayName({
+      title: appointment.title,
       appointmentType: appointment.appointment_type,
       customerName: appointment.job?.customer?.full_name,
       jobName: appointment.job?.customer_name,

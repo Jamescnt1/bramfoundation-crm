@@ -60,8 +60,8 @@ export async function searchFoundationCrm(rawQuery: string): Promise<GlobalSearc
         .limit(RESULT_LIMIT),
       supabase
         .from("appointments")
-        .select("id, appointment_type, starts_at, job:jobs!appointments_job_id_fkey(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(full_name))")
-        .ilike("appointment_type", pattern)
+        .select("id, title, appointment_type, starts_at, job:jobs!appointments_job_id_fkey(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(full_name))")
+        .or(`title.ilike.${pattern},appointment_type.ilike.${pattern}`)
         .order("starts_at", { ascending: false })
         .limit(RESULT_LIMIT),
       supabase
@@ -159,6 +159,7 @@ export async function searchFoundationCrm(rawQuery: string): Promise<GlobalSearc
     const job = relation(appointment.job);
     const customer = relation(job?.customer);
     const title = formatAppointmentDisplayName({
+      title: appointment.title,
       customerName: customer?.full_name,
       jobName: job?.customer_name,
       appointmentType: appointment.appointment_type,

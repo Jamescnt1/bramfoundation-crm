@@ -64,6 +64,7 @@ export type DashboardTask = {
 export type DashboardAppointment = {
   id: string;
   job_id: string | null;
+  title: string | null;
   appointment_type: AppointmentType;
   status: string;
   starts_at: string;
@@ -181,7 +182,7 @@ export async function getCompanyDashboardData(
         .order("created_at", { ascending: false }),
       supabase
         .from("appointments")
-        .select("id, job_id, appointment_type, status, starts_at, assigned_employee_id, installer_crew_id, assigned_employee:employees!appointments_assigned_employee_id_fkey(id, name), installer_crew:installer_crews!appointments_installer_crew_id_fkey(id, name), job:jobs!appointments_job_id_fkey(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name))")
+        .select("id, job_id, title, appointment_type, status, starts_at, assigned_employee_id, installer_crew_id, assigned_employee:employees!appointments_assigned_employee_id_fkey(id, name), installer_crew:installer_crews!appointments_installer_crew_id_fkey(id, name), job:jobs!appointments_job_id_fkey(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name))")
         .gte("starts_at", addDays(todayStart, -30).toISOString())
         .order("starts_at"),
       supabase
@@ -464,6 +465,7 @@ function buildAttentionItems({
         kind: appointmentRule.ruleKey,
         title: isInstallation ? "Installation Missing Crew" : "Appointment Missing Employee",
         subject: formatAppointmentDisplayName({
+          title: appointment.title,
           appointmentType: appointment.appointment_type,
           customerName: appointment.job?.customer?.full_name,
           jobName: appointment.job?.customer_name,

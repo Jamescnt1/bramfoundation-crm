@@ -33,6 +33,7 @@ export default function AppointmentCard({
   );
   const color = getReadableTextColor(backgroundColor);
   const displayName = formatAppointmentDisplayName({
+    title: appointment.title,
     appointmentType: appointment.appointment_type,
     customerName: appointment.job?.customer?.full_name,
     jobName: appointment.job?.customer_name,
@@ -46,7 +47,7 @@ export default function AppointmentCard({
   const badgeLabel =
     customerName && jobName
       ? `${customerName} / ${jobName}`
-      : jobName || customerName || typeLabel;
+      : jobName || customerName || appointment.title?.trim() || typeLabel;
 
   return (
     <AppointmentTooltip appointment={appointment} displayName={displayName}>

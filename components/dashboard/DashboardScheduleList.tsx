@@ -35,6 +35,7 @@ export default function DashboardScheduleList({
     <div className="divide-y divide-gray-100">
       {appointments.slice(0, 8).map((appointment) => {
         const displayName = formatAppointmentDisplayName({
+          title: appointment.title,
           appointmentType: appointment.appointment_type,
           appointmentTypeLabel: appointment.appointment_type_record?.name,
           customerName: appointment.job?.customer?.full_name,

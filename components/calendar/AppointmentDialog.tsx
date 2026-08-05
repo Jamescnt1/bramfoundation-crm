@@ -493,14 +493,14 @@ export default function AppointmentDialog({
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       {selectedJob ? <BriefcaseBusiness className="h-4 w-4 shrink-0 text-[#3f6e8c]" /> : <CalendarPlus className="h-4 w-4 shrink-0 text-gray-500" />}
-                      <span className="truncate">{selectedJob ? formatJobDisplayName({ customerName: selectedJob.customer?.full_name, jobName: selectedJob.customer_name, qfNumber: selectedJob.qfloors_job_number }) : "General appointment / other event"}</span>
+                      <span className="truncate">{selectedJob ? formatJobDisplayName({ customerName: selectedJob.customer?.full_name, jobName: selectedJob.customer_name, qfNumber: selectedJob.qfloors_job_number }) : "Not linked to a job"}</span>
                     </span>
                     <Search className="h-4 w-4 shrink-0 text-gray-400" />
                   </button>
                   {jobPickerOpen ? <div className="absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white p-2 shadow-xl">
                     <div className="relative"><Search className="pointer-events-none absolute top-2.5 left-3 h-4 w-4 text-gray-400" /><input autoFocus value={jobQuery} onChange={(event) => setJobQuery(event.target.value)} placeholder="Search customer, job, QF#, contact, or address" className="w-full rounded-md border border-gray-300 py-2 pr-3 pl-9 text-sm outline-none focus:border-gray-500" /></div>
                     <div className="mt-1 max-h-60 overflow-y-auto" role="listbox">
-                      <button type="button" role="option" aria-selected={!jobId} onClick={() => selectJob("")} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left hover:bg-gray-50"><CalendarPlus className="h-4 w-4 text-gray-500" /><span className="flex-1"><span className="block text-sm font-medium text-gray-900">General appointment / other event</span><span className="block text-xs text-gray-500">Not connected to a customer job</span></span>{!jobId ? <Check className="h-4 w-4 text-emerald-600" /> : null}</button>
+                      <button type="button" role="option" aria-selected={!jobId} onClick={() => selectJob("")} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left hover:bg-gray-50"><CalendarPlus className="h-4 w-4 text-gray-500" /><span className="flex-1"><span className="block text-sm font-medium text-gray-900">Not linked to a job</span><span className="block text-xs text-gray-500">Use the appointment name below</span></span>{!jobId ? <Check className="h-4 w-4 text-emerald-600" /> : null}</button>
                       <div className="my-1 border-t border-gray-100" />
                       {filteredJobs.map((job) => <button key={job.id} type="button" role="option" aria-selected={job.id === jobId} onClick={() => selectJob(job.id)} className="flex w-full items-start gap-2 rounded-md px-3 py-2 text-left hover:bg-gray-50"><BriefcaseBusiness className="mt-0.5 h-4 w-4 shrink-0 text-[#3f6e8c]" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-gray-900">{formatJobDisplayName({ customerName: job.customer?.full_name, jobName: job.customer_name, qfNumber: job.qfloors_job_number })}</span><span className="block truncate text-xs text-gray-500">{[job.address, job.project_contact_name].filter(Boolean).join(" · ") || "No address provided"}</span></span>{job.id === jobId ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> : null}</button>)}
                       {!filteredJobs.length ? <p className="px-3 py-5 text-center text-sm text-gray-500">No matching customer jobs.</p> : null}
@@ -508,12 +508,10 @@ export default function AppointmentDialog({
                   </div> : null}
                 </div>
                 {!jobId ? (
-                  <Input
-                    value={customTitle}
-                    onChange={(event) => setCustomTitle(event.target.value)}
-                    placeholder="Appointment name, meeting, or event"
-                    aria-label="General appointment name"
-                  />
+                  <div className="grid gap-2">
+                    <label htmlFor="appointment-name" className="text-sm font-medium text-gray-900">Appointment name</label>
+                    <Input id="appointment-name" value={customTitle} onChange={(event) => setCustomTitle(event.target.value)} placeholder="Customer, company, meeting, or event name" />
+                  </div>
                 ) : null}
                 {jobId ? (() => {
                   if (!selectedJob) return null;
