@@ -17,6 +17,7 @@ export async function getTasks(filters?: { jobId?: string; customerId?: string }
   let query = supabase
     .from("job_tasks")
     .select(columns)
+    .lte("available_at", new Date().toISOString())
     .order("completed")
     .order("due_at", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });

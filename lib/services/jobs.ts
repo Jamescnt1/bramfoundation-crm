@@ -436,6 +436,7 @@ export async function getJobActivities(
       `,
     )
     .eq("job_id", jobId)
+    .lte("available_at", new Date().toISOString())
     .order("created_at", {
       ascending: false,
     });

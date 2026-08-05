@@ -179,6 +179,7 @@ export async function getCompanyDashboardData(
       supabase
         .from("job_tasks")
         .select("id, title, assigned_employee_id, assigned_to, due_at, due_date, overdue_grace_days, completed, status, created_at")
+        .lte("available_at", now.toISOString())
         .order("created_at", { ascending: false }),
       supabase
         .from("appointments")

@@ -473,13 +473,14 @@ async function getTasks(filters: ReportFilters, range: ParsedRange) {
   let query = supabase
     .from("job_tasks")
     .select(`
-      id, assigned_employee_id, status, completed, completed_at, due_at, due_date, created_at,
+      id, assigned_employee_id, status, completed, completed_at, due_at, due_date, created_at, available_at,
       employee:employees!job_tasks_assigned_employee_id_fkey(id, name),
       task_type:task_types!job_tasks_task_type_id_fkey(name)
     `)
-    .gte("created_at", range.fromIso)
-    .lte("created_at", range.toIso)
-    .order("created_at", { ascending: false })
+    .lte("available_at", new Date().toISOString())
+    .gte("available_at", range.fromIso)
+    .lte("available_at", range.toIso)
+    .order("available_at", { ascending: false })
     .limit(RESULT_LIMIT);
   if (filters.employeeId) query = query.eq("assigned_employee_id", filters.employeeId);
   if (filters.status) query = query.eq("status", filters.status);
