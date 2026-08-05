@@ -63,7 +63,8 @@ export default function TaskManager({
     .filter((task) => {
       if (fixedJobId && task.job_id !== fixedJobId) return false;
       if (!fixedJobId && fixedCustomerId && task.customer_id !== fixedCustomerId) return false;
-      if (status === "active" && (task.status === "completed" || task.status === "cancelled")) return false;
+      if (status === "active" && task.status === "cancelled") return false;
+      if (status === "active" && task.status === "completed" && !fixedJobId) return false;
       if (status !== "active" && status !== "all" && task.status !== status) return false;
       if (assignee === "mine" && task.assigned_employee_id !== currentEmployeeId) return false;
       if (assignee !== "all" && assignee !== "mine" && task.assigned_employee_id !== assignee) return false;
