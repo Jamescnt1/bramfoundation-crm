@@ -2,6 +2,7 @@ import "server-only";
 
 import { getPipelineStages, type PipelineStageConfig } from "@/lib/services/pipeline-stages";
 import { createClient } from "@/lib/supabase/server";
+import { dayBoundsInTimeZone, DEFAULT_COMPANY_TIME_ZONE } from "@/lib/date-time";
 import type { AppointmentType } from "@/components/calendar/constants";
 import { formatAppointmentDisplayName } from "@/lib/appointment-display";
 import {
@@ -160,9 +161,17 @@ export async function getCompanyDashboardData(
   const ruleSettings = await getCompanyDashboardRuleSettings();
   const enabledRules = enabledRuleMap(ruleSettings);
   const now = new Date();
-  const todayStart = startOfDay(now);
-  const tomorrowStart = addDays(todayStart, 1);
-  const todayKey = dateKey(now);
+  const { data: companySettings, error: companySettingsError } = await supabase
+    .from("company_settings")
+    .select("timezone")
+    .eq("singleton_key", true)
+    .maybeSingle();
+  if (companySettingsError) throw new Error(companySettingsError.message);
+  const companyTimeZone = companySettings?.timezone || DEFAULT_COMPANY_TIME_ZONE;
+  const todayBounds = dayBoundsInTimeZone(now, companyTimeZone);
+  const todayStart = todayBounds.start;
+  const tomorrowStart = todayBounds.end;
+  const todayKey = todayBounds.dateKey;
 
   const [employeesResult, jobsResult, tasksResult, appointmentsResult, activitiesResult, stages] =
     await Promise.all([
@@ -720,10 +729,6 @@ function healthFor(overdue: number, open: number): AccountabilityRow["health"] {
 function latestDate(values: string[]) {
   if (!values.length) return null;
   return values.reduce((latest, value) => (new Date(value) > new Date(latest) ? value : latest));
-}
-
-function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 function addDays(date: Date, days: number) {

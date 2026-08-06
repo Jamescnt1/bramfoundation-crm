@@ -9,6 +9,7 @@ import type {
 } from "@/lib/reports/types";
 import { requirePermission } from "@/lib/services/employees";
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_COMPANY_TIME_ZONE } from "@/lib/date-time";
 
 type Relation<T> = T | T[] | null;
 type EmployeeRelation = { id: string; name: string } | null;
@@ -71,7 +72,18 @@ export async function runReport(reportId: string, filters: ReportFilters): Promi
   await requirePermission("reports.view");
   const definition = getReportDefinition(reportId);
   if (!definition) throw new Error("Report not found.");
-  const range = parseReportDateRange(filters.from, filters.to);
+  const settingsClient = await createClient();
+  const { data: settings, error: settingsError } = await settingsClient
+    .from("company_settings")
+    .select("timezone")
+    .eq("singleton_key", true)
+    .maybeSingle();
+  if (settingsError) throw new Error(settingsError.message);
+  const range = parseReportDateRange(
+    filters.from,
+    filters.to,
+    settings?.timezone || DEFAULT_COMPANY_TIME_ZONE,
+  );
 
   switch (reportId) {
     case "executive-overview":
@@ -142,7 +154,27 @@ async function getJobs(filters: ReportFilters, range: ParsedRange, dateColumn: "
     .limit(RESULT_LIMIT);
   if (filters.employeeId) query = query.eq("assigned_employee_id", filters.employeeId);
   if (filters.salesperson) query = query.eq("salesperson", filters.salesperson);
-  if (filters.pipelineStage) query = query.eq("status", filters.pipelineStage);
+  if (filters.pipelineStage) {
+    const [stageResult, aliasesResult] = await Promise.all([
+      supabase
+        .from("pipeline_stages")
+        .select("slug, label")
+        .eq("slug", filters.pipelineStage)
+        .maybeSingle(),
+      supabase
+        .from("pipeline_stage_aliases")
+        .select("alias")
+        .eq("stage_slug", filters.pipelineStage),
+    ]);
+    if (stageResult.error) throw new Error(stageResult.error.message);
+    if (aliasesResult.error) throw new Error(aliasesResult.error.message);
+    const statuses = [...new Set([
+      filters.pipelineStage,
+      stageResult.data?.label,
+      ...(aliasesResult.data ?? []).map((item) => item.alias),
+    ].filter((value): value is string => Boolean(value)))];
+    query = query.in("status", statuses);
+  }
   if (filters.leadSource) query = query.eq("lead_source", filters.leadSource);
   if (filters.customerId) query = query.eq("customer_id", filters.customerId);
   if (filters.status) query = query.eq("status", filters.status);
@@ -276,10 +308,15 @@ async function buildOperationsReport(filters: ReportFilters, range: ParsedRange)
   const installs = appointments.filter((item) => item.appointment_type === "installation");
   const scheduled = installs.filter((item) => item.status === "scheduled");
   const completed = installs.filter((item) => item.status === "completed");
-  const waitingMaterials = jobs.filter((job) => {
-    const label = resolveStage(job, context)?.label.toLowerCase() ?? job.status.toLowerCase();
-    return label.includes("material");
-  });
+  const materialScopes = await getMaterialScopes(jobs.map((job) => job.id));
+  const waitingMaterialJobIds = new Set(
+    materialScopes
+      .filter((scope) =>
+        scope.ordering_required && !["ready", "excluded"].includes(scope.material_status),
+      )
+      .map((scope) => scope.job_id),
+  );
+  const waitingMaterials = jobs.filter((job) => waitingMaterialJobIds.has(job.id));
   const stalledCutoff = Date.now() - 14 * 86_400_000;
   const stalled = jobs.filter((job) => new Date(job.updated_at).getTime() < stalledCutoff);
   const missingQf = jobs.filter((job) => {
@@ -313,6 +350,21 @@ async function buildOperationsReport(filters: ReportFilters, range: ParsedRange)
     chart: chart("Operations attention", rows.map((row) => ({ label: row.issue, value: row.count }))),
     notes: dataLimitNote(Math.max(jobs.length, appointments.length)),
   };
+}
+
+async function getMaterialScopes(jobIds: string[]) {
+  if (!jobIds.length) return [] as Array<{
+    job_id: string;
+    ordering_required: boolean;
+    material_status: string;
+  }>;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("job_material_scopes")
+    .select("job_id, ordering_required, material_status")
+    .in("job_id", jobIds);
+  if (error) throw new Error(error.message);
+  return data ?? [];
 }
 
 async function buildEmployeeReport(filters: ReportFilters, range: ParsedRange): Promise<ReportResult> {

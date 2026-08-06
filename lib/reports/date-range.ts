@@ -1,3 +1,5 @@
+import { dateRangeBoundsInTimeZone, DEFAULT_COMPANY_TIME_ZONE } from "@/lib/date-time";
+
 export type DatePreset =
   | "this_week"
   | "last_week"
@@ -51,9 +53,9 @@ export function resolveDatePreset(preset: DatePreset, now = new Date()) {
   return { from: localDateKey(from), to: localDateKey(to) };
 }
 
-export function parseReportDateRange(from: string, to: string) {
-  const start = new Date(`${from}T00:00:00`);
-  const end = new Date(`${to}T23:59:59.999`);
+export function parseReportDateRange(from: string, to: string, timeZone = DEFAULT_COMPANY_TIME_ZONE) {
+  const { start, endExclusive } = dateRangeBoundsInTimeZone(from, to, timeZone);
+  const end = new Date(endExclusive.getTime() - 1);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
     throw new Error("Choose a valid report date range.");
   }
@@ -67,4 +69,3 @@ export function parseReportDateRange(from: string, to: string) {
     label: `${start.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`,
   };
 }
-
