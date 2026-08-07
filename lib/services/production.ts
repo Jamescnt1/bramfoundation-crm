@@ -23,7 +23,10 @@ export async function getJobMaterialScopes(jobId: string): Promise<MaterialScope
   const { data, error } = await admin
     .from("job_material_scopes")
     .select(`id, job_id, material_category_id, description, ordering_required,
-      installation_required, work_order_required, scope_kind, job_walk_required, material_status, eta_date,
+      installation_required, work_order_required, scope_kind, job_walk_required,
+      completion_check_method, completion_check_status, completion_contact_name,
+      completion_contact_method, completion_check_notes, completion_checked_at, completion_checked_by,
+      material_status, eta_date,
       ordered_at, ready_at, issue_note, excluded_reason, sort_order,
       category:material_categories!job_material_scopes_material_category_id_fkey (
         id, name, abbreviation, color_key, ordering_required,
@@ -95,8 +98,13 @@ export function summarizeProduction(jobId: string, scopes: MaterialScope[]): Pro
     const sent = excluded || !scope.work_order_required || (
       installAppointments.length > 0 && installAppointments.every((item) => ["sent", "acknowledged"].includes(item.work_order_status))
     );
-    const jobWalkScheduled = excluded || !scope.job_walk_required || jobWalkAppointments.length > 0;
-    const jobWalkComplete = excluded || !scope.job_walk_required || jobWalkAppointments.some((item) => item.status === "completed");
+    const completionRequired = scope.completion_check_method !== "not_required";
+    const jobWalkScheduled = excluded || !completionRequired || scope.completion_check_method !== "job_walk" || jobWalkAppointments.length > 0;
+    const jobWalkComplete = excluded || !completionRequired || (
+      scope.completion_check_method === "job_walk"
+        ? jobWalkAppointments.some((item) => item.status === "completed")
+        : scope.completion_check_status === "completed"
+    );
     if (scope.ordering_required) {
       materialsTotal += 1;
       totalSteps += 2;
@@ -108,10 +116,10 @@ export function summarizeProduction(jobId: string, scopes: MaterialScope[]): Pro
     if (scheduled) installationsScheduled += Number(scope.installation_required);
     if (scope.work_order_required) { workOrdersRequired += 1; totalSteps += 1; completedSteps += Number(sent); }
     if (sent) workOrdersSent += Number(scope.work_order_required);
-    if (scope.job_walk_required) { jobWalksRequired += 1; totalSteps += 1; completedSteps += Number(jobWalkComplete); }
-    if (jobWalkScheduled) jobWalksScheduled += Number(scope.job_walk_required);
-    if (jobWalkComplete) jobWalksCompleted += Number(scope.job_walk_required);
-    needsAttention ||= scope.material_status === "issue" || Boolean(
+    if (completionRequired) { jobWalksRequired += 1; totalSteps += 1; completedSteps += Number(jobWalkComplete); }
+    if (jobWalkScheduled) jobWalksScheduled += Number(completionRequired);
+    if (jobWalkComplete) jobWalksCompleted += Number(completionRequired);
+    needsAttention ||= scope.material_status === "issue" || scope.completion_check_status === "issue" || Boolean(
       scope.eta_date && scope.appointments.some((item) => item.starts_at.slice(0, 10) < scope.eta_date!),
     );
   }

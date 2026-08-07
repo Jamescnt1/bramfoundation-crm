@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { MaterialStatus } from "@/components/production/types";
+import type { CompletionCheckMethod, MaterialStatus } from "@/components/production/types";
 import { requireEmployee, requirePermission } from "@/lib/services/employees";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -9,10 +9,14 @@ export async function addMaterialScopeAction(values: {
   jobId: string;
   categoryId: string;
   description: string;
-  jobWalkRequired?: boolean;
+  completionCheckMethod?: CompletionCheckMethod;
+  completionCheckNotes?: string;
 }) {
   await requirePermission("pipeline.manage");
   const employee = await requireEmployee();
+  if (values.completionCheckMethod === "not_required" && !values.completionCheckNotes?.trim()) {
+    throw new Error("Enter why a completion check is not required.");
+  }
   const admin = createAdminClient();
   const { data: category, error: categoryError } = await admin
     .from("material_categories")
@@ -29,7 +33,10 @@ export async function addMaterialScopeAction(values: {
     installation_required: category.installation_required,
     work_order_required: category.work_order_required,
     scope_kind: category.name === "Demo / Labor" ? "demo" : "material",
-    job_walk_required: Boolean(values.jobWalkRequired),
+    job_walk_required: values.completionCheckMethod === "job_walk",
+    completion_check_method: values.completionCheckMethod ?? "not_required",
+    completion_check_status: values.completionCheckMethod === "not_required" ? "not_required" : "pending",
+    completion_check_notes: values.completionCheckMethod === "not_required" ? values.completionCheckNotes?.trim() : null,
     created_by: employee.id,
     updated_by: employee.id,
   });
@@ -119,16 +126,34 @@ export async function updateProductionScopeAction(values: {
   scopeId: string;
   categoryId: string;
   description: string;
-  jobWalkRequired: boolean;
+  completionCheckMethod: CompletionCheckMethod;
+  completionCheckNotes?: string;
 }) {
   await requirePermission("pipeline.manage");
   const employee = await requireEmployee();
+  if (values.completionCheckMethod === "not_required" && !values.completionCheckNotes?.trim()) {
+    throw new Error("Enter why a completion check is not required.");
+  }
   const admin = createAdminClient();
   const { data: category, error: categoryError } = await admin
     .from("material_categories")
     .select("name, ordering_required, installation_required, work_order_required")
     .eq("id", values.categoryId).eq("active", true).single();
   if (categoryError) throw new Error(categoryError.message);
+  const { data: currentScope, error: currentScopeError } = await admin.from("job_material_scopes")
+    .select("completion_check_method").eq("id", values.scopeId).eq("job_id", values.jobId).single();
+  if (currentScopeError || !currentScope) throw new Error(currentScopeError?.message ?? "Production scope not found.");
+  const methodChanged = currentScope.completion_check_method !== values.completionCheckMethod;
+  const completionUpdates = methodChanged ? {
+    completion_check_status: values.completionCheckMethod === "not_required" ? "not_required" : "pending",
+    completion_contact_name: null,
+    completion_contact_method: null,
+    completion_check_notes: values.completionCheckMethod === "not_required" ? values.completionCheckNotes?.trim() : null,
+    completion_checked_at: null,
+    completion_checked_by: null,
+  } : values.completionCheckMethod === "not_required" ? {
+    completion_check_notes: values.completionCheckNotes?.trim(),
+  } : {};
   const { error } = await admin.from("job_material_scopes").update({
     material_category_id: values.categoryId,
     description: values.description.trim() || null,
@@ -136,7 +161,9 @@ export async function updateProductionScopeAction(values: {
     installation_required: category.installation_required,
     work_order_required: category.work_order_required,
     scope_kind: category.name === "Demo / Labor" ? "demo" : "material",
-    job_walk_required: values.jobWalkRequired,
+    job_walk_required: values.completionCheckMethod === "job_walk",
+    completion_check_method: values.completionCheckMethod,
+    ...completionUpdates,
     updated_by: employee.id,
   }).eq("id", values.scopeId).eq("job_id", values.jobId);
   if (error) throw new Error(error.message);
@@ -169,6 +196,65 @@ export async function deleteProductionScopeAction(jobId: string, scopeId: string
     .delete().eq("id", scopeId).eq("job_id", jobId).select("id").single();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Production scope not found.");
+  refresh(jobId);
+}
+
+export async function recordCompletionCheckAction(values: {
+  jobId: string;
+  scopeId: string;
+  contactName: string;
+  contactMethod: "phone" | "email" | "text" | "in_person" | "other";
+  outcome: "satisfied" | "issue";
+  notes: string;
+}) {
+  await requirePermission("pipeline.manage");
+  const employee = await requireEmployee();
+  if (!values.contactName.trim()) throw new Error("Enter the person contacted.");
+  const notes = values.notes.trim();
+  if (values.outcome === "issue" && !notes) throw new Error("Describe the reported issue.");
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("job_material_scopes").update({
+    completion_check_method: "customer_checkin",
+    completion_check_status: values.outcome === "issue" ? "issue" : "completed",
+    completion_contact_name: values.contactName.trim(),
+    completion_contact_method: values.contactMethod,
+    completion_check_notes: notes || "Customer confirmed the completed work looks good.",
+    completion_checked_at: new Date().toISOString(),
+    completion_checked_by: employee.id,
+    job_walk_required: false,
+    updated_by: employee.id,
+  }).eq("id", values.scopeId).eq("job_id", values.jobId).select("description").single();
+  if (error || !data) throw new Error(error?.message ?? "Production scope not found.");
+  const description = values.outcome === "issue"
+    ? `Completion check recorded an issue${data.description ? ` for ${data.description}` : ""}: ${notes}`
+    : `Customer check-in completed${data.description ? ` for ${data.description}` : ""} with ${values.contactName.trim()} by ${values.contactMethod.replace("_", " ")}.`;
+  const { error: activityError } = await admin.from("job_activities").insert({
+    job_id: values.jobId,
+    activity_type: values.outcome === "issue" ? "production_issue" : "completion_check",
+    description,
+    new_value: values.outcome,
+  });
+  if (activityError) throw new Error(activityError.message);
+  refresh(values.jobId);
+}
+
+export async function resetCompletionCheckAction(jobId: string, scopeId: string) {
+  await requirePermission("pipeline.manage");
+  const employee = await requireEmployee();
+  const admin = createAdminClient();
+  const { data: scope, error: scopeError } = await admin.from("job_material_scopes")
+    .select("completion_check_method").eq("id", scopeId).eq("job_id", jobId).single();
+  if (scopeError || !scope) throw new Error(scopeError?.message ?? "Production scope not found.");
+  const { error } = await admin.from("job_material_scopes").update({
+    completion_check_status: scope.completion_check_method === "not_required" ? "not_required" : "pending",
+    completion_contact_name: null,
+    completion_contact_method: null,
+    completion_check_notes: null,
+    completion_checked_at: null,
+    completion_checked_by: null,
+    updated_by: employee.id,
+  }).eq("id", scopeId).eq("job_id", jobId);
+  if (error) throw new Error(error.message);
   refresh(jobId);
 }
 

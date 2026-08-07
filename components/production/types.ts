@@ -6,6 +6,9 @@ export type MaterialStatus =
   | "issue"
   | "excluded";
 
+export type CompletionCheckMethod = "job_walk" | "customer_checkin" | "not_required";
+export type CompletionCheckStatus = "pending" | "completed" | "issue" | "not_required";
+
 export type MaterialCategory = {
   id: string;
   name: string;
@@ -28,6 +31,13 @@ export type MaterialScope = {
   work_order_required: boolean;
   scope_kind: "material" | "demo" | "labor";
   job_walk_required: boolean;
+  completion_check_method: CompletionCheckMethod;
+  completion_check_status: CompletionCheckStatus;
+  completion_contact_name: string | null;
+  completion_contact_method: "phone" | "email" | "text" | "in_person" | "other" | null;
+  completion_check_notes: string | null;
+  completion_checked_at: string | null;
+  completion_checked_by: string | null;
   material_status: MaterialStatus;
   eta_date: string | null;
   ordered_at: string | null;

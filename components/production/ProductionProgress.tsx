@@ -43,7 +43,7 @@ export default function ProductionProgress({
       <div className="mt-3 overflow-x-auto">
         <div className="min-w-[490px]">
           <div className="grid grid-cols-[minmax(100px,1fr)_repeat(5,54px)] gap-1 px-1 text-center text-[9px] font-semibold uppercase tracking-wide text-gray-500">
-            <span /><span>Ordered</span><span>Ready</span><span>Schedule</span><span>W.O.</span><span>Job Walk</span>
+            <span /><span>Ordered</span><span>Ready</span><span>Schedule</span><span>W.O.</span><span>Completion</span>
           </div>
           <div className="mt-1 divide-y divide-gray-100">
             {visible.map((scope) => <MaterialProgressRow key={scope.id} scope={scope} />)}
@@ -66,8 +66,15 @@ function MaterialProgressRow({ scope }: { scope: MaterialScope }) {
   const scheduled = excluded || !scope.installation_required || installAppointments.length > 0;
   const workOrder = excluded || !scope.work_order_required || (installAppointments.length > 0 && installAppointments.every((item) => ["sent", "acknowledged"].includes(item.work_order_status)));
   const jobWalkAppointments = scope.appointments.filter((item) => item.appointment_type === "job_walk" && item.status !== "cancelled");
-  const jobWalk = excluded || !scope.job_walk_required || jobWalkAppointments.some((item) => item.status === "completed");
-  const jobWalkScheduled = scope.job_walk_required && jobWalkAppointments.length > 0 && !jobWalk;
+  const completionRequired = scope.completion_check_method !== "not_required";
+  const jobWalk = excluded || !completionRequired || (scope.completion_check_method === "job_walk"
+    ? jobWalkAppointments.some((item) => item.status === "completed")
+    : scope.completion_check_status === "completed");
+  const jobWalkScheduled = completionRequired && (
+    scope.completion_check_method === "job_walk"
+      ? jobWalkAppointments.length > 0 && !jobWalk
+      : scope.completion_check_status === "issue"
+  );
   return (
     <div className="grid grid-cols-[minmax(100px,1fr)_repeat(5,54px)] items-center gap-1 py-2">
       <div className="flex min-w-0 items-center gap-2">
@@ -78,7 +85,7 @@ function MaterialProgressRow({ scope }: { scope: MaterialScope }) {
       <Step complete={ready} priorComplete={ordered} excluded={excluded} attention={scope.material_status === "issue" || scope.material_status === "partially_received"} />
       <Step complete={scheduled} priorComplete={ready} excluded={excluded || !scope.installation_required} />
       <Step complete={workOrder} priorComplete={scheduled} excluded={excluded || !scope.work_order_required} />
-      <Step complete={jobWalk} priorComplete={workOrder} excluded={excluded || !scope.job_walk_required} attention={jobWalkScheduled} />
+      <Step complete={jobWalk} priorComplete={workOrder} excluded={excluded || !completionRequired} attention={jobWalkScheduled} />
     </div>
   );
 }
