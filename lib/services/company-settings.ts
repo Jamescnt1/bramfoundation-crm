@@ -90,10 +90,9 @@ function clean(value: string | null) {
 export async function uploadCompanyLogo(id: string, file: File) {
   await requireAdministrator();
   const extension = logoExtensions[file.type];
-  if (!extension) throw new Error("Choose a JPG, PNG, WebP, or SVG image.");
-  if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
-    throw new Error("Company logos must be smaller than 5 MB.");
-  }
+  if (!extension) throw new Error(`The selected file type (${file.type || "unknown"}) is not supported. Choose a JPG, PNG, WebP, or SVG image.`);
+  if (file.size <= 0) throw new Error("The selected logo file is empty (0 bytes). Export or download the image, then choose it again.");
+  if (file.size > 5 * 1024 * 1024) throw new Error(`The selected logo is ${formatFileSize(file.size)}. The maximum size is 5 MB.`);
 
   const admin = createAdminClient();
   const { data: existing, error: existingError } = await admin
@@ -159,4 +158,10 @@ function getManagedLogoPath(url: string | null) {
   const marker = `/storage/v1/object/public/${logoBucket}/`;
   const markerIndex = url.indexOf(marker);
   return markerIndex === -1 ? null : decodeURIComponent(url.slice(markerIndex + marker.length));
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} bytes`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
