@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, Plus, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import AppSidebar, { NavigationLinks } from "@/components/AppSidebar";
@@ -85,6 +85,27 @@ export default function AppShell({
                   + New Task
                 </Link>
               </div>
+              {employee ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileNavigationOpen(false);
+                    setProfilePhotoOpen(true);
+                  }}
+                  className="mt-3 flex w-full items-center gap-3 rounded-md border border-gray-700 bg-gray-800 px-3 py-2.5 text-left text-white hover:bg-gray-700 sm:hidden"
+                >
+                  <Avatar className="ring-1 ring-white/25">
+                    <AvatarImage src={employee.avatar_url ?? undefined} alt="" />
+                    <AvatarFallback style={{ backgroundColor: employee.color }} className="font-semibold text-white">
+                      {getInitials(employee.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold">{employee.name}</span>
+                    <span className="block text-xs text-gray-400">Change profile photo</span>
+                  </span>
+                </button>
+              ) : null}
             </div>
             <NavigationLinks
               employee={employee}
@@ -129,12 +150,12 @@ export default function AppShell({
                 aria-label="Create a new task"
                 className="inline-flex h-9 items-center rounded-md border border-gray-600 bg-gray-800 px-2.5 text-sm font-semibold text-white hover:bg-gray-700 sm:px-4"
               >
-                <Plus className="h-4 w-4 sm:hidden" aria-hidden="true" />
+                <span className="sm:hidden">+ Task</span>
                 <span className="hidden sm:inline">+ New Task</span>
               </Link>
             </div>
             <GlobalSearch key={pathname} />
-            <div className="flex min-w-0 items-center gap-2">
+            <div className="hidden min-w-0 items-center gap-2 sm:flex">
               {employee ? (
                 <button
                   type="button"
