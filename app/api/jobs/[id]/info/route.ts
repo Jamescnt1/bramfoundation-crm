@@ -4,7 +4,7 @@ import { updateJob, type UpdateJobValues } from "@/lib/services/jobs";
 
 export async function PATCH(
   request: Request,
-  context: RouteContext<"/api/jobs/[id]/info">,
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     await requirePermission("jobs.manage");

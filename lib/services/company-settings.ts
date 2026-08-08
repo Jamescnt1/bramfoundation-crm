@@ -1,4 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdministrator } from "@/lib/services/employees";
+
+const logoBucket = "company-logos";
+const logoExtensions: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/svg+xml": "svg",
+};
 
 export type CompanySettings = {
   id: string;
@@ -48,11 +58,12 @@ export async function updateCompanySettings(
   id: string,
   values: CompanySettingsValues,
 ): Promise<CompanySettings> {
+  await requireAdministrator();
   const companyName = values.company_name.trim();
   if (!companyName) throw new Error("Company name is required.");
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from("company_settings")
     .update({
       company_name: companyName,
@@ -74,4 +85,78 @@ export async function updateCompanySettings(
 
 function clean(value: string | null) {
   return value?.trim() || null;
+}
+
+export async function uploadCompanyLogo(id: string, file: File) {
+  await requireAdministrator();
+  const extension = logoExtensions[file.type];
+  if (!extension) throw new Error("Choose a JPG, PNG, WebP, or SVG image.");
+  if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
+    throw new Error("Company logos must be smaller than 5 MB.");
+  }
+
+  const admin = createAdminClient();
+  const { data: existing, error: existingError } = await admin
+    .from("company_settings")
+    .select("logo_url")
+    .eq("id", id)
+    .single();
+  if (existingError) throw new Error(existingError.message);
+
+  const storagePath = `${id}/${crypto.randomUUID()}.${extension}`;
+  const { error: uploadError } = await admin.storage
+    .from(logoBucket)
+    .upload(storagePath, await file.arrayBuffer(), {
+      contentType: file.type,
+      cacheControl: "3600",
+      upsert: false,
+    });
+  if (uploadError) throw new Error(uploadError.message);
+
+  const { data: publicUrl } = admin.storage.from(logoBucket).getPublicUrl(storagePath);
+  const { data, error } = await admin
+    .from("company_settings")
+    .update({ logo_url: publicUrl.publicUrl })
+    .eq("id", id)
+    .select(columns)
+    .single();
+
+  if (error) {
+    await admin.storage.from(logoBucket).remove([storagePath]);
+    throw new Error(error.message);
+  }
+
+  const previousPath = getManagedLogoPath(existing.logo_url);
+  if (previousPath) await admin.storage.from(logoBucket).remove([previousPath]);
+  return data as CompanySettings;
+}
+
+export async function removeCompanyLogo(id: string) {
+  await requireAdministrator();
+  const admin = createAdminClient();
+  const { data: existing, error: existingError } = await admin
+    .from("company_settings")
+    .select("logo_url")
+    .eq("id", id)
+    .single();
+  if (existingError) throw new Error(existingError.message);
+
+  const { data, error } = await admin
+    .from("company_settings")
+    .update({ logo_url: null })
+    .eq("id", id)
+    .select(columns)
+    .single();
+  if (error) throw new Error(error.message);
+
+  const path = getManagedLogoPath(existing.logo_url);
+  if (path) await admin.storage.from(logoBucket).remove([path]);
+  return data as CompanySettings;
+}
+
+function getManagedLogoPath(url: string | null) {
+  if (!url) return null;
+  const marker = `/storage/v1/object/public/${logoBucket}/`;
+  const markerIndex = url.indexOf(marker);
+  return markerIndex === -1 ? null : decodeURIComponent(url.slice(markerIndex + marker.length));
 }

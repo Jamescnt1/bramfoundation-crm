@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { ImagePlus } from "lucide-react";
+import { useRef, useState } from "react";
+import { ImagePlus, Trash2 } from "lucide-react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { updateCompanySettingsAction } from "@/app/settings/company/actions";
@@ -23,6 +25,9 @@ export default function CompanySettingsForm({
 }: {
   initialSettings: CompanySettings;
 }) {
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [settings, setSettings] = useState(initialSettings);
   const [values, setValues] = useState<CompanySettingsValues>({
     company_name: initialSettings.company_name,
     phone: initialSettings.phone,
@@ -34,6 +39,7 @@ export default function CompanySettingsForm({
     currency: initialSettings.currency,
   });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -47,12 +53,64 @@ export default function CompanySettingsForm({
     setMessage("");
     setError("");
     try {
-      await updateCompanySettingsAction(initialSettings.id, values);
+      const saved = await updateCompanySettingsAction(settings.id, values);
+      setSettings(saved);
+      setValues({
+        company_name: saved.company_name,
+        phone: saved.phone,
+        email: saved.email,
+        website: saved.website,
+        address: saved.address,
+        timezone: saved.timezone,
+        locale: saved.locale,
+        currency: saved.currency,
+      });
       setMessage("Company settings saved.");
+      router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to save company settings.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function uploadLogo(file: File) {
+    setUploading(true);
+    setMessage("");
+    setError("");
+    try {
+      const body = new FormData();
+      body.append("id", settings.id);
+      body.append("file", file);
+      const response = await fetch("/api/company/logo", { method: "POST", body });
+      const result = (await response.json()) as { settings?: CompanySettings; error?: string };
+      if (!response.ok || !result.settings) throw new Error(result.error ?? "Unable to upload the company logo.");
+      setSettings(result.settings);
+      setMessage("Company logo uploaded.");
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to upload the company logo.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function removeLogo() {
+    setUploading(true);
+    setMessage("");
+    setError("");
+    try {
+      const response = await fetch(`/api/company/logo?id=${encodeURIComponent(settings.id)}`, { method: "DELETE" });
+      const result = (await response.json()) as { settings?: CompanySettings; error?: string };
+      if (!response.ok || !result.settings) throw new Error(result.error ?? "Unable to remove the company logo.");
+      setSettings(result.settings);
+      setMessage("Company logo removed.");
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to remove the company logo.");
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -73,8 +131,17 @@ export default function CompanySettingsForm({
         </div>
 
         <div className="mt-6 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5">
-          <div className="flex items-center gap-3"><span className="rounded-lg bg-white p-2 text-gray-500 shadow-sm"><ImagePlus className="h-5 w-5" /></span><div><p className="font-medium text-gray-900">Company logo</p><p className="text-sm text-gray-500">Logo upload will be enabled when shared file storage is configured.</p></div></div>
-          <Button type="button" variant="outline" disabled className="mt-4">Upload logo (coming soon)</Button>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="flex h-20 w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white p-2">
+              {settings.logo_url ? <Image src={settings.logo_url} alt={`${values.company_name} logo`} width={240} height={120} unoptimized className="max-h-full max-w-full object-contain" /> : <ImagePlus className="h-7 w-7 text-gray-400" />}
+            </div>
+            <div className="flex-1"><p className="font-medium text-gray-900">Company logo</p><p className="text-sm text-gray-500">JPG, PNG, WebP, or SVG. Maximum 5 MB.</p></div>
+            <div className="flex flex-wrap gap-2">
+              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadLogo(file); }} />
+              <Button type="button" variant="outline" disabled={uploading} onClick={() => fileInputRef.current?.click()}>{uploading ? "Uploading..." : settings.logo_url ? "Replace logo" : "Upload logo"}</Button>
+              {settings.logo_url ? <Button type="button" variant="outline" disabled={uploading} onClick={() => void removeLogo()}><Trash2 className="mr-2 h-4 w-4" />Remove</Button> : null}
+            </div>
+          </div>
         </div>
       </section>
 

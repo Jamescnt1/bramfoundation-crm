@@ -14,5 +14,6 @@ export async function updateCompanySettingsAction(
   await requireAdministrator();
   const settings = await updateCompanySettings(id, values);
   revalidatePath("/settings/company");
+  revalidatePath("/", "layout");
   return settings;
 }
