@@ -36,6 +36,10 @@ export default async function SettingsPage() {
             <Link href="/sms-terms" className="hover:text-gray-900 hover:underline">
               SMS Terms
             </Link>
+            {" · "}
+            <Link href="/sms-opt-in" className="hover:text-gray-900 hover:underline">
+              SMS Opt-In
+            </Link>
           </p>
         </footer>
       </div>

@@ -34,7 +34,8 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.pathname === "/api/twilio/status";
   const isLegalPage =
     request.nextUrl.pathname === "/privacy" ||
-    request.nextUrl.pathname === "/sms-terms";
+    request.nextUrl.pathname === "/sms-terms" ||
+    request.nextUrl.pathname === "/sms-opt-in";
   const isPublicRoute =
     isLogin ||
     isForgotPassword ||

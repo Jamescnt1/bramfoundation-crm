@@ -43,7 +43,8 @@ export default function AppShell({
     pathname === "/forgot-password" ||
     pathname === "/reset-password" ||
     pathname === "/privacy" ||
-    pathname === "/sms-terms"
+    pathname === "/sms-terms" ||
+    pathname === "/sms-opt-in"
   ) return <>{children}</>;
 
   return (
