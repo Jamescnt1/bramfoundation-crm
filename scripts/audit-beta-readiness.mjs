@@ -70,5 +70,27 @@ for (const table of ["pipeline_stages", "lead_sources", "task_types", "role_defi
   } else console.log(`PASS ${table} configuration (${count} records)`);
 }
 
+const { data: communicationSettings, error: communicationSettingsError } = await admin
+  .from("communication_settings")
+  .select("sms_enabled")
+  .eq("singleton_key", true)
+  .single();
+if (communicationSettingsError) {
+  failed = true;
+  console.error(`FAIL communication settings: ${communicationSettingsError.message}`);
+} else if (communicationSettings.sms_enabled) {
+  const requiredTwilioEnvironment = [
+    "TWILIO_ACCOUNT_SID",
+    "TWILIO_AUTH_TOKEN",
+    "TWILIO_MESSAGING_SERVICE_SID",
+    "TWILIO_WEBHOOK_BASE_URL",
+  ];
+  const missingTwilioEnvironment = requiredTwilioEnvironment.filter((key) => !process.env[key]);
+  if (missingTwilioEnvironment.length) {
+    failed = true;
+    console.error(`FAIL enabled SMS is missing: ${missingTwilioEnvironment.join(", ")}`);
+  } else console.log("PASS enabled SMS server configuration");
+} else console.log("PASS SMS safely paused");
+
 if (failed) process.exit(1);
 console.log("Beta Supabase readiness audit passed.");

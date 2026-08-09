@@ -1,3 +1,4 @@
+import Link from "next/link";
 import SettingsHub from "@/components/settings/SettingsHub";
 import { canManageEmployees } from "@/lib/auth/roles";
 import { requireEmployee } from "@/lib/services/employees";
@@ -24,6 +25,19 @@ export default async function SettingsPage() {
         <SettingsHub
           showRestrictedSettings={canManageEmployees(currentEmployee.role)}
         />
+
+        <footer className="mt-12 border-t border-gray-200 pt-5 text-xs text-gray-500">
+          <p>
+            Communication policies: {" "}
+            <Link href="/privacy" className="hover:text-gray-900 hover:underline">
+              Privacy Policy
+            </Link>
+            {" · "}
+            <Link href="/sms-terms" className="hover:text-gray-900 hover:underline">
+              SMS Terms
+            </Link>
+          </p>
+        </footer>
       </div>
     </main>
   );

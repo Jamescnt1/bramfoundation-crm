@@ -2,6 +2,7 @@ import "server-only";
 
 import { requireAdministrator, requireEmployee } from "@/lib/services/employees";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getTwilioConfigurationStatus } from "@/lib/twilio/config";
 
 export type CommunicationSettings = {
   id: string;
@@ -29,6 +30,27 @@ export type CommunicationSettingsPageData = {
   settings: CommunicationSettings;
   preferences: EmployeeCommunicationPreference[];
   canManageCompanySettings: boolean;
+  twilio: ReturnType<typeof getTwilioConfigurationStatus>;
+  smsTestRecipients: SmsTestRecipient[];
+  recentSmsTests: SmsTestDelivery[];
+};
+
+export type SmsTestRecipient = {
+  id: string;
+  name: string;
+  crew_name: string;
+  mobile_phone: string;
+  preferred_channel: string;
+  trial_recipient_verified: boolean;
+};
+
+export type SmsTestDelivery = {
+  id: string;
+  recipient_name: string;
+  recipient_address: string;
+  status: string;
+  failure_reason: string | null;
+  created_at: string;
 };
 
 const settingsColumns = "id, email_notifications_enabled, sms_enabled, scheduled_communications_enabled, automated_communications_enabled, trial_mode";
@@ -54,6 +76,37 @@ export async function getCommunicationSettingsPageData(): Promise<CommunicationS
     : { data: [], error: null };
   if (preferenceResult.error) throw new Error(preferenceResult.error.message);
   const preferenceByEmployee = new Map((preferenceResult.data ?? []).map((item) => [item.employee_id, item]));
+  let smsTestRecipients: SmsTestRecipient[] = [];
+  let recentSmsTests: SmsTestDelivery[] = [];
+  if (canManageCompanySettings) {
+    const [contactResult, deliveryResult] = await Promise.all([
+      admin.from("installer_contacts").select("id, name, mobile_phone, preferred_channel, trial_recipient_verified, installer_crew:installer_crews(name)").eq("active", true).not("mobile_phone", "is", null).order("name"),
+      admin.from("communication_deliveries").select("id, recipient_id, recipient_address, status, failure_reason, created_at").eq("channel", "sms").eq("direction", "outbound").eq("recipient_type", "installer").order("created_at", { ascending: false }).limit(10),
+    ]);
+    if (contactResult.error) throw new Error(contactResult.error.message);
+    if (deliveryResult.error) throw new Error(deliveryResult.error.message);
+    const contacts = (contactResult.data ?? []).map((contact) => {
+      const crew = contact.installer_crew as unknown as { name: string } | { name: string }[] | null;
+      return {
+        id: contact.id,
+        name: contact.name,
+        crew_name: (Array.isArray(crew) ? crew[0]?.name : crew?.name) ?? "Install crew",
+        mobile_phone: contact.mobile_phone as string,
+        preferred_channel: contact.preferred_channel,
+        trial_recipient_verified: contact.trial_recipient_verified,
+      };
+    });
+    const contactById = new Map(contacts.map((contact) => [contact.id, contact]));
+    smsTestRecipients = contacts;
+    recentSmsTests = (deliveryResult.data ?? []).map((delivery) => ({
+      id: delivery.id,
+      recipient_name: contactById.get(delivery.recipient_id ?? "")?.name ?? "Installer contact",
+      recipient_address: delivery.recipient_address,
+      status: delivery.status,
+      failure_reason: delivery.failure_reason,
+      created_at: delivery.created_at,
+    }));
+  }
 
   return {
     settings: settingsResult.data as CommunicationSettings,
@@ -73,6 +126,9 @@ export async function getCommunicationSettingsPageData(): Promise<CommunicationS
       };
     }),
     canManageCompanySettings,
+    twilio: getTwilioConfigurationStatus(),
+    smsTestRecipients,
+    recentSmsTests,
   };
 }
 

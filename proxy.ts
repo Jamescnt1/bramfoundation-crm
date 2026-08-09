@@ -29,13 +29,21 @@ export async function proxy(request: NextRequest) {
   const isLoginApi = request.nextUrl.pathname === "/api/auth/login";
   const isCustomerEmailWebhook =
     request.nextUrl.pathname === "/api/customer-email/webhook";
+  const isTwilioWebhook =
+    request.nextUrl.pathname === "/api/twilio/inbound" ||
+    request.nextUrl.pathname === "/api/twilio/status";
+  const isLegalPage =
+    request.nextUrl.pathname === "/privacy" ||
+    request.nextUrl.pathname === "/sms-terms";
   const isPublicRoute =
     isLogin ||
     isForgotPassword ||
     isResetPassword ||
     isAuthConfirm ||
     isLoginApi ||
-    isCustomerEmailWebhook;
+    isCustomerEmailWebhook ||
+    isTwilioWebhook ||
+    isLegalPage;
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
@@ -44,7 +52,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && !isLoginApi && !isCustomerEmailWebhook) {
+  if (user && !isLoginApi && !isCustomerEmailWebhook && !isTwilioWebhook && !isLegalPage) {
     const { data: employee } = await supabase
       .from("employees")
       .select("active")
