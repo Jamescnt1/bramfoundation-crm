@@ -165,8 +165,8 @@ const settingsGroups: SettingsGroup[] = [
         available: true,
       },
       {
-        title: "Notifications",
-        description: "Prepare email, in-app, and workflow notification preferences.",
+        title: "Communications",
+        description: "Manage company safety controls and each employee’s email and text preferences.",
         href: "/settings/notifications",
         icon: Bell,
       },
