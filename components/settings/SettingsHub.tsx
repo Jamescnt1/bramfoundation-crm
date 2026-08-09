@@ -118,7 +118,7 @@ const settingsGroups: SettingsGroup[] = [
     items: [
       {
         title: "Install Crews",
-        description: "Manage the crews available for installation scheduling.",
+        description: "Manage crews, individual installer contacts, and communication preferences.",
         href: "/settings/install-crews",
         icon: HardHat,
         restricted: true,

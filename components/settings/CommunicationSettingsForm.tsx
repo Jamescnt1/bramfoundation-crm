@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Bell, CalendarDays, Mail, MessageSquareText, PauseCircle, Smartphone, Workflow } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   updateCommunicationSettingsAction,
@@ -91,7 +92,7 @@ export default function CommunicationSettingsForm({ initialData }: { initialData
       </article>)}</div>
     </section>
 
-    <section className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5"><div className="flex items-start gap-3"><MessageSquareText className="mt-0.5 h-5 w-5 text-gray-500" /><div><h2 className="font-semibold text-gray-900">Next: installer contacts and test texting</h2><p className="mt-1 text-sm text-gray-600">The next phase adds individual installer contact preferences, then connects verified Twilio trial recipients. Nothing will send automatically until those steps are complete.</p></div></div></section>
+    <section className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5"><div className="flex items-start gap-3"><MessageSquareText className="mt-0.5 h-5 w-5 text-gray-500" /><div><h2 className="font-semibold text-gray-900">Installer communication profiles</h2><p className="mt-1 text-sm text-gray-600">Individual installer contacts and their reminder choices are managed under Install Crews. Saving a contact still does not send a message.</p><Link href="/settings/install-crews" className="mt-2 inline-block text-sm font-semibold text-blue-700 hover:underline">Manage installer contacts →</Link></div></div></section>
   </div>;
 }
 

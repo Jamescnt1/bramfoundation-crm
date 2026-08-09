@@ -23,7 +23,7 @@ const requiredTables = [
   "communication_templates", "communication_webhook_events",
   "conversation_participants", "conversations", "customers",
   "employee_communication_preferences", "employee_notifications", "employees", "job_activities",
-  "job_attachments", "job_tasks", "jobs", "lead_sources", "messages",
+  "installer_contacts", "job_attachments", "job_tasks", "jobs", "lead_sources", "messages",
   "permission_definitions", "pipeline_stages", "role_definitions",
   "role_permissions", "task_types",
 ];
