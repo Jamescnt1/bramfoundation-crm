@@ -1,4 +1,5 @@
 import type { CalendarAppointment } from "@/components/calendar/types";
+import { CalendarDays, UserRound } from "lucide-react";
 import AppointmentTooltip from "@/components/calendar/AppointmentTooltip";
 import {
   AppointmentTypeIcon,
@@ -9,7 +10,7 @@ import {
   formatAppointmentDisplayName,
   formatAppointmentType,
 } from "@/lib/appointment-display";
-import { formatAppointmentTime } from "@/lib/date-time";
+import { formatAppointmentTime, formatDateTime } from "@/lib/date-time";
 
 type AppointmentCardProps = {
   appointment: CalendarAppointment;
@@ -18,6 +19,7 @@ type AppointmentCardProps = {
   selected?: boolean;
   onSelect?: (appointment: CalendarAppointment) => void;
   className?: string;
+  showDetails?: boolean;
 };
 
 export default function AppointmentCard({
@@ -27,6 +29,7 @@ export default function AppointmentCard({
   selected = false,
   onSelect,
   className = "",
+  showDetails = false,
 }: AppointmentCardProps) {
   const backgroundColor = normalizeCalendarColor(
     appointment.assigned_employee?.color,
@@ -48,6 +51,9 @@ export default function AppointmentCard({
     customerName && jobName
       ? `${customerName} / ${jobName}`
       : jobName || customerName || appointment.title?.trim() || typeLabel;
+  const assignment = appointment.appointment_type === "installation"
+    ? appointment.installer_crew?.name ?? "Unassigned crew"
+    : appointment.assigned_employee?.name ?? "Unassigned";
 
   return (
     <AppointmentTooltip appointment={appointment} displayName={displayName}>
@@ -78,6 +84,18 @@ export default function AppointmentCard({
             </span>
           ) : null}
         </span>
+        {showDetails ? (
+          <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-black/10 pt-1.5 text-[10px] font-medium opacity-90">
+            <span className="inline-flex items-center gap-1">
+              <CalendarDays className="h-3 w-3" />
+              {formatDateTime(appointment.starts_at, { month: "short", day: "numeric", year: "numeric" })}
+            </span>
+            <span className="inline-flex min-w-0 items-center gap-1">
+              <UserRound className="h-3 w-3 shrink-0" />
+              <span className="truncate">{assignment}</span>
+            </span>
+          </span>
+        ) : null}
       </button>
     </AppointmentTooltip>
   );

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, Check, MapPin, Paperclip, UserRound } from "lucide-react";
+import { CalendarDays, Check, KeyRound, MapPin, Paperclip, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isQfNumberRequired } from "@/components/pipeline/constants";
 import type { CalendarAppointment } from "@/components/calendar/types";
@@ -82,6 +82,9 @@ export default function AppointmentDetailsPanel({
             <div className="flex gap-3"><CalendarDays className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="font-medium text-gray-900">{formatDate(appointment.starts_at)}{appointment.appointment_type === "installation" && appointment.ends_at ? ` – ${formatDate(appointment.ends_at)}` : ""}</p><p className="mt-1 text-gray-500">{appointment.all_day ? "All Day · 7:00 AM–3:00 PM" : `${formatAppointmentTime(appointment.starts_at)}${appointment.ends_at ? ` – ${formatAppointmentTime(appointment.ends_at)}` : ""}`}{appointment.recurrence_series_id ? " · Recurring" : ""}</p></div></div>
             <div className="flex gap-3"><UserRound className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="text-gray-500">{appointment.appointment_type === "installation" ? "Install crew" : "Assigned employee"}</p><p className="mt-1 font-medium text-gray-900">{appointment.appointment_type === "installation" ? installerCrew?.name ?? appointment.installer_crew?.name ?? "Unassigned crew" : employee?.name ?? "Unassigned"}</p></div></div>
             <div className="flex gap-3"><MapPin className="mt-2 h-4 w-4 text-gray-400" /><div><p className="text-gray-500">Location</p>{appointment.location || appointment.job?.address ? <AddressLink value={appointment.location || appointment.job?.address} className="mt-1 font-medium text-gray-900" /> : <p className="mt-1 text-gray-500">No location provided</p>}</div></div>
+            {appointment.job?.lock_box_code ? (
+              <div className="flex gap-3"><KeyRound className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="text-gray-500">Lock box</p><p className="mt-1 font-medium text-gray-900">{appointment.job.lock_box_code}</p></div></div>
+            ) : null}
 
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Customer / job</p>

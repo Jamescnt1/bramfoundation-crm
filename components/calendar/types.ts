@@ -68,6 +68,7 @@ export type CalendarAppointment = {
     email: string | null;
     qfloors_job_number: string | null;
     address: string | null;
+    lock_box_code: string | null;
     status: string | null;
     installation_required: boolean;
     customer: {

@@ -317,7 +317,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
       </header>
       <JobHoldDialog open={holdDialogOpen} jobId={job.id} currentReason={holdReason} currentUntil={holdUntil} currentNote={holdNote} onOpenChange={setHoldDialogOpen} onSaved={(values) => { setOnHold(true); setHoldReason(values.reason); setHoldUntil(values.until); setHoldNote(values.note); router.refresh(); }} />
 
-      <nav className="sticky top-0 z-20 mt-3 flex gap-1 overflow-x-auto rounded-t-lg border border-gray-200 border-b-0 bg-gray-100 px-2 pt-2 shadow-sm" role="tablist" aria-label="Job workspace sections">
+      <nav className="sticky top-0 z-20 mt-3 flex gap-1 overflow-x-auto rounded-t-lg border border-blue-700 border-b-0 bg-blue-600 px-2 pt-2 shadow-sm" role="tablist" aria-label="Job workspace sections">
         {nav.map(([id, label]) => (
           <button
             key={id}
@@ -327,8 +327,8 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
             onClick={() => selectTab(id)}
             className={`min-h-10 whitespace-nowrap rounded-t-md border px-3 py-2 text-xs font-semibold transition ${
               activeTab === id
-                ? "relative -mb-px border-gray-200 border-b-white bg-white text-gray-950"
-                : "border-transparent text-gray-600 hover:bg-white/70 hover:text-gray-950"
+                ? "relative -mb-px border-blue-200 border-b-white bg-white text-blue-800"
+                : "border-transparent text-white hover:bg-blue-700 hover:text-white"
             }`}
           >
             {label}
@@ -381,20 +381,6 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                   />
                 </WorkspaceCard>
 
-                <WorkspaceCard title="Work at a glance">
-                  <div className="grid grid-cols-2 gap-2">
-                    <Metric label="Open tasks" value={openTasks.length} />
-                    <Metric label="Overdue" value={overdueTasks.length} danger={Boolean(overdueTasks.length)} />
-                    <Metric label="Upcoming" value={upcoming.length} />
-                    <Metric label="Activity" value={activities.length} />
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-1.5 border-t border-gray-100 pt-3">
-                    <QuickButton onClick={() => selectTab("tasks")}>Open Tasks</QuickButton>
-                    <QuickButton onClick={() => schedule()}>Schedule</QuickButton>
-                    <QuickButton onClick={() => selectTab("communications")}>Messages</QuickButton>
-                  </div>
-                </WorkspaceCard>
-
                 <WorkspaceCard title="Upcoming appointments" count={upcoming.length}>
                   {upcoming.length ? (
                     <div className="space-y-2">
@@ -413,6 +399,20 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                       action={<button type="button" onClick={() => schedule()} className="text-xs font-semibold text-gray-900 hover:underline">Schedule</button>}
                     />
                   )}
+                </WorkspaceCard>
+
+                <WorkspaceCard title="Work at a glance">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Metric label="Open tasks" value={openTasks.length} />
+                    <Metric label="Overdue" value={overdueTasks.length} danger={Boolean(overdueTasks.length)} />
+                    <Metric label="Upcoming" value={upcoming.length} />
+                    <Metric label="Activity" value={activities.length} />
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-1.5 border-t border-gray-100 pt-3">
+                    <QuickButton onClick={() => selectTab("tasks")}>Open Tasks</QuickButton>
+                    <QuickButton onClick={() => schedule()}>Schedule</QuickButton>
+                    <QuickButton onClick={() => selectTab("communications")}>Messages</QuickButton>
+                  </div>
                 </WorkspaceCard>
 
               </div>
@@ -472,7 +472,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
               </div>
               {appointments.length ? (
                 <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                  {appointments.map((appointment) => <AppointmentCard key={appointment.id} appointment={appointment} compact />)}
+                  {appointments.map((appointment) => <AppointmentCard key={appointment.id} appointment={appointment} compact showDetails />)}
                 </div>
               ) : <WorkspaceEmpty text="No calendar events are linked to this job." />}
             </WorkspaceCard>
@@ -481,13 +481,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
 
         {activeTab === "production" ? (
           <section>
-            <WorkspaceSectionHeader
-              title="Production"
-              description="Coordinate materials, installation scopes, and crew work orders."
-            />
-            <div className="mt-2">
-              <ProductionWorkspace jobId={job.id} scopes={materialScopes} categories={materialCategories} summary={productionSummary} appointments={appointments} installationRequired={currentInstallationRequired} onSchedule={(scopeId, type = "installation") => schedule(type, scopeId ? [scopeId] : [])} onEditInstallation={editInstallation} />
-            </div>
+            <ProductionWorkspace jobId={job.id} scopes={materialScopes} categories={materialCategories} summary={productionSummary} appointments={appointments} installationRequired={currentInstallationRequired} onSchedule={(scopeId, type = "installation") => schedule(type, scopeId ? [scopeId] : [])} onEditInstallation={editInstallation} />
           </section>
         ) : null}
 
