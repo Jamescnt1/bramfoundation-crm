@@ -79,7 +79,7 @@ export default function CalendarToolbar({
         <button
           type="button"
           onClick={onNewAppointment}
-          className="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-lg bg-gray-950 px-4 text-sm font-medium text-white transition hover:bg-blue-800"
+          className="foundation-primary-action h-9 w-fit gap-2 px-4 text-sm"
         >
           <Plus className="h-4 w-4" />
           Appointment

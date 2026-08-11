@@ -157,12 +157,7 @@ export default function TaskManager({
     <section className={compact ? "" : "mt-8"}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          {!compact ? (
-            <>
-              <h2 className="text-xl font-semibold text-gray-950">Tasks</h2>
-              <p className="mt-1 text-sm text-gray-500">Customer work and standalone business tasks in one place.</p>
-            </>
-          ) : null}
+          {!compact ? <p className="text-sm text-gray-500">Customer work and standalone business tasks in one place.</p> : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!fixedCustomerId && !fixedJobId ? (
@@ -187,7 +182,7 @@ export default function TaskManager({
               setEditing(null);
               setDialogOpen(true);
             }}
-            className="inline-flex w-fit items-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+            className="foundation-primary-action w-fit gap-2 px-4 py-2.5 text-sm"
           >
             <Plus className="h-4 w-4" /> New Task
           </button>

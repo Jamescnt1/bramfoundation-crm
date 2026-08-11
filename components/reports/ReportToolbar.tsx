@@ -95,7 +95,7 @@ export default function ReportToolbar({
               <Printer className="h-4 w-4" />
               Print
             </button>
-            <button type="button" disabled={loading} onClick={onRun} className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-60">
+            <button type="button" disabled={loading} onClick={onRun} className="foundation-primary-action px-5 py-2.5 text-sm">
               {loading ? "Running…" : "Run Report"}
             </button>
           </div>
@@ -147,4 +147,3 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const inputClass = "h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 outline-none focus:border-black";
 const secondaryButton = "inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40";
-

@@ -270,7 +270,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
 
   return (
     <>
-      <header className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm sm:px-5">
+      <header className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm sm:px-5">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -296,7 +296,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
           <div className="flex flex-wrap items-center gap-1.5">
             <QuickButton onClick={() => selectTab("tasks")}><CheckSquare /> Add Task</QuickButton>
             <QuickButton onClick={() => schedule()}><CalendarPlus /> Schedule</QuickButton>
-            <Link href={`/leads/${job.id}/edit`} className="inline-flex min-h-9 items-center gap-1.5 rounded-md bg-black px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800"><Pencil className="h-3.5 w-3.5" /> Edit Job Info</Link>
+            <Link href={`/leads/${job.id}/edit`} className="foundation-primary-action min-h-9 gap-1.5 rounded-md px-3 py-1.5 text-xs"><Pencil className="h-3.5 w-3.5" /> Edit Job Info</Link>
             <DropdownMenu>
               <DropdownMenuTrigger className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50" aria-label="More job actions"><MoreHorizontal className="h-4 w-4" /></DropdownMenuTrigger>
               <DropdownMenuContent align="end">

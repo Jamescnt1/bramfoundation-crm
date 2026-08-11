@@ -19,9 +19,7 @@ export default function CustomerList({
 }: CustomerListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCustomerIds, setExpandedCustomerIds] = useState<Set<string>>(
-    () => new Set(initialCustomers.filter((customer) =>
-      initialJobs.some((job) => job.customer_id === customer.id),
-    ).map((customer) => customer.id)),
+    () => new Set(),
   );
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -76,6 +74,12 @@ export default function CustomerList({
     });
   }
 
+  function setAllExpanded(expanded: boolean) {
+    setExpandedCustomerIds(
+      expanded ? new Set(customerGroups.map(({ customer }) => customer.id)) : new Set(),
+    );
+  }
+
   return (
     <section className="mt-8">
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -92,19 +96,24 @@ export default function CustomerList({
         />
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-4">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-gray-600">
           {customerGroups.length} {customerGroups.length === 1 ? "customer" : "customers"}
         </p>
-        {searchQuery ? (
-          <button
-            type="button"
-            onClick={() => setSearchQuery("")}
-            className="text-sm font-medium text-gray-600 hover:text-black"
-          >
-            Clear search
-          </button>
-        ) : null}
+        <div className="flex items-center gap-3 text-sm font-medium text-gray-600">
+          {!normalizedQuery && customerGroups.length ? (
+            <>
+              <button type="button" onClick={() => setAllExpanded(true)} className="hover:text-gray-950">Expand all</button>
+              <span className="text-gray-300" aria-hidden="true">|</span>
+              <button type="button" onClick={() => setAllExpanded(false)} className="hover:text-gray-950">Collapse all</button>
+            </>
+          ) : null}
+          {searchQuery ? (
+            <button type="button" onClick={() => setSearchQuery("")} className="text-blue-700 hover:text-blue-900">
+              Clear search
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {initialCustomers.length === 0 ? (

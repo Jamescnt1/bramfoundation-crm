@@ -4,6 +4,7 @@ import { getActiveEmployees, hasPermission, requireEmployee } from "@/lib/servic
 import { getPipelineStages } from "@/lib/services/pipeline-stages";
 import { getInstallationJobIds, getWorkOrderReadyJobIds } from "@/lib/services/appointments";
 import { getProductionSummaries } from "@/lib/services/production";
+import PageHeader from "@/components/layout/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -24,18 +25,7 @@ export default async function PipelinePage() {
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-8">
       <div className="mx-auto max-w-full">
-        <header>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-              Sales Pipeline
-            </h1>
-
-            <p className="mt-2 text-gray-600">
-              Move flooring opportunities from first contact through approval and completion.
-            </p>
-          </div>
-
-        </header>
+        <PageHeader title="Sales Pipeline" description="Move flooring opportunities from first contact through approval and completion." />
 
         {errorMessage ? (
           <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">

@@ -11,6 +11,7 @@ import DashboardScheduleList from "@/components/dashboard/DashboardScheduleList"
 import { getCompanySettings } from "@/lib/services/company-settings";
 import CustomerEmailRepliesCard from "@/components/dashboard/CustomerEmailRepliesCard";
 import { getMyCustomerEmailReplies } from "@/lib/services/customer-email";
+import PageHeader from "@/components/layout/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -27,13 +28,7 @@ export default async function MyDashboardPage() {
   return (
     <main className="min-h-screen w-full min-w-0 max-w-full overflow-x-hidden bg-gray-50 p-4 md:p-6">
       <div className="mx-auto w-full min-w-0 max-w-7xl">
-        <header>
-          <div>
-            <p className="text-sm font-medium text-gray-500">My Workspace</p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight">Welcome, {employee.name}</h1>
-            <p className="mt-1 text-sm text-gray-600">Your assigned work, schedule, and pipeline at a glance.</p>
-          </div>
-        </header>
+        <PageHeader compact eyebrow="My Workspace" title={`Welcome, ${employee.name}`} description="Your assigned work, schedule, and pipeline at a glance." />
 
         <section className="relative z-30 mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-4">

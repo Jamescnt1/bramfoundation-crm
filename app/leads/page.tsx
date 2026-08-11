@@ -8,6 +8,7 @@ import {
 } from "@/components/pipeline/constants";
 import { formatJobDisplayName } from "@/lib/job-display";
 import { AddressLink, EmailLink, PhoneLink } from "@/components/contact/ActionableContactLinks";
+import PageHeader from "@/components/layout/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -29,25 +30,7 @@ export default async function LeadsPage() {
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-8">
       <div className="mx-auto max-w-7xl">
-        <header>
-          <div>
-            <Link
-              href="/"
-              className="text-sm font-medium text-gray-600 hover:text-black"
-            >
-              ← Dashboard
-            </Link>
-
-            <h1 className="mt-4 text-3xl font-bold text-gray-900">
-              Active Sales Queue
-            </h1>
-
-            <p className="mt-2 text-gray-600">
-              New leads and floor measures requiring immediate attention.
-            </p>
-          </div>
-
-        </header>
+        <PageHeader backHref="/my-dashboard" backLabel="Dashboard" title="Active Sales Queue" description="New leads and floor measures requiring immediate attention." />
 
         {!errorMessage && (
           <section className="mt-8 grid gap-4 sm:grid-cols-3">

@@ -25,6 +25,7 @@ export default function AppShell({
   companyName,
 }: AppShellProps) {
   const pathname = usePathname();
+  const pageTitle = getPageTitle(pathname);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [profilePhotoOpen, setProfilePhotoOpen] = useState(false);
 
@@ -132,10 +133,10 @@ export default function AppShell({
             </button>
             <div className="min-w-0">
               <p className="truncate font-semibold text-white">
-                {companyName ?? "Company"}
+                {pageTitle}
               </p>
               <p className="hidden text-sm text-gray-400 sm:block">
-                Sales Operations
+                {companyName ?? "Foundation CRM"}
               </p>
             </div>
           </div>
@@ -203,4 +204,48 @@ function getInitials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join("");
+}
+
+function getPageTitle(pathname: string) {
+  if (/^\/leads\/[^/]+$/.test(pathname)) return "Job Workspace";
+  if (/^\/customers\/[^/]+$/.test(pathname)) return "Customer Details";
+  if (pathname.startsWith("/leads/new")) return "New Lead / Job";
+  if (pathname.includes("/edit")) return pathname.startsWith("/customers") ? "Edit Customer" : "Edit Job";
+  if (pathname.includes("/copy")) return "Copy Job";
+
+  const settingsTitles: Array<[string, string]> = [
+    ["/settings/appointment-types", "Appointment Types"],
+    ["/settings/automation-rules", "Automation Rules"],
+    ["/settings/business-hours", "Business Hours"],
+    ["/settings/company-dashboard", "Company Dashboard Settings"],
+    ["/settings/email-templates", "Email Templates"],
+    ["/settings/employees", "Employees & Access"],
+    ["/settings/install-crews", "Install Crews"],
+    ["/settings/integrations", "Integrations"],
+    ["/settings/lead-sources", "Lead Sources"],
+    ["/settings/notifications", "Communications"],
+    ["/settings/pipeline", "Pipeline Settings"],
+    ["/settings/roles", "Roles & Permissions"],
+    ["/settings/task-types", "Task Types"],
+    ["/settings/calendar", "Calendar Settings"],
+    ["/settings/company", "Company Settings"],
+    ["/settings/holidays", "Holidays"],
+  ];
+  const setting = settingsTitles.find(([href]) => pathname.startsWith(href));
+  if (setting) return setting[1];
+
+  const titles: Array<[string, string]> = [
+    ["/my-dashboard", "My Dashboard"],
+    ["/dashboard", "Dashboard"],
+    ["/company", "Company Dashboard"],
+    ["/leads", "Leads"],
+    ["/customers/new", "New Customer"],
+    ["/customers", "Customers"],
+    ["/pipeline", "Sales Pipeline"],
+    ["/calendar", "Calendar"],
+    ["/tasks", "Tasks"],
+    ["/reports", "Reports"],
+    ["/settings", "Settings"],
+  ];
+  return titles.find(([href]) => pathname.startsWith(href))?.[1] ?? "Foundation CRM";
 }

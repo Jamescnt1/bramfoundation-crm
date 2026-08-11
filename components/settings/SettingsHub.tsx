@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import {
   ArrowRight,
   LayoutDashboard,
@@ -189,15 +192,32 @@ const settingsGroups: SettingsGroup[] = [
 export default function SettingsHub({
   showRestrictedSettings,
 }: SettingsHubProps) {
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const visibleGroups = useMemo(() => settingsGroups.map((group) => ({
+    ...group,
+    items: group.items.filter((item) =>
+      (!item.restricted || showRestrictedSettings) &&
+      (!normalizedQuery || `${item.title} ${item.description} ${group.title}`.toLocaleLowerCase().includes(normalizedQuery)),
+    ),
+  })).filter((group) => group.items.length), [normalizedQuery, showRestrictedSettings]);
+
   return (
-    <div className="mt-10 space-y-10">
-      {settingsGroups.map((group) => {
-        const visibleItems = group.items.filter(
-          (item) => !item.restricted || showRestrictedSettings,
-        );
+    <div className="mt-8">
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <label htmlFor="settings-search" className="sr-only">Search settings</label>
+        <input
+          id="settings-search"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search settings..."
+          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        />
+      </div>
 
-        if (visibleItems.length === 0) return null;
-
+      <div className="mt-6 space-y-8">
+      {visibleGroups.map((group) => {
         return (
           <section key={group.title} aria-labelledby={`settings-${group.title}`}>
             <div>
@@ -210,14 +230,21 @@ export default function SettingsHub({
               <p className="mt-1 text-sm text-gray-500">{group.description}</p>
             </div>
 
-            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {visibleItems.map((item) => (
+            <div className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              {group.items.map((item) => (
                 <SettingsCard key={item.href} item={item} />
               ))}
             </div>
           </section>
         );
       })}
+      {!visibleGroups.length ? (
+        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center">
+          <p className="font-medium text-gray-900">No settings match “{query.trim()}”.</p>
+          <button type="button" onClick={() => setQuery("")} className="mt-2 text-sm font-medium text-blue-700 hover:text-blue-900">Clear search</button>
+        </div>
+      ) : null}
+      </div>
     </div>
   );
 }
@@ -228,33 +255,19 @@ function SettingsCard({ item }: { item: SettingsItem }) {
   return (
     <Link
       href={item.href}
-      className="group flex min-h-44 flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+      className="group flex items-center gap-4 border-b border-gray-100 px-4 py-4 transition last:border-b-0 hover:bg-gray-50 sm:px-5"
     >
-      <div className="flex items-start justify-between gap-4">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition group-hover:bg-black group-hover:text-white">
-          <Icon className="h-5 w-5" aria-hidden="true" />
-        </span>
-
-        <span
-          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-            item.available
-              ? "bg-green-50 text-green-700"
-              : "bg-gray-100 text-gray-500"
-          }`}
-        >
-          {item.available ? "Available" : "Planned"}
-        </span>
-      </div>
-
-      <h3 className="mt-4 text-base font-semibold text-gray-900">{item.title}</h3>
-      <p className="mt-2 flex-1 text-sm leading-6 text-gray-500">
-        {item.description}
-      </p>
-
-      <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 group-hover:text-black">
-        Open settings
-        <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
+        <Icon className="h-4 w-4" aria-hidden="true" />
       </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-gray-900">{item.title}</span>
+          {item.available === false ? <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">Planned</span> : null}
+        </span>
+        <span className="mt-0.5 block text-sm text-gray-500">{item.description}</span>
+      </span>
+      <ArrowRight className="h-4 w-4 shrink-0 text-gray-400 transition group-hover:translate-x-0.5 group-hover:text-gray-700" />
     </Link>
   );
 }

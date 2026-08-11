@@ -12,6 +12,7 @@ import WorkloadBalance from "@/components/dashboard/WorkloadBalance";
 import { canViewCompanyDashboard } from "@/lib/auth/roles";
 import { getCompanyDashboardData } from "@/lib/services/company-dashboard";
 import { requireEmployee } from "@/lib/services/employees";
+import PageHeader from "@/components/layout/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -25,14 +26,11 @@ export default async function CompanyDashboardPage() {
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-8">
       <div className="mx-auto max-w-[1600px]">
-        <header className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div><p className="text-sm font-medium text-gray-500">Management Command Center</p><h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-950">Company Dashboard</h1><p className="mt-2 max-w-2xl text-gray-600">What requires management attention today across sales, scheduling, and operations.</p></div>
-          <div className="flex flex-wrap gap-2">
+        <PageHeader eyebrow="Management Command Center" title="Company Dashboard" description="What requires management attention today across sales, scheduling, and operations." actions={<>
             <QuickLink href="/pipeline" icon={<Rows3 className="size-4" />}>Pipeline</QuickLink>
             <QuickLink href="/calendar" icon={<CalendarDays className="size-4" />}>Calendar</QuickLink>
             <QuickLink href="/reports" icon={<ChartNoAxesCombined className="size-4" />}>Reports</QuickLink>
-          </div>
-        </header>
+          </>} />
 
         <OperationalMetrics metrics={[
           { label: "Today's Leads", value: data.snapshot.todayLeads, href: "/leads" },

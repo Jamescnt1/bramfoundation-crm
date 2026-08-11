@@ -27,6 +27,9 @@ export default function CustomerHierarchyRow({
     const stage = resolveConfiguredStage(job.status, stages);
     return !stage?.terminal;
   }).length;
+  const latestJob = [...jobs].sort((first, second) =>
+    new Date(second.created_at).getTime() - new Date(first.created_at).getTime()
+  )[0];
 
   return (
     <article className="border-b border-gray-200 last:border-b-0">
@@ -62,11 +65,14 @@ export default function CustomerHierarchyRow({
           </div>
         </div>
 
-        <div className="flex items-center gap-5 pl-11 text-sm sm:pl-0">
+        <div className="flex flex-wrap items-center gap-4 pl-11 text-sm sm:justify-end sm:pl-0">
           <div>
             <span className="font-semibold text-gray-900">{jobs.length}</span>{" "}
             <span className="text-gray-500">total</span>
           </div>
+          {!expanded && latestJob ? (
+            <PipelineStatusBadge status={latestJob.status} stages={stages} />
+          ) : null}
           <div>
             <span className="font-semibold text-gray-900">{activeJobs}</span>{" "}
             <span className="text-gray-500">open</span>
