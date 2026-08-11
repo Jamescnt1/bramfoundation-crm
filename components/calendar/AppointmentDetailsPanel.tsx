@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, Check, KeyRound, MapPin, Paperclip, UserRound } from "lucide-react";
+import { CalendarDays, KeyRound, MapPin, Paperclip, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isQfNumberRequired } from "@/components/pipeline/constants";
 import type { CalendarAppointment } from "@/components/calendar/types";
@@ -18,10 +18,7 @@ type AppointmentDetailsPanelProps = {
   selectedDate: Date | null;
   employees: Employee[];
   installerCrews: InstallerCrew[];
-  isCompleting: boolean;
-  actionError?: string;
   onEditAppointment?: (appointment: CalendarAppointment) => void;
-  onCompleteAppointment?: (appointment: CalendarAppointment) => void;
   onDeleteAppointment?: (appointment: CalendarAppointment) => void;
 };
 
@@ -46,10 +43,7 @@ export default function AppointmentDetailsPanel({
   selectedDate,
   employees,
   installerCrews,
-  isCompleting,
-  actionError,
   onEditAppointment,
-  onCompleteAppointment,
   onDeleteAppointment,
 }: AppointmentDetailsPanelProps) {
   const employee = employees.find((item) => item.id === appointment?.assigned_employee_id);
@@ -117,15 +111,9 @@ export default function AppointmentDetailsPanel({
             </div>
 
             <div><p className="font-medium text-gray-500">Notes</p><p className="mt-2 whitespace-pre-wrap leading-6 text-gray-900">{appointment.notes || "No notes provided."}</p></div>
-            {actionError ? <div className="rounded-lg bg-red-50 p-3 text-red-700">{actionError}</div> : null}
           </div>
 
           <div className="grid gap-2 border-t border-gray-200 p-5">
-            {appointment.status !== "completed" && appointment.status !== "cancelled" ? (
-              <Button type="button" onClick={() => onCompleteAppointment?.(appointment)} disabled={isCompleting}>
-                <Check /> {isCompleting ? "Completing..." : "Mark complete"}
-              </Button>
-            ) : null}
             <Button type="button" variant="outline" onClick={() => onEditAppointment?.(appointment)}>Edit appointment</Button>
             <Button type="button" variant="destructive" onClick={() => onDeleteAppointment?.(appointment)}>Delete appointment</Button>
           </div>

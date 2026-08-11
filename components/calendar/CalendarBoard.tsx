@@ -30,7 +30,6 @@ import {
 } from "@/components/calendar/calendar-utils";
 import type { AppointmentType } from "@/components/calendar/constants";
 import type { CalendarAppointment, CalendarView } from "@/components/calendar/types";
-import { completeAppointment } from "@/lib/services/appointments";
 import type { Employee } from "@/lib/services/employees";
 import type { Job } from "@/lib/services/jobs";
 import type { InstallerCrew } from "@/lib/services/installer-crews";
@@ -114,8 +113,6 @@ export default function CalendarBoard({
   const [appointmentBeingEdited, setAppointmentBeingEdited] = useState<CalendarAppointment | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [appointmentBeingDeleted, setAppointmentBeingDeleted] = useState<CalendarAppointment | null>(null);
-  const [isCompleting, setIsCompleting] = useState(false);
-  const [actionError, setActionError] = useState("");
   const [filters, setFilters] = useState<CalendarFilterValues>(
     createEmptyCalendarFilters,
   );
@@ -313,7 +310,6 @@ export default function CalendarBoard({
     setSelectedDate(appointmentDate);
     setAnchorDate(appointmentDate);
     setSelectedAppointment(appointment);
-    setActionError("");
   }
 
   function handleCreateAppointmentAt(date: Date) {
@@ -323,20 +319,6 @@ export default function CalendarBoard({
     setAppointmentBeingEdited(null);
     setDefaultAppointmentType("appointment");
     setAppointmentDialogOpen(true);
-  }
-
-  async function handleCompleteAppointment(appointment: CalendarAppointment) {
-    setIsCompleting(true);
-    setActionError("");
-    try {
-      const completed = await completeAppointment(appointment.id);
-      setSelectedAppointment(completed);
-      router.refresh();
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Unable to complete appointment.");
-    } finally {
-      setIsCompleting(false);
-    }
   }
 
   return (
@@ -419,13 +401,10 @@ export default function CalendarBoard({
             selectedDate={selectedDate}
             employees={employees}
             installerCrews={installerCrews}
-            isCompleting={isCompleting}
-            actionError={actionError}
             onEditAppointment={(appointment) => {
               setAppointmentBeingEdited(appointment);
               setAppointmentDialogOpen(true);
             }}
-            onCompleteAppointment={handleCompleteAppointment}
             onDeleteAppointment={(appointment) => {
               setAppointmentBeingDeleted(appointment);
               setDeleteDialogOpen(true);
@@ -461,13 +440,10 @@ export default function CalendarBoard({
               selectedDate={selectedDate}
               employees={employees}
               installerCrews={installerCrews}
-              isCompleting={isCompleting}
-              actionError={actionError}
               onEditAppointment={(appointment) => {
                 setAppointmentBeingEdited(appointment);
                 setAppointmentDialogOpen(true);
               }}
-              onCompleteAppointment={handleCompleteAppointment}
               onDeleteAppointment={(appointment) => {
                 setAppointmentBeingDeleted(appointment);
                 setDeleteDialogOpen(true);

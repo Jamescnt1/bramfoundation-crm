@@ -47,7 +47,7 @@ export const REPORT_DEFINITIONS: ReportDefinition[] = [
     id: "employee-scorecards",
     category: "employees",
     name: "Employee Scorecards",
-    description: "Leads, measures, estimates, sold dollars, tasks, close rate, and completed appointments.",
+    description: "Leads, measures, estimates, sold dollars, tasks, close rate, and appointments whose scheduled time has elapsed.",
     question: "How is each employee's workload and performance trending?",
     filters: ["employeeId"],
   },

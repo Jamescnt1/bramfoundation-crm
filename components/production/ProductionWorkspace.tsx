@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CalendarDays, Check, Circle, ClipboardList, MapPinned, MoreHorizontal, Package, Pencil, Plus, Send, Trash2 } from "lucide-react";
-import { addMaterialScopeAction, deleteProductionScopeAction, recordCompletionCheckAction, resetCompletionCheckAction, unlinkMaterialScopeAppointmentAction, updateMaterialScopeStatusAction, updateProductionScopeAction } from "@/app/leads/[id]/production/actions";
+import { addMaterialScopeAction, completeProductionJobWalkAction, deleteProductionScopeAction, recordCompletionCheckAction, resetCompletionCheckAction, unlinkMaterialScopeAppointmentAction, updateMaterialScopeStatusAction, updateProductionScopeAction } from "@/app/leads/[id]/production/actions";
 import type { CompletionCheckMethod, MaterialCategory, MaterialScope, MaterialStatus, ProductionSummary } from "@/components/production/types";
 import type { CalendarAppointment } from "@/components/calendar/types";
 import { Button } from "@/components/ui/button";
@@ -121,6 +121,15 @@ export default function ProductionWorkspace({
     finally { setBusyId(null); }
   }
 
+  async function completeJobWalk(scope: MaterialScope, appointmentId: string) {
+    setBusyId(scope.id); setError("");
+    try {
+      await completeProductionJobWalkAction({ jobId, scopeId: scope.id, appointmentId });
+      router.refresh();
+    } catch (caught) { setError(message(caught)); }
+    finally { setBusyId(null); }
+  }
+
   async function resetCompletion(scope: MaterialScope) {
     setBusyId(scope.id); setError("");
     try { await resetCompletionCheckAction(jobId, scope.id); router.refresh(); }
@@ -177,7 +186,7 @@ export default function ProductionWorkspace({
             <div className="flex flex-wrap gap-1.5 [&_button]:h-8 [&_button]:px-2.5 [&_button]:text-xs">
               {linkedInstallation ? <Button type="button" variant="outline" onClick={() => onEditInstallation(linkedInstallation)}><Pencil /> Edit</Button> : null}
               {linkedInstallation && scope.work_order_required ? <Button type="button" variant={workOrderSent ? "outline" : "default"} disabled={busyId !== null} onClick={() => void setWorkOrder(linkedInstallation, !workOrderSent)}><Send />{workOrderSent ? "Not sent" : "Send W.O."}</Button> : null}
-              <NextAction scope={scope} scheduled={scheduled} jobWalkScheduled={Boolean(linkedJobWalk)} busy={busyId !== null} onStatus={openStatus} onSchedule={onSchedule} onCheckIn={beginCompletionCheck} />
+              <NextAction scope={scope} scheduled={scheduled} linkedJobWalk={linkedJobWalk} busy={busyId !== null} onStatus={openStatus} onSchedule={onSchedule} onCheckIn={beginCompletionCheck} onCompleteJobWalk={(appointmentId) => void completeJobWalk(scope, appointmentId)} />
             </div>
           </div></div>
         </article>;
@@ -211,13 +220,14 @@ function ScopeMilestones({ scope, scheduled, workOrderSent, completionComplete }
   return <div className="grid grid-cols-5 gap-1">{steps.map((step, index) => <div key={step.label} className="relative flex min-w-0 flex-col items-center text-center">{index ? <span className={`absolute top-2.5 right-1/2 left-[-50%] h-px ${steps[index - 1].complete && step.complete ? "bg-emerald-500" : "bg-gray-300"}`} /> : null}<span className={`relative z-10 inline-flex h-5 w-5 items-center justify-center rounded-full border ${!step.required ? "border-gray-300 bg-gray-100 text-gray-400" : step.complete ? "border-emerald-600 bg-emerald-600 text-white" : scope.material_status === "issue" && index < 2 ? "border-red-400 bg-red-50 text-red-600" : "border-gray-300 bg-white text-gray-300"}`}>{step.complete ? <Check className="h-3 w-3" /> : <Circle className="h-2 w-2" />}</span><span className="mt-1 truncate text-[8px] font-semibold uppercase tracking-wide text-gray-500 sm:text-[9px]">{step.label}</span></div>)}</div>;
 }
 
-function NextAction({ scope, scheduled, jobWalkScheduled, busy, onStatus, onSchedule, onCheckIn }: { scope: MaterialScope; scheduled: boolean; jobWalkScheduled: boolean; busy: boolean; onStatus: (scope: MaterialScope, status: MaterialStatus) => void; onSchedule: (scopeId?: string, type?: "installation" | "job_walk") => void; onCheckIn: (scope: MaterialScope) => void }) {
+function NextAction({ scope, scheduled, linkedJobWalk, busy, onStatus, onSchedule, onCheckIn, onCompleteJobWalk }: { scope: MaterialScope; scheduled: boolean; linkedJobWalk?: MaterialScope["appointments"][number]; busy: boolean; onStatus: (scope: MaterialScope, status: MaterialStatus) => void; onSchedule: (scopeId?: string, type?: "installation" | "job_walk") => void; onCheckIn: (scope: MaterialScope) => void; onCompleteJobWalk: (appointmentId: string) => void }) {
   if (scope.material_status === "excluded") return null;
   if (scope.material_status === "issue") return <Button type="button" disabled={busy} onClick={() => onStatus(scope, "issue")}><AlertTriangle /> Review issue</Button>;
   if (scope.ordering_required && !["ordered", "partially_received", "ready", "excluded"].includes(scope.material_status)) return <Button type="button" disabled={busy} onClick={() => onStatus(scope, "ordered")}><Package /> Mark ordered</Button>;
   if (scope.ordering_required && scope.material_status !== "ready") return <Button type="button" disabled={busy} onClick={() => onStatus(scope, "ready")}><Check /> Mark ready</Button>;
   if (scope.installation_required && !scheduled) return <Button type="button" disabled={busy} onClick={() => onSchedule(scope.id)}><CalendarDays /> Schedule installation</Button>;
-  if (scope.completion_check_method === "job_walk" && !jobWalkScheduled) return <Button type="button" disabled={busy} onClick={() => onSchedule(scope.id, "job_walk")}><MapPinned /> Schedule job walk</Button>;
+  if (scope.completion_check_method === "job_walk" && !linkedJobWalk) return <Button type="button" disabled={busy} onClick={() => onSchedule(scope.id, "job_walk")}><MapPinned /> Schedule job walk</Button>;
+  if (scope.completion_check_method === "job_walk" && linkedJobWalk && linkedJobWalk.status !== "completed") return <Button type="button" disabled={busy} onClick={() => onCompleteJobWalk(linkedJobWalk.id)}><Check /> Complete job walk</Button>;
   if (scope.completion_check_method === "customer_checkin" && scope.completion_check_status !== "completed") return <Button type="button" disabled={busy} onClick={() => onCheckIn(scope)}><MapPinned /> Record check-in</Button>;
   return null;
 }

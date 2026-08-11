@@ -253,7 +253,7 @@ async function buildSalesReport(filters: ReportFilters, range: ParsedRange): Pro
     return stage && stage.sort_order >= approvedOrder && stage.slug !== "lost";
   });
   const lost = jobs.filter((job) => resolveStage(job, context)?.slug === "lost");
-  const measures = appointments.filter((appointment) => appointment.appointment_type === "measure" && appointment.status === "completed");
+  const measures = appointments.filter((appointment) => appointment.appointment_type === "measure" && appointmentHasOccurred(appointment));
   const estimates = jobs.filter((job) => {
     const stage = resolveStage(job, context);
     return stage?.slug.includes("estimate") || stage?.label.toLowerCase().includes("estimate");
@@ -278,7 +278,7 @@ async function buildSalesReport(filters: ReportFilters, range: ParsedRange): Pro
     rangeLabel: range.label,
     metrics: [
       metric("Leads created", number(jobs.length)),
-      metric("Measures completed", number(measures.length)),
+      metric("Measures occurred", number(measures.length)),
       metric("Estimates currently sent", number(estimates.length)),
       metric("Close percentage", percent(rate(sold.length, sold.length + lost.length))),
       metric("Sold dollars", currency(sum(sold.map(amount))), `${sold.length} jobs`, "positive"),
@@ -306,8 +306,8 @@ async function buildOperationsReport(filters: ReportFilters, range: ParsedRange)
     getPipelineContext(),
   ]);
   const installs = appointments.filter((item) => item.appointment_type === "installation");
-  const scheduled = installs.filter((item) => item.status === "scheduled");
-  const completed = installs.filter((item) => item.status === "completed");
+  const scheduled = installs.filter((item) => item.status !== "cancelled");
+  const occurred = installs.filter(appointmentHasOccurred);
   const materialScopes = await getMaterialScopes(jobs.map((job) => job.id));
   const waitingMaterialJobIds = new Set(
     materialScopes
@@ -337,7 +337,7 @@ async function buildOperationsReport(filters: ReportFilters, range: ParsedRange)
     rangeLabel: range.label,
     metrics: [
       metric("Installs scheduled", number(scheduled.length)),
-      metric("Installs completed", number(completed.length), "", "positive"),
+      metric("Installs occurred", number(occurred.length), "", "positive"),
       metric("Waiting materials", number(waitingMaterials.length)),
       metric("Stalled jobs", number(stalled.length), "No update for 14+ days", stalled.length ? "warning" : "default"),
     ],
@@ -400,7 +400,7 @@ async function buildEmployeeReport(filters: ReportFilters, range: ParsedRange): 
       openTasks: employeeTasks.length - doneTasks.length,
       overdueTasks: overdue.length,
       taskCompletion: percent(rate(doneTasks.length, employeeTasks.length)),
-      completedAppointments: employeeAppointments.filter((item) => item.status === "completed").length,
+      occurredAppointments: employeeAppointments.filter(appointmentHasOccurred).length,
     };
   });
   return {
@@ -424,7 +424,7 @@ async function buildEmployeeReport(filters: ReportFilters, range: ParsedRange): 
       { key: "openTasks", label: "Open tasks", align: "right" },
       { key: "overdueTasks", label: "Overdue", align: "right" },
       { key: "taskCompletion", label: "Task completion", align: "right" },
-      { key: "completedAppointments", label: "Completed appts.", align: "right" },
+      { key: "occurredAppointments", label: "Occurred appts.", align: "right" },
     ],
     rows,
     chart: chart("Sold dollars by employee", rows.map((row) => ({ label: row.employee, value: moneyNumber(row.soldDollars), formattedValue: row.soldDollars }))),
@@ -599,7 +599,7 @@ async function getAppointments(filters: ReportFilters, range: ParsedRange) {
     .order("starts_at", { ascending: false })
     .limit(RESULT_LIMIT);
   if (filters.employeeId) query = query.eq("assigned_employee_id", filters.employeeId);
-  if (filters.status) query = query.eq("status", filters.status);
+  if (filters.status && filters.status !== "completed") query = query.eq("status", filters.status);
   if (filters.customerId) {
     const { data: jobIds, error: jobError } = await supabase.from("jobs").select("id").eq("customer_id", filters.customerId);
     if (jobError) throw new Error(jobError.message);
@@ -609,10 +609,13 @@ async function getAppointments(filters: ReportFilters, range: ParsedRange) {
   }
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data ?? []).map((appointment) => ({
+  const appointments = (data ?? []).map((appointment) => ({
     ...appointment,
     employee: first(appointment.employee),
   })) as AppointmentRow[];
+  return filters.status === "completed"
+    ? appointments.filter(appointmentHasOccurred)
+    : appointments;
 }
 
 async function buildCalendarReport(filters: ReportFilters, range: ParsedRange): Promise<ReportResult> {
@@ -623,19 +626,19 @@ async function buildCalendarReport(filters: ReportFilters, range: ParsedRange): 
     appointments: items.length,
     measures: items.filter((item) => item.appointment_type === "measure").length,
     installs: items.filter((item) => item.appointment_type === "installation").length,
-    completed: items.filter((item) => item.status === "completed").length,
+    occurred: items.filter(appointmentHasOccurred).length,
     cancelled: items.filter((item) => item.status === "cancelled").length,
   }));
   return {
     id: "calendar-performance",
     title: "Calendar Activity",
-    description: "Appointment ownership, type, and completion for scheduled start times in the selected period.",
+    description: "Appointment ownership, type, and elapsed scheduled activity in the selected period.",
     rangeLabel: range.label,
     metrics: [
       metric("Appointments", number(appointments.length)),
       metric("Measures", number(appointments.filter((item) => item.appointment_type === "measure").length)),
       metric("Installs", number(appointments.filter((item) => item.appointment_type === "installation").length)),
-      metric("Completed", number(appointments.filter((item) => item.status === "completed").length), "", "positive"),
+      metric("Occurred", number(appointments.filter(appointmentHasOccurred).length), "", "positive"),
       metric("Cancelled", number(appointments.filter((item) => item.status === "cancelled").length)),
     ],
     columns: [
@@ -643,13 +646,19 @@ async function buildCalendarReport(filters: ReportFilters, range: ParsedRange): 
       { key: "appointments", label: "Appointments", align: "right" },
       { key: "measures", label: "Measures", align: "right" },
       { key: "installs", label: "Installs", align: "right" },
-      { key: "completed", label: "Completed", align: "right" },
+      { key: "occurred", label: "Occurred", align: "right" },
       { key: "cancelled", label: "Cancelled", align: "right" },
     ],
     rows,
     chart: chart("Appointments by employee", rows.map((row) => ({ label: row.employee, value: row.appointments }))),
-    notes: ["Rescheduled appointments are not reported separately because the current schema does not store a reschedule event."],
+    notes: ["Occurred means the scheduled end time has passed and the appointment was not cancelled. Rescheduled appointments are not reported separately because the current schema does not store a reschedule event."],
   };
+}
+
+function appointmentHasOccurred(appointment: AppointmentRow) {
+  if (appointment.status === "cancelled") return false;
+  const scheduledEnd = appointment.ends_at ?? appointment.starts_at;
+  return new Date(scheduledEnd).getTime() <= Date.now();
 }
 
 async function buildOperationalDollarsReport(filters: ReportFilters, range: ParsedRange): Promise<ReportResult> {
