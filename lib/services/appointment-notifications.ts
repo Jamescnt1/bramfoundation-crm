@@ -137,7 +137,104 @@ export async function sendAppointmentNotification(input: {
   return { count: results.length, statuses: results.map((item) => item.status) };
 }
 
-type Recipient = { id: string | null; name: string; address: string };
+export async function processScheduledAppointmentReminders() {
+  const admin = createAdminClient();
+  const { data: settings, error: settingsError } = await admin.from("communication_settings").select("email_notifications_enabled,sms_enabled,scheduled_communications_enabled,automated_communications_enabled,trial_mode,calendar_customer_notifications_enabled,calendar_employee_notifications_enabled,calendar_installer_notifications_enabled,appointment_reminder_hours_before,calendar_customer_reminder_channel,calendar_employee_reminder_channel,calendar_installer_reminder_channel").eq("singleton_key", true).single();
+  if (settingsError) throw new Error(settingsError.message);
+  if (!settings.scheduled_communications_enabled || !settings.automated_communications_enabled) {
+    return { appointments: 0, sent: 0, failed: 0, skipped: "Scheduled reminders or automated communications are paused." };
+  }
+
+  const now = Date.now();
+  const windowStart = new Date(now + settings.appointment_reminder_hours_before * 60 * 60 * 1000).toISOString();
+  const windowEnd = new Date(now + (settings.appointment_reminder_hours_before + 26) * 60 * 60 * 1000).toISOString();
+  const { data: appointments, error: appointmentError } = await admin.from("appointments").select(`id,job_id,assigned_employee_id,installer_crew_id,title,appointment_type,starts_at,location,
+    job:jobs!appointments_job_id_fkey(id,customer_id,customer_name,phone,email,project_contact_phone,
+      customer:customers!jobs_customer_id_fkey(id,full_name,phone,email),
+      company_contact:customer_contacts!jobs_company_contact_id_fkey(id,first_name,last_name,mobile_phone,email),
+      project_contact:customer_contacts!jobs_project_contact_id_fkey(id,first_name,last_name,mobile_phone,email),
+      job_site_contact:customer_contacts!jobs_job_site_contact_id_fkey(id,first_name,last_name,mobile_phone,email))`).neq("status", "cancelled").gte("starts_at", windowStart).lt("starts_at", windowEnd).order("starts_at");
+  if (appointmentError) throw new Error(appointmentError.message);
+  const company = await getCompanySettings();
+  const audiences: Array<{ audience: AppointmentNotificationAudience; channel: AppointmentNotificationChannel; enabled: boolean }> = [
+    { audience: "customer", channel: settings.calendar_customer_reminder_channel, enabled: settings.calendar_customer_notifications_enabled },
+    { audience: "employee", channel: settings.calendar_employee_reminder_channel, enabled: settings.calendar_employee_notifications_enabled },
+    { audience: "installer", channel: settings.calendar_installer_reminder_channel, enabled: settings.calendar_installer_notifications_enabled },
+  ];
+  let sent = 0;
+  let failed = 0;
+  for (const appointment of appointments ?? []) {
+    for (const item of audiences) {
+      if (!item.enabled || (item.channel === "email" ? !settings.email_notifications_enabled : !settings.sms_enabled)) continue;
+      const result = await sendAutomatedReminder(admin, appointment, company, item.audience, item.channel, settings.trial_mode);
+      sent += result.sent;
+      failed += result.failed;
+    }
+  }
+  return { appointments: appointments?.length ?? 0, sent, failed };
+}
+
+async function sendAutomatedReminder(
+  admin: ReturnType<typeof createAdminClient>,
+  appointment: Record<string, unknown>,
+  company: Awaited<ReturnType<typeof getCompanySettings>>,
+  audience: AppointmentNotificationAudience,
+  channel: AppointmentNotificationChannel,
+  trialMode: boolean,
+) {
+  const recipients = await resolveRecipients(admin, appointment, audience, channel, "reminder");
+  const emailFromAddress = process.env.EMAIL_FROM_ADDRESS || company.email;
+  const content = notificationContent(appointment, company, "reminder", channel);
+  let sent = 0;
+  let failed = 0;
+  for (const recipient of recipients) {
+    if (channel === "email" && !emailFromAddress) { failed += 1; continue; }
+    if (channel === "sms" && trialMode && !recipient.trialVerified) continue;
+    try {
+      if (channel === "sms") await requireSmsConsent(admin, recipient.address);
+      const idempotencyKey = `appointment-reminder-${appointment.id}-${audience}-${channel}-${recipient.id ?? recipient.address}`;
+      const { data: delivery, error: insertError } = await admin.from("communication_deliveries").insert({
+        channel,
+        direction: "outbound",
+        recipient_type: audience,
+        recipient_id: recipient.id,
+        recipient_address: recipient.address,
+        sender_address: channel === "email" ? emailFromAddress : null,
+        subject: channel === "email" ? content.subject : null,
+        body: content.body,
+        status: "queued",
+        job_id: appointment.job_id,
+        appointment_id: appointment.id,
+        recipient_employee_id: audience === "employee" ? recipient.id : null,
+        idempotency_key: idempotencyKey,
+        consent_status: channel === "sms" ? "opted_in" : "not_required",
+        is_automated: true,
+        scheduled_for: new Date().toISOString(),
+      }).select("id").single();
+      if (insertError?.code === "23505") continue;
+      if (insertError) throw new Error(insertError.message);
+      try {
+        const provider = channel === "sms"
+          ? await sendProviderSms({ to: recipient.address, body: content.body })
+          : await sendProviderEmail({ idempotencyKey: `appointment-email-${delivery.id}`, from: `${process.env.EMAIL_FROM_NAME || company.company_name} <${emailFromAddress}>`, to: recipient.address, subject: content.subject, text: content.body });
+        const providerStatus = "providerStatus" in provider && typeof provider.providerStatus === "string" ? provider.providerStatus : "sent";
+        const status = channel === "sms" ? mapTwilioStatus(providerStatus) : "sent";
+        await admin.from("communication_deliveries").update({ status, provider: provider.provider, provider_message_id: provider.providerMessageId, provider_status: providerStatus, sent_at: new Date().toISOString(), attempt_count: 1 }).eq("id", delivery.id);
+        sent += 1;
+        if (appointment.job_id) await admin.from("job_activities").insert({ job_id: appointment.job_id, activity_type: "appointment_reminder_sent", description: `Foundation CRM sent an automated appointment reminder by ${channel} to ${recipient.name}.`, old_value: appointment.id, new_value: delivery.id });
+      } catch (caught) {
+        const failure = providerFailure(caught);
+        await admin.from("communication_deliveries").update({ status: "failed", failure_reason: failure.message, provider_error_code: failure.code, attempt_count: 1 }).eq("id", delivery.id);
+        failed += 1;
+      }
+    } catch {
+      failed += 1;
+    }
+  }
+  return { sent, failed };
+}
+
+type Recipient = { id: string | null; name: string; address: string; trialVerified?: boolean };
 
 async function resolveRecipients(admin: ReturnType<typeof createAdminClient>, appointment: Record<string, unknown>, audience: AppointmentNotificationAudience, channel: AppointmentNotificationChannel, kind: AppointmentNotificationKind): Promise<Recipient[]> {
   if (audience === "employee") {
@@ -151,13 +248,13 @@ async function resolveRecipients(admin: ReturnType<typeof createAdminClient>, ap
   }
   if (audience === "installer") {
     if (!appointment.installer_crew_id) return [];
-    const { data, error } = await admin.from("installer_contacts").select("id,name,email,mobile_phone,preferred_channel,appointment_confirmations,appointment_reminders").eq("installer_crew_id", appointment.installer_crew_id).eq("active", true);
+    const { data, error } = await admin.from("installer_contacts").select("id,name,email,mobile_phone,preferred_channel,appointment_confirmations,appointment_reminders,trial_recipient_verified").eq("installer_crew_id", appointment.installer_crew_id).eq("active", true);
     if (error) throw new Error(error.message);
     return (data ?? []).flatMap((item) => {
       const topicEnabled = kind === "confirmation" ? item.appointment_confirmations : item.appointment_reminders;
       const channelEnabled = channel === "email" ? ["email", "both"].includes(item.preferred_channel) : ["sms", "both"].includes(item.preferred_channel);
       const address = channel === "email" ? item.email : normalizeUsPhone(item.mobile_phone);
-      return topicEnabled && channelEnabled && address ? [{ id: item.id, name: item.name, address }] : [];
+      return topicEnabled && channelEnabled && address ? [{ id: item.id, name: item.name, address, trialVerified: item.trial_recipient_verified }] : [];
     });
   }
   const job = relation(appointment.job);

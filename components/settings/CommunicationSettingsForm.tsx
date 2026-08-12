@@ -39,6 +39,10 @@ export default function CommunicationSettingsForm({ initialData }: { initialData
         calendar_customer_notifications_enabled: settings.calendar_customer_notifications_enabled,
         calendar_employee_notifications_enabled: settings.calendar_employee_notifications_enabled,
         calendar_installer_notifications_enabled: settings.calendar_installer_notifications_enabled,
+        appointment_reminder_hours_before: settings.appointment_reminder_hours_before,
+        calendar_customer_reminder_channel: settings.calendar_customer_reminder_channel,
+        calendar_employee_reminder_channel: settings.calendar_employee_reminder_channel,
+        calendar_installer_reminder_channel: settings.calendar_installer_reminder_channel,
       });
       setSettings(saved);
       setMessage("Company communication controls saved.");
@@ -106,6 +110,12 @@ export default function CommunicationSettingsForm({ initialData }: { initialData
         <SettingToggle title="Employees" description="Respect each employee’s email, text, and appointment preferences." checked={settings.calendar_employee_notifications_enabled} onChange={(checked) => setSettings({ ...settings, calendar_employee_notifications_enabled: checked })} icon={<Users />} warning={!settings.calendar_employee_notifications_enabled ? "Currently paused" : undefined} />
         <SettingToggle title="Installers" description="Respect each installer contact’s preferred channel and appointment choices." checked={settings.calendar_installer_notifications_enabled} onChange={(checked) => setSettings({ ...settings, calendar_installer_notifications_enabled: checked })} icon={<Users />} warning={!settings.calendar_installer_notifications_enabled ? "Currently paused" : undefined} />
       </div>
+      <div className="mt-5 grid gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="grid gap-2 text-sm font-medium text-gray-700"><span>Send reminders approximately</span><select value={settings.appointment_reminder_hours_before} onChange={(event) => setSettings({ ...settings, appointment_reminder_hours_before: Number(event.target.value) })} className="h-10 rounded-lg border border-gray-300 bg-white px-3"><option value={24}>1 day before</option><option value={48}>2 days before</option><option value={72}>3 days before</option></select></label>
+        <ReminderChannel label="Customer channel" value={settings.calendar_customer_reminder_channel} onChange={(value) => setSettings({ ...settings, calendar_customer_reminder_channel: value })} />
+        <ReminderChannel label="Employee channel" value={settings.calendar_employee_reminder_channel} onChange={(value) => setSettings({ ...settings, calendar_employee_reminder_channel: value })} />
+        <ReminderChannel label="Installer channel" value={settings.calendar_installer_reminder_channel} onChange={(value) => setSettings({ ...settings, calendar_installer_reminder_channel: value })} />
+      </div>
       <div className="mt-5 flex justify-end"><Button type="button" onClick={() => void saveCompanySettings()} disabled={savingCompany}>{savingCompany ? "Saving..." : "Save calendar controls"}</Button></div>
     </section> : null}
 
@@ -142,6 +152,10 @@ function SettingToggle({ title, description, checked, onChange, icon, warning }:
 
 function CompactToggle({ label, checked, onChange, disabled = false }: { label: string; checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }) {
   return <label className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${disabled ? "cursor-not-allowed bg-gray-50 text-gray-400" : "cursor-pointer bg-white text-gray-700"}`}><input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} className="h-4 w-4" />{label}</label>;
+}
+
+function ReminderChannel({ label, value, onChange }: { label: string; value: "email" | "sms"; onChange: (value: "email" | "sms") => void }) {
+  return <label className="grid gap-2 text-sm font-medium text-gray-700"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value as "email" | "sms")} className="h-10 rounded-lg border border-gray-300 bg-white px-3"><option value="email">Email</option><option value="sms">Text message</option></select></label>;
 }
 
 function ConnectionItem({ label, ready }: { label: string; ready: boolean }) { return <div className={`flex items-center gap-2 rounded-lg border p-3 text-sm ${ready ? "border-green-200 bg-green-50 text-green-800" : "border-gray-200 bg-gray-50 text-gray-600"}`}>{ready ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}<span>{label}</span></div>; }

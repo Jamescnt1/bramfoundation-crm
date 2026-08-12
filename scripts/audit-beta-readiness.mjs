@@ -72,7 +72,7 @@ for (const table of ["pipeline_stages", "lead_sources", "task_types", "role_defi
 
 const { data: communicationSettings, error: communicationSettingsError } = await admin
   .from("communication_settings")
-  .select("sms_enabled,calendar_customer_notifications_enabled,calendar_employee_notifications_enabled,calendar_installer_notifications_enabled")
+  .select("sms_enabled,calendar_customer_notifications_enabled,calendar_employee_notifications_enabled,calendar_installer_notifications_enabled,appointment_reminder_hours_before,calendar_customer_reminder_channel,calendar_employee_reminder_channel,calendar_installer_reminder_channel")
   .eq("singleton_key", true)
   .single();
 if (communicationSettingsError) {
@@ -91,6 +91,13 @@ if (communicationSettingsError) {
     console.error(`FAIL enabled SMS is missing: ${missingTwilioEnvironment.join(", ")}`);
   } else console.log("PASS enabled SMS server configuration");
 } else console.log("PASS SMS safely paused");
+
+if (communicationSettings?.scheduled_communications_enabled && communicationSettings?.automated_communications_enabled) {
+  if (!process.env.CRON_SECRET) {
+    failed = true;
+    console.error("FAIL enabled automated reminders are missing CRON_SECRET");
+  } else console.log("PASS automated reminder scheduler authentication");
+} else console.log("PASS automated reminders safely paused");
 
 if (failed) process.exit(1);
 console.log("Beta Supabase readiness audit passed.");
