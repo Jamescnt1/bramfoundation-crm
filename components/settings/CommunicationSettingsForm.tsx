@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, CalendarDays, CheckCircle2, Mail, MessageSquareText, PauseCircle, Smartphone, Workflow, XCircle } from "lucide-react";
+import { Bell, CalendarDays, CheckCircle2, Mail, MessageSquareText, PauseCircle, Smartphone, Users, Workflow, XCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +36,9 @@ export default function CommunicationSettingsForm({ initialData }: { initialData
         scheduled_communications_enabled: settings.scheduled_communications_enabled,
         automated_communications_enabled: settings.automated_communications_enabled,
         trial_mode: settings.trial_mode,
+        calendar_customer_notifications_enabled: settings.calendar_customer_notifications_enabled,
+        calendar_employee_notifications_enabled: settings.calendar_employee_notifications_enabled,
+        calendar_installer_notifications_enabled: settings.calendar_installer_notifications_enabled,
       });
       setSettings(saved);
       setMessage("Company communication controls saved.");
@@ -94,6 +97,16 @@ export default function CommunicationSettingsForm({ initialData }: { initialData
       </div>
       <label className="mt-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4"><input type="checkbox" checked={settings.trial_mode} onChange={(event) => setSettings({ ...settings, trial_mode: event.target.checked })} className="mt-1 h-4 w-4" /><span><strong className="block text-amber-950">Twilio trial mode</strong><span className="text-sm text-amber-800">Only verified test numbers will be eligible while this is on.</span></span></label>
       <div className="mt-5 flex justify-end"><Button type="button" onClick={() => void saveCompanySettings()} disabled={savingCompany}>{savingCompany ? "Saving..." : "Save company controls"}</Button></div>
+    </section> : null}
+
+    {initialData.canManageCompanySettings ? <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="flex items-start gap-3"><CalendarDays className="mt-0.5 h-5 w-5 text-gray-500" /><div><h2 className="text-lg font-semibold text-gray-900">Calendar communication audiences</h2><p className="mt-1 text-sm text-gray-500">Pause appointment notifications separately for the people who use them differently. These controls apply to manual calendar sends now and future reminders later.</p></div></div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <SettingToggle title="Customers" description="Allow appointment confirmations and reminders to opted-in customer contacts." checked={settings.calendar_customer_notifications_enabled} onChange={(checked) => setSettings({ ...settings, calendar_customer_notifications_enabled: checked })} icon={<Users />} warning={!settings.calendar_customer_notifications_enabled ? "Currently paused" : undefined} />
+        <SettingToggle title="Employees" description="Respect each employee’s email, text, and appointment preferences." checked={settings.calendar_employee_notifications_enabled} onChange={(checked) => setSettings({ ...settings, calendar_employee_notifications_enabled: checked })} icon={<Users />} warning={!settings.calendar_employee_notifications_enabled ? "Currently paused" : undefined} />
+        <SettingToggle title="Installers" description="Respect each installer contact’s preferred channel and appointment choices." checked={settings.calendar_installer_notifications_enabled} onChange={(checked) => setSettings({ ...settings, calendar_installer_notifications_enabled: checked })} icon={<Users />} warning={!settings.calendar_installer_notifications_enabled ? "Currently paused" : undefined} />
+      </div>
+      <div className="mt-5 flex justify-end"><Button type="button" onClick={() => void saveCompanySettings()} disabled={savingCompany}>{savingCompany ? "Saving..." : "Save calendar controls"}</Button></div>
     </section> : null}
 
     {initialData.canManageCompanySettings ? <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">

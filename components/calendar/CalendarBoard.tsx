@@ -39,6 +39,7 @@ import {
 } from "@/app/settings/calendar/actions";
 import type { AppointmentTypeDefinition } from "@/lib/services/appointment-types";
 import type { ProductionScopeOption } from "@/lib/services/production";
+import type { CalendarCommunicationData } from "@/components/calendar/communication-types";
 
 type CalendarBoardProps = {
   initialAppointments?: CalendarAppointment[];
@@ -55,6 +56,7 @@ type CalendarBoardProps = {
   appointmentTypes: AppointmentTypeDefinition[];
   productionScopes: ProductionScopeOption[];
   appointmentScopeLinks: Record<string, string[]>;
+  communication: CalendarCommunicationData;
 };
 
 function getHeading(view: CalendarView, date: Date) {
@@ -92,6 +94,7 @@ export default function CalendarBoard({
   appointmentTypes,
   productionScopes,
   appointmentScopeLinks,
+  communication,
 }: CalendarBoardProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -401,6 +404,7 @@ export default function CalendarBoard({
             selectedDate={selectedDate}
             employees={employees}
             installerCrews={installerCrews}
+            communication={communication}
             onEditAppointment={(appointment) => {
               setAppointmentBeingEdited(appointment);
               setAppointmentDialogOpen(true);
@@ -440,6 +444,7 @@ export default function CalendarBoard({
               selectedDate={selectedDate}
               employees={employees}
               installerCrews={installerCrews}
+              communication={communication}
               onEditAppointment={(appointment) => {
                 setAppointmentBeingEdited(appointment);
                 setAppointmentDialogOpen(true);

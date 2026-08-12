@@ -12,6 +12,8 @@ import {
 } from "@/lib/appointment-display";
 import { AddressLink, EmailLink, PhoneLink } from "@/components/contact/ActionableContactLinks";
 import { formatAppointmentTime, formatDateTime } from "@/lib/date-time";
+import AppointmentNotificationsPanel from "@/components/calendar/AppointmentNotificationsPanel";
+import type { CalendarCommunicationData } from "@/components/calendar/communication-types";
 
 type AppointmentDetailsPanelProps = {
   appointment: CalendarAppointment | null;
@@ -20,6 +22,7 @@ type AppointmentDetailsPanelProps = {
   installerCrews: InstallerCrew[];
   onEditAppointment?: (appointment: CalendarAppointment) => void;
   onDeleteAppointment?: (appointment: CalendarAppointment) => void;
+  communication: CalendarCommunicationData;
 };
 
 function label(value: string | null | undefined) {
@@ -45,6 +48,7 @@ export default function AppointmentDetailsPanel({
   installerCrews,
   onEditAppointment,
   onDeleteAppointment,
+  communication,
 }: AppointmentDetailsPanelProps) {
   const employee = employees.find((item) => item.id === appointment?.assigned_employee_id);
   const installerCrew = installerCrews.find((item) => item.id === appointment?.installer_crew_id);
@@ -112,6 +116,8 @@ export default function AppointmentDetailsPanel({
 
             <div><p className="font-medium text-gray-500">Notes</p><p className="mt-2 whitespace-pre-wrap leading-6 text-gray-900">{appointment.notes || "No notes provided."}</p></div>
           </div>
+
+          <AppointmentNotificationsPanel key={appointment.id} appointment={appointment} communication={communication} />
 
           <div className="grid gap-2 border-t border-gray-200 p-5">
             <Button type="button" variant="outline" onClick={() => onEditAppointment?.(appointment)}>Edit appointment</Button>

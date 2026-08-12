@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       channel: "sms", direction: "inbound", recipient_type: identity.recipientType, recipient_id: identity.recipientId,
       recipient_address: to, sender_address: from, body, status: "delivered", provider: "twilio",
       provider_message_id: providerMessageId, provider_status: "received", delivered_at: new Date().toISOString(),
-      consent_status: consentStatus, job_id: identity.jobId,
+      consent_status: consentStatus, job_id: identity.jobId, appointment_id: identity.appointmentId,
     });
     if (deliveryError) throw new Error(deliveryError.message);
     if (identity.jobId) {
@@ -88,17 +88,24 @@ function formPayload(formData: FormData) { return Object.fromEntries([...formDat
 
 async function resolveInboundIdentity(admin: ReturnType<typeof createAdminClient>, from: string) {
   const { data: recent, error: recentError } = await admin.from("communication_deliveries")
-    .select("job_id,recipient_type,recipient_id")
+    .select("job_id,appointment_id,recipient_type,recipient_id")
     .eq("channel", "sms")
     .eq("direction", "outbound")
     .eq("recipient_address", from)
-    .not("job_id", "is", null)
     .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (recentError) throw new Error(recentError.message);
-  if (recent?.job_id) return { jobId: recent.job_id as string, recipientType: recent.recipient_type as "customer" | "employee" | "installer", recipientId: recent.recipient_id as string | null };
+  if (recent) return { jobId: recent.job_id as string | null, appointmentId: recent.appointment_id as string | null, recipientType: recent.recipient_type as "customer" | "employee" | "installer", recipientId: recent.recipient_id as string | null };
+
+  const { data: employees, error: employeeError } = await admin.from("employees")
+    .select("id,phone")
+    .eq("active", true)
+    .not("phone", "is", null);
+  if (employeeError) throw new Error(employeeError.message);
+  const employee = (employees ?? []).find((item) => normalizeUsPhone(item.phone) === from);
+  if (employee) return { jobId: null, appointmentId: null, recipientType: "employee" as const, recipientId: employee.id };
 
   const { data: installers, error: installerError } = await admin.from("installer_contacts")
     .select("id,mobile_phone")
@@ -106,7 +113,7 @@ async function resolveInboundIdentity(admin: ReturnType<typeof createAdminClient
     .not("mobile_phone", "is", null);
   if (installerError) throw new Error(installerError.message);
   const installer = (installers ?? []).find((item) => normalizeUsPhone(item.mobile_phone) === from);
-  if (installer) return { jobId: null, recipientType: "installer" as const, recipientId: installer.id };
+  if (installer) return { jobId: null, appointmentId: null, recipientType: "installer" as const, recipientId: installer.id };
 
   const [{ data: contacts, error: contactError }, { data: customers, error: customerError }, { data: jobs, error: jobError }] = await Promise.all([
     admin.from("customer_contacts").select("customer_id,mobile_phone").eq("active", true).is("archived_at", null).not("mobile_phone", "is", null),
@@ -118,5 +125,5 @@ async function resolveInboundIdentity(admin: ReturnType<typeof createAdminClient
     ?? (customers ?? []).find((item) => normalizeUsPhone(item.phone) === from)?.id
     ?? (jobs ?? []).find((item) => normalizeUsPhone(item.project_contact_phone) === from || normalizeUsPhone(item.phone) === from)?.customer_id
     ?? null;
-  return { jobId: null, recipientType: "customer" as const, recipientId: customerId };
+  return { jobId: null, appointmentId: null, recipientType: "customer" as const, recipientId: customerId };
 }

@@ -72,7 +72,7 @@ for (const table of ["pipeline_stages", "lead_sources", "task_types", "role_defi
 
 const { data: communicationSettings, error: communicationSettingsError } = await admin
   .from("communication_settings")
-  .select("sms_enabled")
+  .select("sms_enabled,calendar_customer_notifications_enabled,calendar_employee_notifications_enabled,calendar_installer_notifications_enabled")
   .eq("singleton_key", true)
   .single();
 if (communicationSettingsError) {

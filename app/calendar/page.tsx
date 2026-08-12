@@ -13,6 +13,8 @@ import {
 } from "@/lib/services/appointment-types";
 import { getAppointmentProductionScopeLinks, getProductionScopeOptions, type ProductionScopeOption } from "@/lib/services/production";
 import PageHeader from "@/components/layout/PageHeader";
+import { getCalendarCommunicationData } from "@/lib/services/appointment-notifications";
+import type { CalendarCommunicationData } from "@/components/calendar/communication-types";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +51,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   let errorMessage = "";
   let productionScopes: ProductionScopeOption[] = [];
   let appointmentScopeLinks: Record<string, string[]> = {};
+  let communication: CalendarCommunicationData = { controls: { customer: false, employee: false, installer: false, email: false, sms: false }, deliveriesByAppointment: {} };
 
   try {
     [appointments, employees, jobs, installerCrews, appointmentTypes] = await Promise.all([
@@ -62,6 +65,12 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
       getProductionScopeOptions(jobs.map((job) => job.id)),
       getAppointmentProductionScopeLinks(appointments.map((appointment) => appointment.id)),
     ]);
+    try {
+      communication = await getCalendarCommunicationData(appointments.map((appointment) => appointment.id));
+    } catch {
+      // Calendar access is broader than communication-history access. Keep the
+      // calendar usable when notification permissions or setup are unavailable.
+    }
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Unable to load calendar.";
   }
@@ -88,6 +97,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
             appointmentTypes={appointmentTypes}
             productionScopes={productionScopes}
             appointmentScopeLinks={appointmentScopeLinks}
+            communication={communication}
           />
         )}
       </div>

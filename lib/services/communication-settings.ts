@@ -11,6 +11,9 @@ export type CommunicationSettings = {
   scheduled_communications_enabled: boolean;
   automated_communications_enabled: boolean;
   trial_mode: boolean;
+  calendar_customer_notifications_enabled: boolean;
+  calendar_employee_notifications_enabled: boolean;
+  calendar_installer_notifications_enabled: boolean;
 };
 
 export type EmployeeCommunicationPreference = {
@@ -53,7 +56,7 @@ export type SmsTestDelivery = {
   created_at: string;
 };
 
-const settingsColumns = "id, email_notifications_enabled, sms_enabled, scheduled_communications_enabled, automated_communications_enabled, trial_mode";
+const settingsColumns = "id, email_notifications_enabled, sms_enabled, scheduled_communications_enabled, automated_communications_enabled, trial_mode, calendar_customer_notifications_enabled, calendar_employee_notifications_enabled, calendar_installer_notifications_enabled";
 const preferenceColumns = "employee_id, email_enabled, sms_enabled, appointment_notifications, task_notifications, internal_message_notifications, job_notifications";
 
 export async function getCommunicationSettingsPageData(): Promise<CommunicationSettingsPageData> {
@@ -141,6 +144,9 @@ export async function updateCommunicationSettings(values: Omit<CommunicationSett
     scheduled_communications_enabled: Boolean(values.scheduled_communications_enabled),
     automated_communications_enabled: Boolean(values.automated_communications_enabled),
     trial_mode: Boolean(values.trial_mode),
+    calendar_customer_notifications_enabled: Boolean(values.calendar_customer_notifications_enabled),
+    calendar_employee_notifications_enabled: Boolean(values.calendar_employee_notifications_enabled),
+    calendar_installer_notifications_enabled: Boolean(values.calendar_installer_notifications_enabled),
   }).eq("singleton_key", true).select(settingsColumns).single();
   if (error) throw new Error(error.message);
   return data as CommunicationSettings;
