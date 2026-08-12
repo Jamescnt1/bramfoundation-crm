@@ -40,6 +40,8 @@ import ProductionWorkspace from "@/components/production/ProductionWorkspace";
 import { addMaterialScopeAction } from "@/app/leads/[id]/production/actions";
 import JobHoldDialog from "@/components/jobs/JobHoldDialog";
 import { releaseJobHoldAction } from "@/app/leads/[id]/hold/actions";
+import CustomerSmsPanel from "@/components/sms/CustomerSmsPanel";
+import type { JobSmsDelivery, JobSmsRecipient } from "@/components/sms/types";
 
 type Props = {
   activeTab: JobWorkspaceTab;
@@ -67,6 +69,9 @@ type Props = {
   emailTemplates: EmailTemplate[];
   customerEmailError?: string;
   canSendCustomerEmail: boolean;
+  customerSms: JobSmsDelivery[];
+  customerSmsError?: string;
+  canSendCustomerSms: boolean;
   layoutsEnabled: boolean;
   layouts: JobLayout[];
   layoutError?: string;
@@ -101,7 +106,7 @@ const baseNav = [
   ["communications", "Communications"],
 ] as const;
 
-export default function JobWorkspace({ activeTab, job, customer, assignedEmployee, employees, installerCrews, appointmentTypes, activities, tasks, taskTypes, appointments, activityError, taskError, canChangeStatus, stages, attachments, attachmentError, canManageAttachments, canArchiveAttachments, conversation, currentEmployee, customerEmails, emailTemplates, customerEmailError, canSendCustomerEmail, layoutsEnabled, layouts, layoutError, canManageLayouts, canArchiveLayouts, notes, notesError, canViewNotes, canCreateNotes, canEditNotes, canDeleteNotes, materialScopes, materialCategories, productionSummary }: Props) {
+export default function JobWorkspace({ activeTab, job, customer, assignedEmployee, employees, installerCrews, appointmentTypes, activities, tasks, taskTypes, appointments, activityError, taskError, canChangeStatus, stages, attachments, attachmentError, canManageAttachments, canArchiveAttachments, conversation, currentEmployee, customerEmails, emailTemplates, customerEmailError, canSendCustomerEmail, customerSms, customerSmsError, canSendCustomerSms, layoutsEnabled, layouts, layoutError, canManageLayouts, canArchiveLayouts, notes, notesError, canViewNotes, canCreateNotes, canEditNotes, canDeleteNotes, materialScopes, materialCategories, productionSummary }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -521,9 +526,10 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
 
         {activeTab === "communications" ? (
           <section>
-            <WorkspaceSectionHeader title="Communications" description="Customer email and secure internal discussion remain clearly separated." />
+            <WorkspaceSectionHeader title="Communications" description="Customer email, consent-based text messages, and secure internal discussion remain clearly separated." />
             <div className="mt-2 space-y-3">
               {customerEmailError ? <WorkspaceError text={customerEmailError} /> : <CustomerEmailPanel compact jobId={job.id} recipient={job.project_contact?.email ?? job.email ?? job.company_contact?.email ?? customer?.email ?? ""} recipientOptions={[{ label: "Project Contact", email: job.project_contact?.email ?? job.email ?? "" }, { label: "Company Contact", email: job.company_contact?.email ?? customer?.email ?? "" }, { label: "Site Contact", email: job.job_site_contact?.email ?? "" }].filter((item) => item.email)} emails={customerEmails} templates={emailTemplates} attachments={attachments} canSend={canSendCustomerEmail} />}
+              {customerSmsError ? <WorkspaceError text={customerSmsError} /> : <CustomerSmsPanel jobId={job.id} recipient={smsRecipients(job, customer)[0]?.phone ?? ""} recipientOptions={smsRecipients(job, customer)} deliveries={customerSms} canSend={canSendCustomerSms} />}
               {currentEmployee ? <InternalMessagePanel compact initialConversation={conversation} currentEmployee={{ id: currentEmployee.id, name: currentEmployee.name, avatar_url: currentEmployee.avatar_url, color: currentEmployee.color }} employees={employees.map((employee) => ({ id: employee.id, name: employee.name, avatar_url: employee.avatar_url, color: employee.color })) as MessagingEmployee[]} jobId={job.id} attachments={attachments} /> : <WorkspaceError text="Your employee profile could not be loaded for internal messaging." />}
             </div>
           </section>
@@ -588,6 +594,26 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
       ) : null}
     </>
   );
+}
+
+function smsRecipients(job: Job, customer: Customer | null): JobSmsRecipient[] {
+  const candidates: JobSmsRecipient[] = [
+    { label: "Project Contact", name: contactName(job.project_contact) ?? job.project_contact_name ?? job.project_customer_name ?? job.customer_name, phone: job.project_contact?.mobile_phone ?? job.project_contact_phone ?? job.phone ?? "" },
+    { label: "Company Contact", name: contactName(job.company_contact) ?? customer?.full_name ?? "Company contact", phone: job.company_contact?.mobile_phone ?? customer?.phone ?? "" },
+    { label: "Site Contact", name: contactName(job.job_site_contact) ?? "Site contact", phone: job.job_site_contact?.mobile_phone ?? "" },
+  ];
+  const seen = new Set<string>();
+  return candidates.filter((candidate) => {
+    const key = candidate.phone.replace(/\D/g, "");
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function contactName(contact: JobContactSummary | null) {
+  if (!contact) return null;
+  return `${contact.first_name} ${contact.last_name}`.trim() || null;
 }
 
 function QuickButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) { return <button type="button" onClick={onClick} className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 [&_svg]:h-3.5 [&_svg]:w-3.5">{children}</button>; }

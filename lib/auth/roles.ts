@@ -38,6 +38,9 @@ export const PERMISSIONS = [
   "job_notes.create",
   "job_notes.edit",
   "job_notes.delete",
+  "communications.view",
+  "communications.send",
+  "communications.manage",
 ] as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[number];

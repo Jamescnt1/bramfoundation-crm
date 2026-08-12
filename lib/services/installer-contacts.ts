@@ -2,6 +2,7 @@ import "server-only";
 
 import { requireAdministrator } from "@/lib/services/employees";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { normalizeUsPhone } from "@/lib/phone-number";
 
 export type InstallerPreferredChannel = "none" | "email" | "sms" | "both";
 
@@ -60,7 +61,10 @@ export async function retireInstallerContact(id: string) {
 function validateInstallerContact(values: InstallerContactValues) {
   const name = values.name.trim();
   if (!name) throw new Error("Installer name is required.");
-  const mobilePhone = normalizePhone(values.mobile_phone);
+  const mobilePhone = normalizeUsPhone(values.mobile_phone);
+  if (values.mobile_phone?.trim() && !mobilePhone) {
+    throw new Error("Enter a valid mobile number, including area code.");
+  }
   const email = values.email?.trim().toLowerCase() || null;
   if (email && !/^\S+@\S+\.\S+$/.test(email)) throw new Error("Enter a valid installer email address.");
   if (!mobilePhone && !email) throw new Error("Add a mobile number, an email address, or both.");
@@ -85,16 +89,6 @@ function validateInstallerContact(values: InstallerContactValues) {
     trial_recipient_verified: Boolean(values.trial_recipient_verified),
     active: Boolean(values.active),
   };
-}
-
-function normalizePhone(value: string | null) {
-  const trimmed = value?.trim();
-  if (!trimmed) return null;
-  const digits = trimmed.replace(/\D/g, "");
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-  if (trimmed.startsWith("+") && digits.length >= 10 && digits.length <= 15) return `+${digits}`;
-  throw new Error("Enter a valid mobile number, including area code.");
 }
 
 function friendlyContactError(message: string) {

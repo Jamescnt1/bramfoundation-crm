@@ -27,6 +27,8 @@ import {
 } from "@/lib/services/appointment-types";
 import { getJobMaterialScopes, getMaterialCategories, summarizeProduction } from "@/lib/services/production";
 import type { MaterialCategory, MaterialScope } from "@/components/production/types";
+import type { JobSmsDelivery } from "@/components/sms/types";
+import { getJobCustomerSms } from "@/lib/services/customer-sms";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -93,6 +95,8 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
   let emailsResult = emptyResult<CustomerEmail[]>([]);
   let templatesResult = emptyResult<EmailTemplate[]>([]);
   let emailSendPermissionResult = emptyResult(false);
+  let smsResult = emptyResult<JobSmsDelivery[]>([]);
+  let smsSendPermissionResult = emptyResult(false);
   let layoutsResult = emptyResult<JobLayout[]>([]);
   let notesResult = emptyResult<JobNote[]>([]);
   let notesViewResult = emptyResult(false);
@@ -157,6 +161,8 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
       emailsResult,
       templatesResult,
       emailSendPermissionResult,
+      smsResult,
+      smsSendPermissionResult,
     ] = await Promise.all([
       safe(getJobAttachments(job.id), []),
       safe(hasPermission("attachments.manage"), false),
@@ -166,6 +172,8 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
       safe(getJobCustomerEmails(job.id), []),
       safe(getActiveEmailTemplates(), []),
       safe(hasPermission("customer_email.send"), false),
+      safe(getJobCustomerSms(job.id), []),
+      safe(hasPermission("communications.send"), false),
     ]);
   }
 
@@ -204,6 +212,9 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
             emailTemplates={templatesResult.value}
             customerEmailError={emailsResult.error}
             canSendCustomerEmail={emailSendPermissionResult.value}
+            customerSms={smsResult.value}
+            customerSmsError={smsResult.error}
+            canSendCustomerSms={smsSendPermissionResult.value}
             layoutsEnabled={LAYOUTS_BETA_ENABLED}
             layouts={layoutsResult.value}
             layoutError={layoutsResult.error}
