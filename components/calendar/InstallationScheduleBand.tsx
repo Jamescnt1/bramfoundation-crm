@@ -2,11 +2,11 @@ import AppointmentTooltip from "@/components/calendar/AppointmentTooltip";
 import { formatDateKey } from "@/components/calendar/calendar-utils";
 import type { CalendarAppointment } from "@/components/calendar/types";
 import {
-  AppointmentTypeIcon,
   FALLBACK_INSTALLER_COLOR,
   getReadableTextColor,
   normalizeCalendarColor,
 } from "@/components/calendar/appointment-appearance";
+import { Hammer } from "lucide-react";
 
 type InstallationScheduleBandProps = {
   days: Date[];
@@ -116,9 +116,13 @@ export default function InstallationScheduleBand({
             Multi-day installation work
           </p>
         </div>
-        <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-blue-800 ring-1 ring-blue-200">
-          {visibleInstallCount} {visibleInstallCount === 1 ? "install" : "installs"}
-        </span>
+        <div className="flex flex-wrap items-center justify-end gap-2 text-[10px] font-semibold">
+          <span className="inline-flex items-center gap-1 text-red-700"><Hammer className="h-3.5 w-3.5 stroke-[3]" /> Work order needed</span>
+          <span className="inline-flex items-center gap-1 text-green-700"><Hammer className="h-3.5 w-3.5 stroke-[3]" /> Sent</span>
+          <span className="rounded-full bg-white px-2 py-0.5 text-[11px] text-blue-800 ring-1 ring-blue-200">
+            {visibleInstallCount} {visibleInstallCount === 1 ? "install" : "installs"}
+          </span>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -167,6 +171,7 @@ export default function InstallationScheduleBand({
                       FALLBACK_INSTALLER_COLOR,
                     );
                     const color = getReadableTextColor(backgroundColor);
+                    const workOrderSent = ["sent", "acknowledged"].includes(segment.appointment.work_order_status);
                     return (
                   <AppointmentTooltip
                     appointment={segment.appointment}
@@ -182,10 +187,9 @@ export default function InstallationScheduleBand({
                           : ""
                       }`}
                     >
-                      <AppointmentTypeIcon
-                        type="installation"
-                        className="h-3 w-3 shrink-0"
-                      />
+                      <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ${workOrderSent ? "text-green-700 ring-green-300" : "text-red-700 ring-red-300"}`} title={workOrderSent ? "Work order sent" : "Work order needs to be sent"}>
+                        <Hammer className="h-3.5 w-3.5 stroke-[3]" />
+                      </span>
                       <span className="truncate">
                         {formatInstallLabel(segment.appointment)}
                       </span>

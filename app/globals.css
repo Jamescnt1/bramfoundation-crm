@@ -250,6 +250,14 @@
 }
 
 @layer components {
+  .job-workspace-tabs {
+    scrollbar-width: none;
+  }
+
+  .job-workspace-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
   .foundation-primary-action {
     @apply inline-flex items-center justify-center rounded-lg bg-blue-600 font-medium text-white transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
   }

@@ -50,6 +50,13 @@ type AppointmentDialogProps = {
 type LocationMode = "job" | "custom";
 
 const EMPTY_SCOPE_IDS: string[] = [];
+const TIME_OPTIONS = Array.from({ length: 69 }, (_, index) => {
+  const totalMinutes = 5 * 60 + index * 15;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+});
+const DURATION_OPTIONS = [30, 60, 90, 120] as const;
 
 function formatDateInput(date: Date | null | undefined) {
   if (!date) {
@@ -82,6 +89,20 @@ function oneHourAfter(date: string, time: string) {
     date: formatDateInput(end),
     time: formatTimeInput(end),
   };
+}
+
+function timeLabel(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+  return `${displayHours}:${String(minutes).padStart(2, "0")} ${suffix}`;
+}
+
+function addMinutes(date: string, time: string, minutes: number) {
+  const start = createAppointmentDate(date, time);
+  if (Number.isNaN(start.getTime())) return null;
+  const end = new Date(start.getTime() + minutes * 60_000);
+  return { date: formatDateInput(end), time: formatTimeInput(end) };
 }
 
 function oneYearAfter(date: string) {
@@ -186,7 +207,7 @@ export default function AppointmentDialog({
       setJobPickerOpen(false);
       setJobQuery("");
       setCustomTitle(appointment.job_id ? "" : appointment.title ?? "");
-      setEndTimeManuallyEdited(true);
+      setEndTimeManuallyEdited(false);
       setAllDay(Boolean(appointment.all_day));
       setRecurrence("none");
       setRecurrenceEndsOn(appointment.recurrence_ends_on ?? "");
@@ -300,6 +321,16 @@ export default function AppointmentDialog({
     setEndTime(nextEnd.time);
   }
 
+  function applyDuration(minutes: number) {
+    const nextEnd = addMinutes(date, startTime, minutes);
+    if (!nextEnd) return;
+    setEndDate(nextEnd.date);
+    setEndTime(nextEnd.time);
+    setEndTimeManuallyEdited(false);
+  }
+
+  const timeOptions = Array.from(new Set([...TIME_OPTIONS, startTime, endTime])).filter(Boolean).sort();
+
   function handleStartDateChange(nextDate: string) {
     const previousStart = date ? new Date(`${date}T12:00:00`) : null;
     const previousEnd = endDate ? new Date(`${endDate}T12:00:00`) : null;
@@ -320,7 +351,10 @@ export default function AppointmentDialog({
     setEndDate(nextDate);
     if (!endTimeManuallyEdited) {
       const nextEnd = oneHourAfter(nextDate, startTime);
-      if (nextEnd) setEndTime(nextEnd.time);
+      if (nextEnd) {
+        setEndDate(nextEnd.date);
+        setEndTime(nextEnd.time);
+      }
     }
   }
 
@@ -652,13 +686,15 @@ export default function AppointmentDialog({
                   Start time
                 </label>
 
-                <Input
+                <select
                   id="appointment-start-time"
-                  type="time"
                   value={startTime}
                   onChange={(event) => handleStartTimeChange(event.target.value)}
+                  className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-base text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200 sm:h-9 sm:text-sm"
                   required
-                />
+                >
+                  {timeOptions.map((time) => <option key={time} value={time}>{timeLabel(time)}</option>)}
+                </select>
               </div>
 
               <div className="grid gap-2">
@@ -669,16 +705,29 @@ export default function AppointmentDialog({
                   End time
                 </label>
 
-                <Input
+                <select
                   id="appointment-end-time"
-                  type="time"
                   value={endTime}
                   onChange={(event) => {
                     setEndTime(event.target.value);
                     setEndTimeManuallyEdited(true);
                   }}
+                  className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-base text-gray-900 shadow-sm outline-none transition focus:border-gray-400 focus:ring-2 focus:ring-gray-200 sm:h-9 sm:text-sm"
                   required
-                />
+                >
+                  {timeOptions.map((time) => <option key={time} value={time}>{timeLabel(time)}</option>)}
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <p className="text-xs font-medium text-gray-500">Quick duration</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {DURATION_OPTIONS.map((minutes) => (
+                    <button key={minutes} type="button" onClick={() => applyDuration(minutes)} className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-blue-300 hover:bg-blue-50">
+                      {minutes < 60 ? `${minutes} min` : `${minutes / 60} hr${minutes > 60 ? "s" : ""}`}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-gray-500">Changing the start time automatically sets the end one hour later until you manually change the end time.</p>
               </div>
             </div> : null}
 

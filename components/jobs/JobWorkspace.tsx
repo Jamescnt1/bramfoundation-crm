@@ -317,7 +317,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
       </header>
       <JobHoldDialog open={holdDialogOpen} jobId={job.id} currentReason={holdReason} currentUntil={holdUntil} currentNote={holdNote} onOpenChange={setHoldDialogOpen} onSaved={(values) => { setOnHold(true); setHoldReason(values.reason); setHoldUntil(values.until); setHoldNote(values.note); router.refresh(); }} />
 
-      <nav className="sticky top-0 z-20 mt-3 flex gap-1 overflow-x-auto rounded-t-lg border border-blue-700 border-b-0 bg-blue-600 px-2 pt-2 shadow-sm" role="tablist" aria-label="Job workspace sections">
+      <nav className="job-workspace-tabs sticky top-0 z-20 mt-3 flex gap-1 overflow-x-auto overflow-y-hidden rounded-t-lg border border-blue-700 border-b-0 bg-blue-600 px-2 pt-2 shadow-sm" role="tablist" aria-label="Job workspace sections">
         {nav.map(([id, label]) => (
           <button
             key={id}
@@ -472,7 +472,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
               </div>
               {appointments.length ? (
                 <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                  {appointments.map((appointment) => <AppointmentCard key={appointment.id} appointment={appointment} compact showDetails />)}
+                  {appointments.map((appointment) => <AppointmentCard key={appointment.id} appointment={appointment} compact showDetails onSelect={editInstallation} />)}
                 </div>
               ) : <WorkspaceEmpty text="No calendar events are linked to this job." />}
             </WorkspaceCard>
