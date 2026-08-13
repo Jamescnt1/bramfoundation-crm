@@ -19,6 +19,11 @@ export type AppointmentValues = {
   installer_crew_id: string | null;
   job_id: string | null;
   all_day: boolean;
+  customer_notifications_enabled: boolean;
+  confirmation_notification_enabled: boolean;
+  reminder_notification_enabled: boolean;
+  preferred_communication_channel: "inherit" | "email" | "sms" | "both";
+  reminder_hours_before: number | null;
 };
 
 export type RecurrenceInput = {
@@ -114,7 +119,9 @@ export async function getAppointmentsByJobId(jobId: string) {
         lock_box_code,
         status,
         installation_required,
-        customer:customers!jobs_customer_id_fkey (id, full_name),
+        customer_communication_mode,
+        preferred_communication_channel,
+        customer:customers!jobs_customer_id_fkey (id, full_name, automated_communications_enabled, preferred_communication_channel),
         company_contact:customer_contacts!jobs_company_contact_id_fkey (
           first_name, last_name, job_title, email, office_phone, mobile_phone
         ),
@@ -313,6 +320,11 @@ export async function copyAppointmentToEmployee(
     recurrence_interval: copiedSeriesId ? item.recurrence_interval : null,
     recurrence_ends_on: copiedSeriesId ? item.recurrence_ends_on : null,
     copied_from_id: item.id,
+    customer_notifications_enabled: item.customer_notifications_enabled,
+    confirmation_notification_enabled: item.confirmation_notification_enabled,
+    reminder_notification_enabled: item.reminder_notification_enabled,
+    preferred_communication_channel: item.preferred_communication_channel,
+    reminder_hours_before: item.reminder_hours_before,
   }));
   const { error } = await supabase.from("appointments").insert(rows);
   if (error) throw new Error(error.message);

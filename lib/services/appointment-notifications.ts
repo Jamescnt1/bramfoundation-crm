@@ -147,10 +147,10 @@ export async function processScheduledAppointmentReminders() {
 
   const now = Date.now();
   const windowStart = new Date(now).toISOString();
-  const windowEnd = new Date(now + (settings.appointment_reminder_hours_before * 60 + 15) * 60 * 1000).toISOString();
-  const { data: appointments, error: appointmentError } = await admin.from("appointments").select(`id,job_id,assigned_employee_id,installer_crew_id,title,appointment_type,starts_at,location,
-    job:jobs!appointments_job_id_fkey(id,customer_id,customer_name,phone,email,project_contact_phone,
-      customer:customers!jobs_customer_id_fkey(id,full_name,phone,email),
+  const windowEnd = new Date(now + (720 * 60 + 15) * 60 * 1000).toISOString();
+  const { data: appointments, error: appointmentError } = await admin.from("appointments").select(`id,job_id,assigned_employee_id,installer_crew_id,title,appointment_type,starts_at,location,customer_notifications_enabled,confirmation_notification_enabled,reminder_notification_enabled,preferred_communication_channel,reminder_hours_before,
+    job:jobs!appointments_job_id_fkey(id,customer_id,customer_name,phone,email,project_contact_phone,customer_communication_mode,preferred_communication_channel,
+      customer:customers!jobs_customer_id_fkey(id,full_name,phone,email,automated_communications_enabled,preferred_communication_channel),
       company_contact:customer_contacts!jobs_company_contact_id_fkey(id,first_name,last_name,mobile_phone,email),
       project_contact:customer_contacts!jobs_project_contact_id_fkey(id,first_name,last_name,mobile_phone,email),
       job_site_contact:customer_contacts!jobs_job_site_contact_id_fkey(id,first_name,last_name,mobile_phone,email))`).neq("status", "cancelled").gte("starts_at", windowStart).lt("starts_at", windowEnd).order("starts_at");
@@ -164,8 +164,16 @@ export async function processScheduledAppointmentReminders() {
   let sent = 0;
   let failed = 0;
   for (const appointment of appointments ?? []) {
-    for (const item of audiences) {
+    const reminderHours = typeof appointment.reminder_hours_before === "number" ? appointment.reminder_hours_before : settings.appointment_reminder_hours_before;
+    const sendAt = new Date(appointment.starts_at).getTime() - reminderHours * 60 * 60 * 1000;
+    if (sendAt > now || sendAt <= now - 20 * 60 * 1000) continue;
+    const appointmentAudiences = [
+      ...audiences.filter((item) => item.audience !== "customer"),
+      ...resolvedCustomerChannels(appointment, settings.calendar_customer_reminder_channel).map((channel) => ({ audience: "customer" as const, channel, enabled: settings.calendar_customer_notifications_enabled })),
+    ];
+    for (const item of appointmentAudiences) {
       if (!item.enabled || (item.channel === "email" ? !settings.email_notifications_enabled : !settings.sms_enabled)) continue;
+      if (item.audience === "customer" && !customerAutomationEligible(appointment, "reminder")) continue;
       const result = await sendAutomatedAppointmentNotification(admin, appointment, company, item.audience, item.channel, settings.trial_mode, "reminder");
       sent += result.sent;
       failed += result.failed;
@@ -196,7 +204,7 @@ async function sendAutomatedAppointmentNotification(
     try {
       if (channel === "sms") await requireSmsConsent(admin, recipient.address);
       const idempotencyKey = eventId
-        ? `appointment-automation-${eventId}-${automationRuleId}-${recipient.id ?? recipient.address}`
+        ? `appointment-automation-${eventId}-${automationRuleId ?? "appointment"}-${audience}-${channel}-${recipient.id ?? recipient.address}`
         : `appointment-reminder-${appointment.id}-${audience}-${channel}-${recipient.id ?? recipient.address}`;
       const { data: delivery, error: insertError } = await admin.from("communication_deliveries").insert({
         channel,
@@ -242,7 +250,7 @@ async function sendAutomatedAppointmentNotification(
 
 export async function processCommunicationAutomationEvents() {
   const admin = createAdminClient();
-  const { data: settings, error: settingsError } = await admin.from("communication_settings").select("email_notifications_enabled,sms_enabled,automated_communications_enabled,trial_mode,calendar_customer_notifications_enabled,calendar_employee_notifications_enabled,calendar_installer_notifications_enabled").eq("singleton_key", true).single();
+  const { data: settings, error: settingsError } = await admin.from("communication_settings").select("email_notifications_enabled,sms_enabled,automated_communications_enabled,trial_mode,calendar_customer_notifications_enabled,calendar_employee_notifications_enabled,calendar_installer_notifications_enabled,calendar_customer_reminder_channel").eq("singleton_key", true).single();
   if (settingsError) throw new Error(settingsError.message);
   if (!settings.automated_communications_enabled) return { events: 0, sent: 0, failed: 0, skipped: "Automated communications are paused." };
   const { data: events, error: eventError } = await admin.from("communication_automation_events").select("id,trigger_event,trigger_value,appointment_id").is("processed_at", null).order("created_at").limit(50);
@@ -254,18 +262,28 @@ export async function processCommunicationAutomationEvents() {
     try {
       const { data: rules, error: ruleError } = await admin.from("automation_rules").select("id,notification_audience,notification_channel").eq("active", true).eq("action_type", "send_notification").eq("trigger_event", event.trigger_event).or(`trigger_value.is.null,trigger_value.eq.${event.trigger_value}`);
       if (ruleError) throw new Error(ruleError.message);
-      if (event.appointment_id && rules?.length) {
-        const { data: appointment, error: appointmentError } = await admin.from("appointments").select(`id,job_id,assigned_employee_id,installer_crew_id,title,appointment_type,starts_at,location,status,
-          job:jobs!appointments_job_id_fkey(id,customer_id,customer_name,phone,email,project_contact_phone,
-            customer:customers!jobs_customer_id_fkey(id,full_name,phone,email),
+      if (event.appointment_id) {
+        const { data: appointment, error: appointmentError } = await admin.from("appointments").select(`id,job_id,assigned_employee_id,installer_crew_id,title,appointment_type,starts_at,location,status,customer_notifications_enabled,confirmation_notification_enabled,reminder_notification_enabled,preferred_communication_channel,reminder_hours_before,
+          job:jobs!appointments_job_id_fkey(id,customer_id,customer_name,phone,email,project_contact_phone,customer_communication_mode,preferred_communication_channel,
+            customer:customers!jobs_customer_id_fkey(id,full_name,phone,email,automated_communications_enabled,preferred_communication_channel),
             company_contact:customer_contacts!jobs_company_contact_id_fkey(id,first_name,last_name,mobile_phone,email),
             project_contact:customer_contacts!jobs_project_contact_id_fkey(id,first_name,last_name,mobile_phone,email),
             job_site_contact:customer_contacts!jobs_job_site_contact_id_fkey(id,first_name,last_name,mobile_phone,email))`).eq("id", event.appointment_id).maybeSingle();
         if (appointmentError) throw new Error(appointmentError.message);
         if (appointment && appointment.status !== "cancelled" && new Date(appointment.starts_at).getTime() > Date.now()) {
+          if (settings.calendar_customer_notifications_enabled && customerAutomationEligible(appointment, "confirmation")) {
+            for (const channel of resolvedCustomerChannels(appointment, settings.calendar_customer_reminder_channel)) {
+              const channelEnabled = channel === "email" ? settings.email_notifications_enabled : settings.sms_enabled;
+              if (!channelEnabled) continue;
+              const result = await sendAutomatedAppointmentNotification(admin, appointment, company, "customer", channel, settings.trial_mode, "confirmation", undefined, event.id);
+              sent += result.sent;
+              failed += result.failed;
+            }
+          }
           for (const rule of rules) {
             const audience = rule.notification_audience as AppointmentNotificationAudience;
             const channel = rule.notification_channel as AppointmentNotificationChannel;
+            if (audience === "customer") continue;
             const audienceEnabled = settings[controlColumn(audience)];
             const channelEnabled = channel === "email" ? settings.email_notifications_enabled : settings.sms_enabled;
             if (!audienceEnabled || !channelEnabled) continue;
@@ -363,6 +381,30 @@ type RelatedRecord = Record<string, unknown> & {
 function relation(value: unknown): RelatedRecord | null { return (Array.isArray(value) ? value[0] : value) as RelatedRecord | null; }
 function contactName(contact: RelatedRecord | null) { return contact ? `${contact.first_name ?? ""} ${contact.last_name ?? ""}`.trim() || null : null; }
 function providerFailure(caught: unknown) { const error = caught as { message?: string; code?: string | number }; return { message: error?.message || "The provider rejected the appointment notification.", code: error?.code ? String(error.code) : null }; }
+
+function customerAutomationEligible(appointment: Record<string, unknown>, kind: AppointmentNotificationKind) {
+  if (appointment.customer_notifications_enabled !== true) return false;
+  if (kind === "confirmation" && appointment.confirmation_notification_enabled !== true) return false;
+  if (kind === "reminder" && appointment.reminder_notification_enabled !== true) return false;
+  const job = relation(appointment.job);
+  if (!job) return false;
+  if (job.customer_communication_mode === "on") return true;
+  if (job.customer_communication_mode === "off") return false;
+  return relation(job.customer)?.automated_communications_enabled === true;
+}
+
+function resolvedCustomerChannels(appointment: Record<string, unknown>, fallback: AppointmentNotificationChannel): AppointmentNotificationChannel[] {
+  const job = relation(appointment.job);
+  const customer = relation(job?.customer);
+  const selected = appointment.preferred_communication_channel === "inherit"
+    ? job?.preferred_communication_channel === "inherit"
+      ? customer?.preferred_communication_channel
+      : job?.preferred_communication_channel
+    : appointment.preferred_communication_channel;
+  if (selected === "both") return ["email", "sms"];
+  if (selected === "email" || selected === "sms") return [selected];
+  return [fallback];
+}
 
 async function getAutomationCompanySettings(admin: ReturnType<typeof createAdminClient>) {
   const { data, error } = await admin.from("company_settings").select("company_name,email,timezone").eq("singleton_key", true).single();

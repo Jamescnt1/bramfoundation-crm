@@ -41,6 +41,8 @@ import { addMaterialScopeAction } from "@/app/leads/[id]/production/actions";
 import JobHoldDialog from "@/components/jobs/JobHoldDialog";
 import { releaseJobHoldAction } from "@/app/leads/[id]/hold/actions";
 import CustomerSmsPanel from "@/components/sms/CustomerSmsPanel";
+import JobCommunicationPreferences from "@/components/jobs/JobCommunicationPreferences";
+import ExternalCommunicationHistory from "@/components/jobs/ExternalCommunicationHistory";
 import type { JobSmsDelivery, JobSmsRecipient } from "@/components/sms/types";
 
 type Props = {
@@ -528,8 +530,12 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
           <section>
             <WorkspaceSectionHeader title="Communications" description="Customer email, consent-based text messages, and secure internal discussion remain clearly separated." />
             <div className="mt-2 space-y-3">
-              {customerEmailError ? <WorkspaceError text={customerEmailError} /> : <CustomerEmailPanel compact jobId={job.id} recipient={job.project_contact?.email ?? job.email ?? job.company_contact?.email ?? customer?.email ?? ""} recipientOptions={[{ label: "Project Contact", email: job.project_contact?.email ?? job.email ?? "" }, { label: "Company Contact", email: job.company_contact?.email ?? customer?.email ?? "" }, { label: "Site Contact", email: job.job_site_contact?.email ?? "" }].filter((item) => item.email)} emails={customerEmails} templates={emailTemplates} attachments={attachments} canSend={canSendCustomerEmail} />}
-              {customerSmsError ? <WorkspaceError text={customerSmsError} /> : <CustomerSmsPanel jobId={job.id} recipient={smsRecipients(job, customer)[0]?.phone ?? ""} recipientOptions={smsRecipients(job, customer)} deliveries={customerSms} canSend={canSendCustomerSms} />}
+              <JobCommunicationPreferences job={job} />
+              <div className="grid gap-3 xl:grid-cols-2">
+                {customerEmailError ? <WorkspaceError text={customerEmailError} /> : <CustomerEmailPanel compact showHistory={false} jobId={job.id} recipient={job.project_contact?.email ?? job.email ?? job.company_contact?.email ?? customer?.email ?? ""} recipientOptions={[{ label: "Project Contact", email: job.project_contact?.email ?? job.email ?? "" }, { label: "Company Contact", email: job.company_contact?.email ?? customer?.email ?? "" }, { label: "Site Contact", email: job.job_site_contact?.email ?? "" }].filter((item) => item.email)} emails={customerEmails} templates={emailTemplates} attachments={attachments} canSend={canSendCustomerEmail} />}
+                {customerSmsError ? <WorkspaceError text={customerSmsError} /> : <CustomerSmsPanel showHistory={false} jobId={job.id} recipient={smsRecipients(job, customer)[0]?.phone ?? ""} recipientOptions={smsRecipients(job, customer)} deliveries={customerSms} canSend={canSendCustomerSms} />}
+              </div>
+              {!customerEmailError && !customerSmsError ? <ExternalCommunicationHistory emails={customerEmails} texts={customerSms} /> : null}
               {currentEmployee ? <InternalMessagePanel compact initialConversation={conversation} currentEmployee={{ id: currentEmployee.id, name: currentEmployee.name, avatar_url: currentEmployee.avatar_url, color: currentEmployee.color }} employees={employees.map((employee) => ({ id: employee.id, name: employee.name, avatar_url: employee.avatar_url, color: employee.color })) as MessagingEmployee[]} jobId={job.id} attachments={attachments} /> : <WorkspaceError text="Your employee profile could not be loaded for internal messaging." />}
             </div>
           </section>

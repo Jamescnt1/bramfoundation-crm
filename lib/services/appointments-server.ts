@@ -43,7 +43,9 @@ export async function getAppointmentsForCalendar(): Promise<CalendarAppointment[
         lock_box_code,
         status,
         installation_required,
-        customer:customers!jobs_customer_id_fkey (id, full_name),
+        customer_communication_mode,
+        preferred_communication_channel,
+        customer:customers!jobs_customer_id_fkey (id, full_name, automated_communications_enabled, preferred_communication_channel),
         company_contact:customer_contacts!jobs_company_contact_id_fkey (
           first_name, last_name, job_title, email, office_phone, mobile_phone
         ),

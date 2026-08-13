@@ -7,17 +7,62 @@ import {
 import { useRouter } from "next/navigation";
 import {
   createCustomer,
+  updateCustomer,
   type CustomerValues,
 } from "@/lib/services/customers";
 
-export default function CustomerForm() {
+type CreateCustomerFormProps = {
+  mode: "create";
+  customerId?: never;
+  initialValues?: never;
+};
+
+type EditCustomerFormProps = {
+  mode: "edit";
+  customerId: string;
+  initialValues: CustomerValues;
+};
+
+type CustomerFormProps =
+  | CreateCustomerFormProps
+  | EditCustomerFormProps;
+
+const emptyValues: CustomerValues = {
+  full_name: "",
+  phone: null,
+  email: null,
+  address: null,
+  notes: null,
+};
+
+export default function CustomerForm(
+  props: CustomerFormProps,
+) {
   const router = useRouter();
 
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [address, setAddress] = useState("");
-  const [notes, setNotes] = useState("");
+  const isEditing = props.mode === "edit";
+
+  const currentValues = isEditing
+    ? props.initialValues
+    : emptyValues;
+
+  const [fullName, setFullName] = useState(
+    currentValues.full_name,
+  );
+  const [phone, setPhone] = useState(
+    currentValues.phone ?? "",
+  );
+  const [email, setEmail] = useState(
+    currentValues.email ?? "",
+  );
+  const [address, setAddress] = useState(
+    currentValues.address ?? "",
+  );
+  const [notes, setNotes] = useState(
+    currentValues.notes ?? "",
+  );
+  const [automatedCommunicationsEnabled, setAutomatedCommunicationsEnabled] = useState(currentValues.automated_communications_enabled ?? false);
+  const [preferredCommunicationChannel, setPreferredCommunicationChannel] = useState<"none" | "email" | "sms" | "both">(currentValues.preferred_communication_channel ?? "none");
 
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -43,12 +88,26 @@ export default function CustomerForm() {
       email: email.trim() || null,
       address: address.trim() || null,
       notes: notes.trim() || null,
+      automated_communications_enabled: automatedCommunicationsEnabled,
+      preferred_communication_channel: preferredCommunicationChannel,
     };
 
     try {
-      await createCustomer(values);
+      if (props.mode === "edit") {
+        await updateCustomer(
+          props.customerId,
+          values,
+        );
 
-      router.push("/customers");
+        router.push(
+          `/customers/${props.customerId}`,
+        );
+      } else {
+        await createCustomer(values);
+
+        router.push("/customers");
+      }
+
       router.refresh();
     } catch (error) {
       setErrorMessage(
@@ -62,6 +121,13 @@ export default function CustomerForm() {
   }
 
   function handleCancel() {
+    if (props.mode === "edit") {
+      router.push(
+        `/customers/${props.customerId}`,
+      );
+      return;
+    }
+
     router.push("/customers");
   }
 
@@ -72,7 +138,10 @@ export default function CustomerForm() {
     >
       {errorMessage && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
-          Unable to create customer: {errorMessage}
+          {isEditing
+            ? "Unable to update customer: "
+            : "Unable to create customer: "}
+          {errorMessage}
         </div>
       )}
 
@@ -203,6 +272,14 @@ export default function CustomerForm() {
         />
       </div>
 
+      <fieldset className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <legend className="px-1 text-sm font-semibold text-gray-900">Customer communications</legend>
+        <p className="mt-1 text-xs leading-5 text-gray-600">Automatic notices are off by default. Individual jobs and appointments must also be enabled.</p>
+        <label className="mt-4 flex items-start gap-3"><input type="checkbox" checked={automatedCommunicationsEnabled} onChange={(event) => setAutomatedCommunicationsEnabled(event.target.checked)} disabled={isSaving} className="mt-1"/><span><span className="block text-sm font-medium text-gray-900">Allow automatic customer communications</span><span className="block text-xs text-gray-500">Global controls and SMS consent still apply.</span></span></label>
+        <label className="mt-4 grid gap-1.5 text-sm font-medium text-gray-700">Preferred communication method<select value={preferredCommunicationChannel} onChange={(event) => setPreferredCommunicationChannel(event.target.value as typeof preferredCommunicationChannel)} disabled={isSaving} className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm"><option value="none">No preference</option><option value="email">Email</option><option value="sms">Text message</option><option value="both">Text and email</option></select></label>
+        <p className="mt-2 text-xs text-gray-500">Choosing text does not record SMS consent. The recipient must still opt in.</p>
+      </fieldset>
+
       <div className="flex flex-col gap-3 border-t border-gray-200 pt-6 sm:flex-row">
         <button
           type="submit"
@@ -210,8 +287,12 @@ export default function CustomerForm() {
           className="rounded-lg bg-black px-5 py-2.5 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSaving
-            ? "Creating Customer..."
-            : "Create Customer"}
+            ? isEditing
+              ? "Saving Changes..."
+              : "Creating Customer..."
+            : isEditing
+              ? "Save Changes"
+              : "Create Customer"}
         </button>
 
         <button

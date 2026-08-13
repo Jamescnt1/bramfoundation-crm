@@ -26,6 +26,8 @@ export type Job = {
   contract_amount: string | null;
   billed_at: string | null;
   installation_required: boolean;
+  customer_communication_mode: "off" | "inherit" | "on";
+  preferred_communication_channel: "inherit" | "email" | "sms" | "both";
   created_at: string;
   updated_at: string | null;
   archived_at: string | null;
@@ -41,6 +43,8 @@ export type Job = {
   customer: {
     id: string;
     full_name: string;
+    automated_communications_enabled: boolean;
+    preferred_communication_channel: "none" | "email" | "sms" | "both";
   } | null;
   company_contact: JobContactSummary | null;
   project_contact: JobContactSummary | null;
@@ -113,6 +117,8 @@ export type CreateJobValues = {
   contract_amount?: string | number | null;
   billed_at?: string | null;
   installation_required?: boolean;
+  customer_communication_mode?: "off" | "inherit" | "on";
+  preferred_communication_channel?: "inherit" | "email" | "sms" | "both";
 };
 
 export type UpdateJobValues =
@@ -198,6 +204,8 @@ const jobColumns = `
   contract_amount,
   billed_at,
   installation_required,
+  customer_communication_mode,
+  preferred_communication_channel,
   created_at,
   updated_at
   ,archived_at
@@ -212,7 +220,9 @@ const jobColumns = `
   ,held_at
   ,customer:customers!jobs_customer_id_fkey (
     id,
-    full_name
+    full_name,
+    automated_communications_enabled,
+    preferred_communication_channel
   )
   ,company_contact:customer_contacts!jobs_company_contact_id_fkey (
     id, customer_id, first_name, last_name, job_title, email, office_phone, mobile_phone
@@ -543,6 +553,8 @@ export async function createJob(
       contract_amount: contractAmount,
       billed_at: values.billed_at ?? null,
       installation_required: values.installation_required ?? true,
+      customer_communication_mode: values.customer_communication_mode ?? "off",
+      preferred_communication_channel: values.preferred_communication_channel ?? "inherit",
     })
     .select(jobColumns)
     .single();
@@ -720,6 +732,12 @@ export async function updateJob(
   }
   if (values.installation_required !== undefined) {
     updates.installation_required = values.installation_required;
+  }
+  if (values.customer_communication_mode !== undefined) {
+    updates.customer_communication_mode = values.customer_communication_mode;
+  }
+  if (values.preferred_communication_channel !== undefined) {
+    updates.preferred_communication_channel = values.preferred_communication_channel;
   }
 
   const { data, error } = await supabase

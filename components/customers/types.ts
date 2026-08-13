@@ -7,6 +7,8 @@ export type Customer = {
   email: string | null;
   address: string | null;
   notes: string | null;
+  automated_communications_enabled: boolean;
+  preferred_communication_channel: "none" | "email" | "sms" | "both";
 
   created_at?: string | null;
   updated_at?: string | null;

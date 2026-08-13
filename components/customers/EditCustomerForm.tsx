@@ -37,6 +37,12 @@ export default function EditCustomerForm({
   const [notes, setNotes] = useState(
     initialValues.notes ?? "",
   );
+  const [automatedCommunicationsEnabled, setAutomatedCommunicationsEnabled] = useState(
+    initialValues.automated_communications_enabled ?? false,
+  );
+  const [preferredCommunicationChannel, setPreferredCommunicationChannel] = useState(
+    initialValues.preferred_communication_channel ?? "none",
+  );
 
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -63,6 +69,8 @@ export default function EditCustomerForm({
       email: email.trim() || null,
       address: address.trim() || null,
       notes: notes.trim() || null,
+      automated_communications_enabled: automatedCommunicationsEnabled,
+      preferred_communication_channel: preferredCommunicationChannel,
     };
 
     try {
@@ -214,6 +222,21 @@ export default function EditCustomerForm({
           className="mt-2 w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-gray-900 outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-200 disabled:bg-gray-100"
         />
       </div>
+
+      <fieldset className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <legend className="px-1 text-sm font-semibold text-gray-900">Customer communications</legend>
+        <p className="mt-1 text-xs leading-5 text-gray-600">This is the customer-level default for automatic notices. Individual jobs remain off unless explicitly enabled or set to inherit this preference.</p>
+        <label className="mt-4 flex items-start gap-3">
+          <input type="checkbox" checked={automatedCommunicationsEnabled} onChange={(event) => setAutomatedCommunicationsEnabled(event.target.checked)} disabled={isSaving} className="mt-1" />
+          <span><span className="block text-sm font-medium text-gray-900">Allow automatic customer communications</span><span className="block text-xs text-gray-500">Global safety controls and SMS consent still apply.</span></span>
+        </label>
+        <label className="mt-4 grid gap-1.5 text-sm font-medium text-gray-700">Preferred communication method
+          <select value={preferredCommunicationChannel} onChange={(event) => setPreferredCommunicationChannel(event.target.value as "none" | "email" | "sms" | "both")} disabled={isSaving} className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm">
+            <option value="none">No preference</option><option value="email">Email</option><option value="sms">Text message</option><option value="both">Text and email</option>
+          </select>
+        </label>
+        <p className="mt-2 text-xs text-gray-500">Choosing text does not record SMS consent. The recipient must still opt in.</p>
+      </fieldset>
 
       <div className="flex flex-col gap-3 border-t border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row">

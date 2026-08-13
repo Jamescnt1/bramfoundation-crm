@@ -32,7 +32,7 @@ export default function AppointmentNotificationsPanel({ appointment, communicati
   }
 
   return <section className="border-t border-gray-200 p-5">
-    <div className="flex items-start gap-2"><BellRing className="mt-0.5 h-4 w-4 text-blue-700"/><div><h3 className="font-semibold text-gray-900">Appointment notifications</h3><p className="mt-1 text-xs leading-5 text-gray-500">Send a confirmation or reminder now. Automatic reminders remain paused.</p></div></div>
+    <div className="flex items-start gap-2"><BellRing className="mt-0.5 h-4 w-4 text-blue-700"/><div><h3 className="font-semibold text-gray-900">Appointment notifications</h3><p className="mt-1 text-xs leading-5 text-gray-500">Send a confirmation or reminder now. Automatic customer notices are {appointment.customer_notifications_enabled ? "enabled for this appointment when job and global controls allow them" : "off for this appointment"}.</p></div></div>
     {audiences.length ? <div className="mt-4 grid gap-3">
       <div className="grid grid-cols-2 gap-2">
         <label className="grid gap-1 text-xs font-medium text-gray-600">Recipient<select value={audience} onChange={(event) => setAudience(event.target.value as AppointmentNotificationAudience)} className="h-9 rounded-md border border-gray-300 bg-white px-2 text-sm">{audiences.map((item) => <option key={item} value={item}>{audienceLabel(item)}</option>)}</select></label>

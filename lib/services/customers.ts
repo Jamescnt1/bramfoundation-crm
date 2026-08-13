@@ -7,6 +7,8 @@ export type CustomerValues = {
   email: string | null;
   address: string | null;
   notes: string | null;
+  automated_communications_enabled?: boolean;
+  preferred_communication_channel?: "none" | "email" | "sms" | "both";
 };
 
 export async function getCustomers() {

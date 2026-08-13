@@ -14,6 +14,11 @@ export type CalendarAppointment = {
   recurrence_interval: number | null;
   recurrence_ends_on: string | null;
   copied_from_id: string | null;
+  customer_notifications_enabled: boolean;
+  confirmation_notification_enabled: boolean;
+  reminder_notification_enabled: boolean;
+  preferred_communication_channel: "inherit" | "email" | "sms" | "both";
+  reminder_hours_before: number | null;
 
   title: string | null;
 
@@ -71,9 +76,13 @@ export type CalendarAppointment = {
     lock_box_code: string | null;
     status: string | null;
     installation_required: boolean;
+    customer_communication_mode: "off" | "inherit" | "on";
+    preferred_communication_channel: "inherit" | "email" | "sms" | "both";
     customer: {
       id: string;
       full_name: string;
+      automated_communications_enabled: boolean;
+      preferred_communication_channel: "none" | "email" | "sms" | "both";
     } | null;
     company_contact: {
       first_name: string;

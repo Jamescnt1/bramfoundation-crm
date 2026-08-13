@@ -14,9 +14,10 @@ type Props = {
   recipientOptions: JobSmsRecipient[];
   deliveries: JobSmsDelivery[];
   canSend: boolean;
+  showHistory?: boolean;
 };
 
-export default function CustomerSmsPanel({ jobId, recipient, recipientOptions, deliveries, canSend }: Props) {
+export default function CustomerSmsPanel({ jobId, recipient, recipientOptions, deliveries, canSend, showHistory = true }: Props) {
   const router = useRouter();
   const [to, setTo] = useState(recipient);
   const [body, setBody] = useState("");
@@ -35,7 +36,7 @@ export default function CustomerSmsPanel({ jobId, recipient, recipientOptions, d
     setSending(false);
   }
 
-  return <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
+  return <div className={`grid gap-3 ${showHistory ? "xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]" : ""}`}>
     <div className="rounded-lg border border-green-200 bg-white p-4 shadow-sm">
       <div className="flex items-center gap-2"><MessageSquareText className="h-5 w-5 text-green-700"/><div><h3 className="font-semibold text-gray-950">Customer Text</h3><p className="text-sm text-gray-500">Manual, consent-based, and recorded on this job.</p></div></div>
       {canSend ? <div className="mt-5 grid gap-4">
@@ -48,10 +49,10 @@ export default function CustomerSmsPanel({ jobId, recipient, recipientOptions, d
         <Button type="button" onClick={() => void send()} disabled={sending || !to.trim() || !body.trim()}><Send/>{sending ? "Sending..." : "Send Text"}</Button>
       </div> : <p className="mt-5 rounded-lg bg-gray-50 p-4 text-sm text-gray-600">You can view text history, but your role cannot send customer texts.</p>}
     </div>
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    {showHistory ? <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
       <h3 className="font-semibold text-gray-950">Text History</h3><p className="mt-1 text-sm text-gray-500">Inbound and outbound messages connected to this job.</p>
       <div className="mt-3 space-y-2">{deliveries.length ? deliveries.map((delivery) => <SmsEntry key={delivery.id} delivery={delivery}/>) : <p className="rounded-lg border border-dashed px-3 py-3 text-sm text-gray-500">No customer texts have been recorded for this job.</p>}</div>
-    </div>
+    </div> : null}
   </div>;
 }
 

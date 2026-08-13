@@ -164,6 +164,11 @@ export default function AppointmentDialog({
   const [copyEmployeeId, setCopyEmployeeId] = useState("");
   const [copyScope, setCopyScope] = useState<"occurrence" | "series">("occurrence");
   const [copyMessage, setCopyMessage] = useState("");
+  const [customerNotificationsEnabled, setCustomerNotificationsEnabled] = useState(false);
+  const [confirmationNotificationEnabled, setConfirmationNotificationEnabled] = useState(false);
+  const [reminderNotificationEnabled, setReminderNotificationEnabled] = useState(false);
+  const [preferredCommunicationChannel, setPreferredCommunicationChannel] = useState<"inherit" | "email" | "sms" | "both">("inherit");
+  const [reminderHoursBefore, setReminderHoursBefore] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(
@@ -215,6 +220,11 @@ export default function AppointmentDialog({
       setCopyEmployeeId("");
       setCopyScope("occurrence");
       setCopyMessage("");
+      setCustomerNotificationsEnabled(appointment.customer_notifications_enabled ?? false);
+      setConfirmationNotificationEnabled(appointment.confirmation_notification_enabled ?? false);
+      setReminderNotificationEnabled(appointment.reminder_notification_enabled ?? false);
+      setPreferredCommunicationChannel(appointment.preferred_communication_channel ?? "inherit");
+      setReminderHoursBefore(appointment.reminder_hours_before ? String(appointment.reminder_hours_before) : "");
     } else {
       const initialJob = jobs.find((job) => job.id === defaultJobId);
       setAppointmentType(defaultAppointmentType);
@@ -243,6 +253,11 @@ export default function AppointmentDialog({
       setCopyEmployeeId("");
       setCopyScope("occurrence");
       setCopyMessage("");
+      setCustomerNotificationsEnabled(false);
+      setConfirmationNotificationEnabled(false);
+      setReminderNotificationEnabled(false);
+      setPreferredCommunicationChannel("inherit");
+      setReminderHoursBefore("");
     }
 
     setErrorMessage(null);
@@ -418,6 +433,11 @@ export default function AppointmentDialog({
       installation_scope: appointmentType === "installation" ? installationScope.trim() || null : null,
       job_id: jobId || null,
       all_day: allDay,
+      customer_notifications_enabled: Boolean(jobId) && customerNotificationsEnabled,
+      confirmation_notification_enabled: Boolean(jobId) && customerNotificationsEnabled && confirmationNotificationEnabled,
+      reminder_notification_enabled: Boolean(jobId) && customerNotificationsEnabled && reminderNotificationEnabled,
+      preferred_communication_channel: preferredCommunicationChannel,
+      reminder_hours_before: reminderHoursBefore ? Number(reminderHoursBefore) : null,
     };
 
     setIsSaving(true);
@@ -571,6 +591,19 @@ export default function AppointmentDialog({
                 })() : null}
               </div>
             ) : null}
+
+            {jobId ? <fieldset className="rounded-lg border border-blue-200 bg-blue-50/40 p-3">
+              <legend className="px-1 text-sm font-semibold text-gray-900">Customer notifications</legend>
+              <label className="flex items-start gap-3"><input type="checkbox" checked={customerNotificationsEnabled} onChange={(event) => { setCustomerNotificationsEnabled(event.target.checked); if (!event.target.checked) { setConfirmationNotificationEnabled(false); setReminderNotificationEnabled(false); } }} className="mt-1"/><span><span className="block text-sm font-medium text-gray-900">Enable for this appointment</span><span className="block text-xs leading-5 text-gray-500">Off by default. The job and global communication controls must also allow sending.</span></span></label>
+              {customerNotificationsEnabled ? <div className="mt-3 grid gap-3">
+                <label className="grid gap-1 text-xs font-medium text-gray-600">Preferred method<select value={preferredCommunicationChannel} onChange={(event) => setPreferredCommunicationChannel(event.target.value as typeof preferredCommunicationChannel)} className="h-9 rounded-md border border-gray-300 bg-white px-2 text-sm"><option value="inherit">Use job preference</option><option value="email">Email</option><option value="sms">Text message</option><option value="both">Text and email</option></select></label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className="flex items-start gap-2 rounded-md border border-gray-200 bg-white p-2"><input type="checkbox" checked={confirmationNotificationEnabled} onChange={(event) => setConfirmationNotificationEnabled(event.target.checked)} className="mt-1"/><span><span className="block text-xs font-semibold text-gray-800">Send confirmation</span><span className="block text-xs text-gray-500">After the appointment is saved.</span></span></label>
+                  <label className="flex items-start gap-2 rounded-md border border-gray-200 bg-white p-2"><input type="checkbox" checked={reminderNotificationEnabled} onChange={(event) => setReminderNotificationEnabled(event.target.checked)} className="mt-1"/><span><span className="block text-xs font-semibold text-gray-800">Scheduled reminder</span><span className="block text-xs text-gray-500">Uses the company timing unless overridden.</span></span></label>
+                </div>
+                {reminderNotificationEnabled ? <label className="grid gap-1 text-xs font-medium text-gray-600">Reminder hours before <Input type="number" min={1} max={720} value={reminderHoursBefore} onChange={(event) => setReminderHoursBefore(event.target.value)} placeholder="Use company default"/><span className="font-normal text-gray-500">Leave blank to use the global reminder timing.</span></label> : null}
+              </div> : null}
+            </fieldset> : null}
 
             <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <input

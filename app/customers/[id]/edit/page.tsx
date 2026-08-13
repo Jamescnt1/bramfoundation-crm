@@ -68,6 +68,8 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
               email: customer.email,
               address: customer.address,
               notes: customer.notes,
+              automated_communications_enabled: customer.automated_communications_enabled,
+              preferred_communication_channel: customer.preferred_communication_channel,
             }}
             canDelete={canDeleteCustomer}
           />

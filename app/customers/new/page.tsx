@@ -23,7 +23,7 @@ export default function NewCustomerPage() {
         </header>
 
         <section className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
-          <CustomerForm />
+          <CustomerForm mode="create" />
         </section>
       </div>
     </main>
