@@ -293,7 +293,7 @@ function formatDeliveryTiming(days: number) {
 }
 
 function formatAssignment(rule: AutomationRule) {
-  if (rule.action_type !== "create_task") return "Pipeline update";
+  if (rule.action_type !== "create_task") return rule.action_type === "send_notification" ? "Communication preferences enforced" : "Pipeline update";
   if (rule.assignment_type === "job_salesperson") return "Assign to job salesperson";
   const recipients = rule.automation_rule_recipients ?? [];
   if (recipients.length) {
@@ -319,6 +319,9 @@ function formatAction(rule: AutomationRule) {
   if (rule.action_type === "send_email") {
     const template = Array.isArray(rule.email_templates) ? rule.email_templates[0] : rule.email_templates;
     return `Send customer email: ${template?.name ?? "selected template"}`;
+  }
+  if (rule.action_type === "send_notification") {
+    return `Send ${rule.notification_channel === "sms" ? "text message" : "email"} to assigned ${rule.notification_audience ?? "recipient"}`;
   }
   const taskType = Array.isArray(rule.task_types) ? rule.task_types[0] : rule.task_types;
   return `Create ${taskType?.name ?? "General"} task: ${rule.task_title}`;

@@ -1,4 +1,4 @@
-import { processScheduledAppointmentReminders } from "@/lib/services/appointment-notifications";
+import { processCommunicationAutomationEvents, processScheduledAppointmentReminders } from "@/lib/services/appointment-notifications";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -9,8 +9,11 @@ export async function GET(request: Request) {
     return Response.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
   try {
-    const result = await processScheduledAppointmentReminders();
-    return Response.json({ success: true, ...result });
+    const [reminders, automations] = await Promise.all([
+      processScheduledAppointmentReminders(),
+      processCommunicationAutomationEvents(),
+    ]);
+    return Response.json({ success: true, reminders, automations });
   } catch (caught) {
     const message = caught instanceof Error ? caught.message : "Unable to process appointment reminders.";
     console.error("Appointment reminder cron failed", caught);

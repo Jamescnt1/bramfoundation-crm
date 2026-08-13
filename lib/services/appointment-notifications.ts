@@ -166,7 +166,7 @@ export async function processScheduledAppointmentReminders() {
   for (const appointment of appointments ?? []) {
     for (const item of audiences) {
       if (!item.enabled || (item.channel === "email" ? !settings.email_notifications_enabled : !settings.sms_enabled)) continue;
-      const result = await sendAutomatedReminder(admin, appointment, company, item.audience, item.channel, settings.trial_mode);
+      const result = await sendAutomatedAppointmentNotification(admin, appointment, company, item.audience, item.channel, settings.trial_mode, "reminder");
       sent += result.sent;
       failed += result.failed;
     }
@@ -174,17 +174,20 @@ export async function processScheduledAppointmentReminders() {
   return { appointments: appointments?.length ?? 0, sent, failed };
 }
 
-async function sendAutomatedReminder(
+async function sendAutomatedAppointmentNotification(
   admin: ReturnType<typeof createAdminClient>,
   appointment: Record<string, unknown>,
   company: Awaited<ReturnType<typeof getCompanySettings>>,
   audience: AppointmentNotificationAudience,
   channel: AppointmentNotificationChannel,
   trialMode: boolean,
+  kind: AppointmentNotificationKind,
+  automationRuleId?: string,
+  eventId?: string,
 ) {
-  const recipients = await resolveRecipients(admin, appointment, audience, channel, "reminder");
+  const recipients = await resolveRecipients(admin, appointment, audience, channel, kind);
   const emailFromAddress = process.env.EMAIL_FROM_ADDRESS || company.email;
-  const content = notificationContent(appointment, company, "reminder", channel);
+  const content = notificationContent(appointment, company, kind, channel);
   let sent = 0;
   let failed = 0;
   for (const recipient of recipients) {
@@ -192,7 +195,9 @@ async function sendAutomatedReminder(
     if (channel === "sms" && trialMode && !recipient.trialVerified) continue;
     try {
       if (channel === "sms") await requireSmsConsent(admin, recipient.address);
-      const idempotencyKey = `appointment-reminder-${appointment.id}-${audience}-${channel}-${recipient.id ?? recipient.address}`;
+      const idempotencyKey = eventId
+        ? `appointment-automation-${eventId}-${automationRuleId}-${recipient.id ?? recipient.address}`
+        : `appointment-reminder-${appointment.id}-${audience}-${channel}-${recipient.id ?? recipient.address}`;
       const { data: delivery, error: insertError } = await admin.from("communication_deliveries").insert({
         channel,
         direction: "outbound",
@@ -209,6 +214,7 @@ async function sendAutomatedReminder(
         idempotency_key: idempotencyKey,
         consent_status: channel === "sms" ? "opted_in" : "not_required",
         is_automated: true,
+        automation_rule_id: automationRuleId ?? null,
         scheduled_for: new Date().toISOString(),
       }).select("id").single();
       if (insertError?.code === "23505") continue;
@@ -232,6 +238,50 @@ async function sendAutomatedReminder(
     }
   }
   return { sent, failed };
+}
+
+export async function processCommunicationAutomationEvents() {
+  const admin = createAdminClient();
+  const { data: settings, error: settingsError } = await admin.from("communication_settings").select("email_notifications_enabled,sms_enabled,automated_communications_enabled,trial_mode,calendar_customer_notifications_enabled,calendar_employee_notifications_enabled,calendar_installer_notifications_enabled").eq("singleton_key", true).single();
+  if (settingsError) throw new Error(settingsError.message);
+  if (!settings.automated_communications_enabled) return { events: 0, sent: 0, failed: 0, skipped: "Automated communications are paused." };
+  const { data: events, error: eventError } = await admin.from("communication_automation_events").select("id,trigger_event,trigger_value,appointment_id").is("processed_at", null).order("created_at").limit(50);
+  if (eventError) throw new Error(eventError.message);
+  const company = await getCompanySettings();
+  let sent = 0;
+  let failed = 0;
+  for (const event of events ?? []) {
+    try {
+      const { data: rules, error: ruleError } = await admin.from("automation_rules").select("id,notification_audience,notification_channel").eq("active", true).eq("action_type", "send_notification").eq("trigger_event", event.trigger_event).or(`trigger_value.is.null,trigger_value.eq.${event.trigger_value}`);
+      if (ruleError) throw new Error(ruleError.message);
+      if (event.appointment_id && rules?.length) {
+        const { data: appointment, error: appointmentError } = await admin.from("appointments").select(`id,job_id,assigned_employee_id,installer_crew_id,title,appointment_type,starts_at,location,status,
+          job:jobs!appointments_job_id_fkey(id,customer_id,customer_name,phone,email,project_contact_phone,
+            customer:customers!jobs_customer_id_fkey(id,full_name,phone,email),
+            company_contact:customer_contacts!jobs_company_contact_id_fkey(id,first_name,last_name,mobile_phone,email),
+            project_contact:customer_contacts!jobs_project_contact_id_fkey(id,first_name,last_name,mobile_phone,email),
+            job_site_contact:customer_contacts!jobs_job_site_contact_id_fkey(id,first_name,last_name,mobile_phone,email))`).eq("id", event.appointment_id).maybeSingle();
+        if (appointmentError) throw new Error(appointmentError.message);
+        if (appointment && appointment.status !== "cancelled" && new Date(appointment.starts_at).getTime() > Date.now()) {
+          for (const rule of rules) {
+            const audience = rule.notification_audience as AppointmentNotificationAudience;
+            const channel = rule.notification_channel as AppointmentNotificationChannel;
+            const audienceEnabled = settings[controlColumn(audience)];
+            const channelEnabled = channel === "email" ? settings.email_notifications_enabled : settings.sms_enabled;
+            if (!audienceEnabled || !channelEnabled) continue;
+            const result = await sendAutomatedAppointmentNotification(admin, appointment, company, audience, channel, settings.trial_mode, "confirmation", rule.id, event.id);
+            sent += result.sent;
+            failed += result.failed;
+          }
+        }
+      }
+    } catch {
+      failed += 1;
+    } finally {
+      await admin.from("communication_automation_events").update({ processed_at: new Date().toISOString() }).eq("id", event.id);
+    }
+  }
+  return { events: events?.length ?? 0, sent, failed };
 }
 
 type Recipient = { id: string | null; name: string; address: string; trialVerified?: boolean };

@@ -20,7 +20,7 @@ const admin = createClient(
 const requiredTables = [
   "appointments", "automation_rules", "company_settings",
   "communication_consents", "communication_deliveries", "communication_settings",
-  "communication_templates", "communication_webhook_events",
+  "communication_templates", "communication_webhook_events", "communication_automation_events",
   "conversation_participants", "conversations", "customers",
   "employee_communication_preferences", "employee_notifications", "employees", "job_activities",
   "installer_contacts", "job_attachments", "job_tasks", "jobs", "lead_sources", "messages",

@@ -9,7 +9,7 @@ export type AutomationTriggerEvent =
   | "production_scope_created" | "material_issue" | "material_excluded"
   | "all_materials_ordered" | "all_materials_ready" | "work_order_sent"
   | "all_work_orders_sent";
-export type AutomationActionType = "create_task" | "update_job_status" | "send_email";
+export type AutomationActionType = "create_task" | "update_job_status" | "send_email" | "send_notification";
 
 export type AutomationEmployee = { id: string; name: string };
 export type AutomationRole = { key: string; name: string };
@@ -32,6 +32,8 @@ export type AutomationRule = {
   active: boolean; sort_order: number; created_at: string; updated_at: string;
   employees: AutomationEmployee | AutomationEmployee[] | null;
   email_template_id: string | null;
+  notification_audience: "customer" | "employee" | "installer" | null;
+  notification_channel: "email" | "sms" | null;
   email_templates: { id: string; name: string } | { id: string; name: string }[] | null;
   automation_rule_recipients: AutomationRecipient[];
 };
@@ -43,13 +45,15 @@ export type AutomationRuleValues = {
   task_type_id: string | null;
   assigned_employee_id: string | null; cancel_on_pipeline_advance: boolean; active: boolean;
   email_template_id: string | null;
+  notification_audience: "customer" | "employee" | "installer" | null;
+  notification_channel: "email" | "sms" | null;
   employee_ids: string[];
   role_keys: string[];
 };
 
 const ruleColumns = `id, name, trigger_event, trigger_value, action_type, target_status,
   trigger_status, task_title, task_priority, task_type_id, delivery_offset_days, due_offset_days, overdue_grace_days, assignment_type, assigned_employee_id,
-  cancel_on_pipeline_advance, active, sort_order, created_at, updated_at, email_template_id,
+  cancel_on_pipeline_advance, active, sort_order, created_at, updated_at, email_template_id, notification_audience, notification_channel,
   employees (id, name), email_templates (id, name), task_types (id, name),
   automation_rule_recipients (id, recipient_type, employee_id, role_key)`;
 
@@ -133,6 +137,8 @@ function normalize(values: AutomationRuleValues) {
     cancel_on_pipeline_advance:
       values.action_type === "create_task" && values.cancel_on_pipeline_advance,
     email_template_id: values.action_type === "send_email" ? values.email_template_id : null,
+    notification_audience: values.action_type === "send_notification" ? values.notification_audience : null,
+    notification_channel: values.action_type === "send_notification" ? values.notification_channel : null,
     active: values.active,
   };
 }

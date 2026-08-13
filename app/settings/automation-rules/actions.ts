@@ -10,7 +10,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const ruleColumns = `id, name, trigger_event, trigger_value, action_type, target_status,
   trigger_status, task_title, task_priority, task_type_id, delivery_offset_days, due_offset_days, overdue_grace_days, assignment_type, assigned_employee_id,
-  cancel_on_pipeline_advance, active, sort_order, created_at, updated_at, email_template_id,
+  cancel_on_pipeline_advance, active, sort_order, created_at, updated_at, email_template_id, notification_audience, notification_channel,
   employees (id, name), email_templates (id, name), task_types (id, name),
   automation_rule_recipients (id, recipient_type, employee_id, role_key)`;
 
@@ -175,6 +175,12 @@ function validate(values: AutomationRuleValues) {
   if (values.action_type === "send_email" && !values.email_template_id) {
     throw new Error("Choose an email template.");
   }
+  if (values.action_type === "send_notification" && (!values.notification_audience || !values.notification_channel)) {
+    throw new Error("Choose a notification audience and channel.");
+  }
+  if (values.action_type === "send_notification" && values.trigger_event !== "appointment_scheduled") {
+    throw new Error("Appointment notifications require the Appointment is scheduled trigger.");
+  }
   if (values.action_type === "update_job_status" && !values.target_status) {
     throw new Error("Choose a pipeline stage.");
   }
@@ -222,6 +228,10 @@ function normalize(values: AutomationRuleValues) {
       values.action_type === "send_email"
         ? values.email_template_id
         : null,
+    notification_audience:
+      values.action_type === "send_notification" ? values.notification_audience : null,
+    notification_channel:
+      values.action_type === "send_notification" ? values.notification_channel : null,
     active: values.active,
   };
 }
