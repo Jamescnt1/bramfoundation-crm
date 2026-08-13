@@ -155,7 +155,7 @@ export async function processScheduledAppointmentReminders() {
       project_contact:customer_contacts!jobs_project_contact_id_fkey(id,first_name,last_name,mobile_phone,email),
       job_site_contact:customer_contacts!jobs_job_site_contact_id_fkey(id,first_name,last_name,mobile_phone,email))`).neq("status", "cancelled").gte("starts_at", windowStart).lt("starts_at", windowEnd).order("starts_at");
   if (appointmentError) throw new Error(appointmentError.message);
-  const company = await getCompanySettings();
+  const company = await getAutomationCompanySettings(admin);
   const audiences: Array<{ audience: AppointmentNotificationAudience; channel: AppointmentNotificationChannel; enabled: boolean }> = [
     { audience: "customer", channel: settings.calendar_customer_reminder_channel, enabled: settings.calendar_customer_notifications_enabled },
     { audience: "employee", channel: settings.calendar_employee_reminder_channel, enabled: settings.calendar_employee_notifications_enabled },
@@ -177,7 +177,7 @@ export async function processScheduledAppointmentReminders() {
 async function sendAutomatedAppointmentNotification(
   admin: ReturnType<typeof createAdminClient>,
   appointment: Record<string, unknown>,
-  company: Awaited<ReturnType<typeof getCompanySettings>>,
+  company: { company_name: string; email: string | null; timezone: string },
   audience: AppointmentNotificationAudience,
   channel: AppointmentNotificationChannel,
   trialMode: boolean,
@@ -247,7 +247,7 @@ export async function processCommunicationAutomationEvents() {
   if (!settings.automated_communications_enabled) return { events: 0, sent: 0, failed: 0, skipped: "Automated communications are paused." };
   const { data: events, error: eventError } = await admin.from("communication_automation_events").select("id,trigger_event,trigger_value,appointment_id").is("processed_at", null).order("created_at").limit(50);
   if (eventError) throw new Error(eventError.message);
-  const company = await getCompanySettings();
+  const company = await getAutomationCompanySettings(admin);
   let sent = 0;
   let failed = 0;
   for (const event of events ?? []) {
@@ -363,3 +363,9 @@ type RelatedRecord = Record<string, unknown> & {
 function relation(value: unknown): RelatedRecord | null { return (Array.isArray(value) ? value[0] : value) as RelatedRecord | null; }
 function contactName(contact: RelatedRecord | null) { return contact ? `${contact.first_name ?? ""} ${contact.last_name ?? ""}`.trim() || null : null; }
 function providerFailure(caught: unknown) { const error = caught as { message?: string; code?: string | number }; return { message: error?.message || "The provider rejected the appointment notification.", code: error?.code ? String(error.code) : null }; }
+
+async function getAutomationCompanySettings(admin: ReturnType<typeof createAdminClient>) {
+  const { data, error } = await admin.from("company_settings").select("company_name,email,timezone").eq("singleton_key", true).single();
+  if (error) throw new Error(error.message);
+  return data;
+}
