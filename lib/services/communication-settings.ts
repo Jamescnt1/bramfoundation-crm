@@ -151,7 +151,7 @@ export async function updateCommunicationSettings(values: Omit<CommunicationSett
     calendar_customer_notifications_enabled: Boolean(values.calendar_customer_notifications_enabled),
     calendar_employee_notifications_enabled: Boolean(values.calendar_employee_notifications_enabled),
     calendar_installer_notifications_enabled: Boolean(values.calendar_installer_notifications_enabled),
-    appointment_reminder_hours_before: Math.min(168, Math.max(1, Number(values.appointment_reminder_hours_before) || 24)),
+    appointment_reminder_hours_before: Math.min(720, Math.max(1, Math.round(Number(values.appointment_reminder_hours_before) || 24))),
     calendar_customer_reminder_channel: values.calendar_customer_reminder_channel,
     calendar_employee_reminder_channel: values.calendar_employee_reminder_channel,
     calendar_installer_reminder_channel: values.calendar_installer_reminder_channel,

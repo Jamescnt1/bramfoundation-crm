@@ -146,8 +146,8 @@ export async function processScheduledAppointmentReminders() {
   }
 
   const now = Date.now();
-  const windowStart = new Date(now + settings.appointment_reminder_hours_before * 60 * 60 * 1000).toISOString();
-  const windowEnd = new Date(now + (settings.appointment_reminder_hours_before + 26) * 60 * 60 * 1000).toISOString();
+  const windowStart = new Date(now).toISOString();
+  const windowEnd = new Date(now + (settings.appointment_reminder_hours_before * 60 + 15) * 60 * 1000).toISOString();
   const { data: appointments, error: appointmentError } = await admin.from("appointments").select(`id,job_id,assigned_employee_id,installer_crew_id,title,appointment_type,starts_at,location,
     job:jobs!appointments_job_id_fkey(id,customer_id,customer_name,phone,email,project_contact_phone,
       customer:customers!jobs_customer_id_fkey(id,full_name,phone,email),
