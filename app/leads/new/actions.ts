@@ -65,8 +65,6 @@ export async function createLeadAction(input: CreateLeadInput) {
   if (!customerId) throw new Error("Please select the existing customer for this job.");
 
   if (input.copySourceJobId) {
-    if (!qfNumber) throw new Error("A new QF# is required when copying a job.");
-
     const { data: sourceJob, error: sourceError } = await supabase
       .from("jobs")
       .select("id, customer_id")
@@ -78,14 +76,16 @@ export async function createLeadAction(input: CreateLeadInput) {
       throw new Error("The copied job must remain connected to its original customer.");
     }
 
-    const { data: duplicateQf, error: duplicateQfError } = await supabase
-      .from("jobs")
-      .select("id")
-      .eq("qfloors_job_number", qfNumber)
-      .limit(1)
-      .maybeSingle();
-    if (duplicateQfError) throw new Error(duplicateQfError.message);
-    if (duplicateQf) throw new Error("That QF# is already assigned to another job.");
+    if (qfNumber) {
+      const { data: duplicateQf, error: duplicateQfError } = await supabase
+        .from("jobs")
+        .select("id")
+        .eq("qfloors_job_number", qfNumber)
+        .limit(1)
+        .maybeSingle();
+      if (duplicateQfError) throw new Error(duplicateQfError.message);
+      if (duplicateQf) throw new Error("That QF# is already assigned to another job.");
+    }
   }
 
   const { data: customer, error: customerError } = await supabase

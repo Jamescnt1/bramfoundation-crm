@@ -128,11 +128,18 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
   const [holdReason, setHoldReason] = useState(job.hold_reason);
   const [holdUntil, setHoldUntil] = useState(job.hold_until);
   const [holdNote, setHoldNote] = useState(job.hold_note);
+  const [showAllAppointments, setShowAllAppointments] = useState(false);
   const openTasks = tasks.filter((task) => !task.completed);
   const overdueTasks = openTasks.filter((task) => task.due_date && new Date(`${task.due_date}T23:59:59`) < new Date());
   const upcoming = appointments
     .filter((appointment) => appointment.status !== "cancelled" && new Date(appointment.starts_at) >= new Date())
     .sort((first, second) => new Date(first.starts_at).getTime() - new Date(second.starts_at).getTime());
+  const pastAppointments = appointments
+    .filter((appointment) => appointment.status !== "cancelled" && new Date(appointment.starts_at) < new Date())
+    .sort((first, second) => new Date(second.starts_at).getTime() - new Date(first.starts_at).getTime());
+  const cancelledAppointments = appointments
+    .filter((appointment) => appointment.status === "cancelled")
+    .sort((first, second) => new Date(second.starts_at).getTime() - new Date(first.starts_at).getTime());
   const installationAppointments = appointments.filter(
     (appointment) =>
       appointment.appointment_type === "installation" &&
@@ -388,21 +395,18 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                   />
                 </WorkspaceCard>
 
-                <WorkspaceCard title="Upcoming appointments" count={upcoming.length}>
-                  {upcoming.length ? (
-                    <div className="space-y-2">
-                      {upcoming.map((appointment) => (
-                        <div key={appointment.id}>
-                          <p className="mb-1 text-[11px] font-semibold text-gray-500">
-                            {formatDateTime(appointment.starts_at)}
-                          </p>
-                          <AppointmentCard appointment={appointment} compact showTime={false} />
-                        </div>
-                      ))}
+                <WorkspaceCard title="Appointments" count={appointments.length}>
+                  {appointments.length ? (
+                    <div className="space-y-4">
+                      <AppointmentGroup title="Upcoming" appointments={showAllAppointments ? upcoming : upcoming.slice(0, 3)} />
+                      <AppointmentGroup title="Past" appointments={showAllAppointments ? pastAppointments : pastAppointments.slice(0, 3)} />
+                      {cancelledAppointments.length ? <AppointmentGroup title="Cancelled" appointments={showAllAppointments ? cancelledAppointments : cancelledAppointments.slice(0, 2)} muted /> : null}
+                      {(upcoming.length > 3 || pastAppointments.length > 3 || cancelledAppointments.length > 2) ? <button type="button" onClick={() => setShowAllAppointments((value) => !value)} className="text-xs font-semibold text-blue-700 hover:underline">{showAllAppointments ? "Show less" : "Show all appointments"}</button> : null}
+                      <button type="button" onClick={() => selectTab("calendar")} className="ml-3 text-xs font-semibold text-gray-600 hover:underline">View calendar</button>
                     </div>
                   ) : (
                     <WorkspaceEmpty
-                      text="No upcoming appointments."
+                      text="No appointments have been recorded."
                       action={<button type="button" onClick={() => schedule()} className="text-xs font-semibold text-gray-900 hover:underline">Schedule</button>}
                     />
                   )}
@@ -412,7 +416,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
                   <div className="grid grid-cols-2 gap-2">
                     <Metric label="Open tasks" value={openTasks.length} />
                     <Metric label="Overdue" value={overdueTasks.length} danger={Boolean(overdueTasks.length)} />
-                    <Metric label="Upcoming" value={upcoming.length} />
+                    <Metric label="Appointments" value={appointments.length} />
                     <Metric label="Activity" value={activities.length} />
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1.5 border-t border-gray-100 pt-3">
@@ -542,7 +546,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
         ) : null}
       </div>
 
-      <AppointmentDialog open={appointmentOpen} onOpenChange={(open) => { setAppointmentOpen(open); if (!open) setAppointmentBeingEdited(null); }} appointment={appointmentBeingEdited} defaultDate={new Date()} defaultJobId={job.id} defaultAppointmentType={appointmentType} employees={employees} installerCrews={installerCrews} jobs={[job]} appointmentTypes={appointmentTypes} productionScopes={materialScopes.map((scope) => ({ id: scope.id, job_id: scope.job_id, label: scope.description || scope.category.name, abbreviation: scope.category.abbreviation }))} defaultMaterialScopeIds={scheduledMaterialScopeIds} appointmentScopeIds={scheduledMaterialScopeIds} />
+      <AppointmentDialog open={appointmentOpen} onOpenChange={(open) => { setAppointmentOpen(open); if (!open) setAppointmentBeingEdited(null); }} appointment={appointmentBeingEdited} defaultDate={new Date()} defaultJobId={job.id} defaultAppointmentType={appointmentType} employees={employees} installerCrews={installerCrews} jobs={[job]} appointmentTypes={appointmentTypes} productionScopes={materialScopes.map((scope) => ({ id: scope.id, job_id: scope.job_id, label: scope.description || scope.category.name, abbreviation: scope.category.abbreviation }))} defaultMaterialScopeIds={scheduledMaterialScopeIds} appointmentScopeIds={scheduledMaterialScopeIds} currentEmployeeId={currentEmployee?.id ?? null} />
       {pendingStatus ? (
         <JobRequirementsDialog
           open
@@ -600,6 +604,11 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
       ) : null}
     </>
   );
+}
+
+function AppointmentGroup({ title, appointments, muted = false }: { title: string; appointments: CalendarAppointment[]; muted?: boolean }) {
+  if (!appointments.length) return null;
+  return <div className={muted ? "opacity-65" : ""}><p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-500">{title}</p><div className="space-y-2">{appointments.map((appointment) => <div key={appointment.id}><p className="mb-1 text-[11px] font-semibold text-gray-500">{formatDateTime(appointment.starts_at)}</p><AppointmentCard appointment={appointment} compact showTime={false} /></div>)}</div></div>;
 }
 
 function smsRecipients(job: Job, customer: Customer | null): JobSmsRecipient[] {

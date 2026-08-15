@@ -63,6 +63,7 @@ export default function TaskManager({
     .filter((task) => {
       if (fixedJobId && task.job_id !== fixedJobId) return false;
       if (!fixedJobId && fixedCustomerId && task.customer_id !== fixedCustomerId) return false;
+      if (!fixedJobId && task.snoozed_until && new Date(task.snoozed_until) > new Date()) return false;
       if (status === "active" && task.status === "cancelled") return false;
       if (status === "active" && task.status === "completed" && !fixedJobId) return false;
       if (status !== "active" && status !== "all" && task.status !== status) return false;
@@ -300,6 +301,7 @@ function TaskRow({
             <StatusBadge status={task.status} />
             <Badge text={label(task.priority)} tone={task.priority === "urgent" ? "red" : task.priority === "high" ? "amber" : "gray"} />
             <Badge text={task.task_types?.name ?? "General"} />
+            {task.snoozed_until && new Date(task.snoozed_until) > new Date() ? <Badge text={`Snoozed until ${formatSnoozeDate(task.snoozed_until)}`} tone="amber" /> : null}
           </div>
 
           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
@@ -359,6 +361,10 @@ function StatusBadge({ status }: { status: TaskStatus }) {
     cancelled: "bg-gray-100 text-gray-600",
   };
   return <Badge text={label(status)} className={styles[status]} />;
+}
+
+function formatSnoozeDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(value));
 }
 
 function Badge({

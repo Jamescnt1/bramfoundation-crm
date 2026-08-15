@@ -473,6 +473,7 @@ export default function CalendarBoard({
         appointmentTypes={appointmentTypes}
         productionScopes={productionScopes}
         appointmentScopeIds={appointmentBeingEdited ? appointmentScopeLinks[appointmentBeingEdited.id] ?? [] : []}
+        currentEmployeeId={currentEmployeeId}
       />
 
       {viewOptionsOpen ? (

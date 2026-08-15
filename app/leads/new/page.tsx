@@ -4,10 +4,12 @@ import { getCustomers } from "@/lib/services/customers";
 import { getJobs } from "@/lib/services/jobs";
 import { getLeadSources } from "@/lib/services/lead-sources";
 import { getCustomerContacts } from "@/lib/services/customer-contacts";
+import { requireEmployee } from "@/lib/services/employees";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewLeadPage() {
+  const currentEmployee = await requireEmployee();
   const [customersResult, jobsResult, leadSourcesResult, contactsResult] = await Promise.allSettled([
     getCustomers(),
     getJobs(),
@@ -58,7 +60,8 @@ export default async function NewLeadPage() {
               customers={customers}
               jobs={jobs}
             leadSources={leadSources}
-            contacts={contacts}
+              contacts={contacts}
+              currentEmployeeName={currentEmployee.name}
             />
           </div>
         )}

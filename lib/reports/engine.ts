@@ -530,6 +530,7 @@ async function getTasks(filters: ReportFilters, range: ParsedRange) {
       task_type:task_types!job_tasks_task_type_id_fkey(name)
     `)
     .lte("available_at", new Date().toISOString())
+    .or(`snoozed_until.is.null,snoozed_until.lte.${new Date().toISOString()}`)
     .gte("available_at", range.fromIso)
     .lte("available_at", range.toIso)
     .order("available_at", { ascending: false })

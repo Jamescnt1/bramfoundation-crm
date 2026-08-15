@@ -81,6 +81,7 @@ export async function getEmployeeWorkspace(
       .from("job_tasks")
       .select("id, job_id, customer_id, title, due_at, due_date, priority, status, completed, task_type_id, task_types(id, name), jobs(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name)), customers(id, full_name)")
       .lte("available_at", now.toISOString())
+      .or(`snoozed_until.is.null,snoozed_until.lte.${now.toISOString()}`)
       .or(`assigned_employee_id.eq.${employee.id},assigned_to.eq.${escapeFilterValue(employee.name)}`)
       .order("completed", { ascending: true })
       .order("due_date", { ascending: true, nullsFirst: false }),

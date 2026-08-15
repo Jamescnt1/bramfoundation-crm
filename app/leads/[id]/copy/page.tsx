@@ -5,6 +5,7 @@ import { getCustomerContacts } from "@/lib/services/customer-contacts";
 import { getCustomers } from "@/lib/services/customers";
 import { getJobById, getJobs } from "@/lib/services/jobs";
 import { getLeadSources } from "@/lib/services/lead-sources";
+import { requireEmployee } from "@/lib/services/employees";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ type CopyJobPageProps = {
 
 export default async function CopyJobPage({ params }: CopyJobPageProps) {
   const { id } = await params;
+  const currentEmployee = await requireEmployee();
 
   const [sourceResult, customersResult, jobsResult, leadSourcesResult, contactsResult] =
     await Promise.allSettled([
@@ -65,6 +67,7 @@ export default async function CopyJobPage({ params }: CopyJobPageProps) {
             leadSources={leadSourcesResult.value}
             contacts={contactsResult.value}
             copySource={sourceJob}
+            currentEmployeeName={currentEmployee.name}
           />
         </div>
       </div>

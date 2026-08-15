@@ -45,6 +45,7 @@ type AppointmentDialogProps = {
   productionScopes?: { id: string; job_id: string; label: string; abbreviation: string }[];
   defaultMaterialScopeIds?: string[];
   appointmentScopeIds?: string[];
+  currentEmployeeId?: string | null;
 };
 
 type LocationMode = "job" | "custom";
@@ -135,6 +136,7 @@ export default function AppointmentDialog({
   productionScopes = [],
   defaultMaterialScopeIds = EMPTY_SCOPE_IDS,
   appointmentScopeIds = EMPTY_SCOPE_IDS,
+  currentEmployeeId = null,
 }: AppointmentDialogProps) {
   const router = useRouter();
   const isEditing = Boolean(appointment);
@@ -237,7 +239,7 @@ export default function AppointmentDialog({
       setLocation(initialJob?.address ?? "");
       setLocationMode(initialJob?.address ? "job" : "custom");
       setNotes("");
-      setAssignedEmployeeId("");
+      setAssignedEmployeeId(defaultAppointmentType === "installation" ? "" : currentEmployeeId ?? "");
       setInstallerCrewId("");
       setInstallationScope("");
       setMaterialScopeIds(defaultMaterialScopeIds);

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createJobNoteAction, deleteJobNoteAction, updateJobNoteAction } from "@/app/actions/job-notes";
 import type { JobNote } from "@/lib/services/job-notes";
 
@@ -76,16 +77,18 @@ export default function JobNotesPanel({ jobId, initialNotes, currentEmployeeId, 
         {ordered.map((note) => {
           const own = note.author_employee_id === currentEmployeeId;
           const fromJobForm = note.source === "job_form";
+          const editableJobNote = note.source === "manual";
           const edited = Math.abs(new Date(note.updated_at).getTime() - new Date(note.created_at).getTime()) > 1000;
           return (
             <article key={note.id} className="py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs text-gray-500"><strong className="text-gray-900">{fromJobForm ? "Job information note" : note.author?.name ?? "Former employee"}</strong> · {format(note.created_at)}
+                <p className="text-xs text-gray-500"><strong className="text-gray-900">{note.source_label ?? note.author?.name ?? "Job note"}</strong>{note.source_detail ? ` · ${note.source_detail}` : ""} · {format(note.created_at)}
                   {edited ? <span title={`Edited ${format(note.updated_at)}`}> · Edited {format(note.updated_at)}</span> : null}</p>
                 <div className="flex gap-2">
                   {fromJobForm ? <span className="text-xs font-medium text-gray-500">Edit in Edit Job Info</span> : null}
-                  {!fromJobForm && canEdit && (own || currentEmployeeRole === "administrator") ? <button type="button" onClick={() => { setEditingId(note.id); setEditBody(note.body); }} className="text-xs font-semibold text-gray-600 hover:text-black">Edit</button> : null}
-                  {!fromJobForm && canDelete ? <button type="button" disabled={busy} onClick={() => void remove(note.id)} className="text-xs font-semibold text-red-600">Delete</button> : null}
+                  {note.source_href ? <Link href={note.source_href} className="text-xs font-semibold text-blue-700 hover:underline">Open source</Link> : null}
+                  {editableJobNote && canEdit && (own || currentEmployeeRole === "administrator") ? <button type="button" onClick={() => { setEditingId(note.id); setEditBody(note.body); }} className="text-xs font-semibold text-gray-600 hover:text-black">Edit</button> : null}
+                  {editableJobNote && canDelete ? <button type="button" disabled={busy} onClick={() => void remove(note.id)} className="text-xs font-semibold text-red-600">Delete</button> : null}
                 </div>
               </div>
               {editingId === note.id ? (
@@ -97,7 +100,7 @@ export default function JobNotesPanel({ jobId, initialNotes, currentEmployeeId, 
             </article>
           );
         })}
-        {!ordered.length ? <p className="py-8 text-center text-sm text-gray-500">No durable job notes have been added.</p> : null}
+        {!ordered.length ? <p className="py-8 text-center text-sm text-gray-500">No job-related notes have been added.</p> : null}
       </div>
     </div>
   );

@@ -56,6 +56,7 @@ export async function searchFoundationCrm(rawQuery: string): Promise<GlobalSearc
         .from("job_tasks")
         .select("id, title, due_date, completed, job:jobs!job_tasks_job_id_fkey(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(full_name))")
         .lte("available_at", new Date().toISOString())
+        .or(`snoozed_until.is.null,snoozed_until.lte.${new Date().toISOString()}`)
         .ilike("title", pattern)
         .order("created_at", { ascending: false })
         .limit(RESULT_LIMIT),

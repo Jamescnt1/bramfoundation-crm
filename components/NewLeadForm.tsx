@@ -19,9 +19,10 @@ type NewLeadFormProps = {
   leadSources: LeadSource[];
   contacts: CustomerContact[];
   copySource?: Job | null;
+  currentEmployeeName: string;
 };
 
-export default function NewLeadForm({ customers, jobs, leadSources, contacts, copySource = null }: NewLeadFormProps) {
+export default function NewLeadForm({ customers, jobs, leadSources, contacts, copySource = null, currentEmployeeName }: NewLeadFormProps) {
   const router = useRouter();
   const isCopy = Boolean(copySource);
 
@@ -41,7 +42,7 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
   const [projectAddress, setProjectAddress] = useState(copySource?.address ?? "");
   const [lockBoxCode, setLockBoxCode] = useState(copySource?.lock_box_code ?? "");
   const [leadSource, setLeadSource] = useState(copySource?.lead_source ?? "");
-  const [salesperson, setSalesperson] = useState(copySource?.salesperson ?? "");
+  const [salesperson, setSalesperson] = useState(currentEmployeeName);
   const [nextAction, setNextAction] = useState("");
   const [nextActionDue, setNextActionDue] = useState("");
   const [notes, setNotes] = useState(copySource?.notes ?? "");
@@ -118,11 +119,6 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
 
     if (!trimmedProjectName) {
       setErrorMessage("Project / lead name is required.");
-      return;
-    }
-
-    if (isCopy && !qfNumber.trim()) {
-      setErrorMessage("A new QF# is required when copying a job.");
       return;
     }
 
@@ -259,7 +255,7 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
 
       <FormSection
         title={isCopy ? "Create Copied Job" : "Create New Job"}
-        description={isCopy ? "Review the copied details, then enter a unique job name and QF#." : "Enter the details for this new flooring opportunity. These fields belong to the job, not the customer record."}
+        description={isCopy ? "Review the copied details, then enter a unique lead name. A QF# can be added now or when the lead advances." : "Enter the details for this new flooring opportunity. These fields belong to the job, not the customer record."}
       >
         <Field label="Project / Lead Name" htmlFor="projectName" required>
           <input
@@ -279,15 +275,14 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
         </Field>
 
         {isCopy ? (
-          <Field label="QF#" htmlFor="qfNumber" required>
+          <Field label="QF# (optional for leads)" htmlFor="qfNumber">
             <input
               id="qfNumber"
               type="text"
-              required
               disabled={isSaving}
               value={qfNumber}
               onChange={(event) => setQfNumber(event.target.value)}
-              placeholder="Enter the new QFloors reference"
+              placeholder="Add now or when the lead advances"
               className={inputClass}
             />
           </Field>

@@ -4,25 +4,30 @@ import type { TaskPriority, TaskStatus, TaskType, UniversalTask } from "@/compon
 export type TaskValues = {
   title: string; description: string | null; assigned_employee_id: string | null;
   due_at: string | null; priority: TaskPriority; status: TaskStatus;
+  snoozed_until: string | null;
   task_type_id: string | null; customer_id: string | null; job_id: string | null;
 };
 
 const columns = `id, job_id, customer_id, title, description, assigned_to,
- assigned_employee_id, due_date, due_at, priority, status, completed, completed_at,
+ assigned_employee_id, due_date, due_at, snoozed_until, priority, status, completed, completed_at,
  created_at, updated_at, task_type_id,
  customers(id, full_name), jobs(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name)),
  employees!job_tasks_assigned_employee_id_fkey(id, name), task_types(id, name, active, sort_order)`;
 
 export async function getTasks(filters?: { jobId?: string; customerId?: string }) {
+  const now = new Date().toISOString();
   let query = supabase
     .from("job_tasks")
     .select(columns)
-    .lte("available_at", new Date().toISOString())
+    .lte("available_at", now)
     .order("completed")
     .order("due_at", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });
   if (filters?.jobId) query = query.eq("job_id", filters.jobId);
-  else if (filters?.customerId) query = query.eq("customer_id", filters.customerId);
+  else {
+    query = query.or(`snoozed_until.is.null,snoozed_until.lte.${now}`);
+    if (filters?.customerId) query = query.eq("customer_id", filters.customerId);
+  }
   const { data, error } = await query;
   if (error) throw new Error(error.message);
   const tasks = (data ?? []).map(normalizeTask) as UniversalTask[];
@@ -83,7 +88,10 @@ export async function updateTask(id: string, values: TaskValues) {
 }
 
 export async function setTaskStatus(id: string, status: TaskStatus) {
-  const { error } = await supabase.from("job_tasks").update({ status }).eq("id", id);
+  const { error } = await supabase.from("job_tasks").update({
+    status,
+    ...(status === "completed" || status === "cancelled" ? { snoozed_until: null } : {}),
+  }).eq("id", id);
   if (error) throw new Error(error.message);
 }
 

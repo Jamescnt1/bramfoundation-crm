@@ -33,6 +33,7 @@ export type UniversalTask = {
   assigned_employee_id: string | null;
   due_date: string | null;
   due_at: string | null;
+  snoozed_until: string | null;
   priority: TaskPriority;
   status: TaskStatus;
   completed: boolean;

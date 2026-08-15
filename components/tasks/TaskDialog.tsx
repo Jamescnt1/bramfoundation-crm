@@ -20,9 +20,9 @@ type Props = {
   onLatestNoteChange?: (taskId: string, note: TaskNote | null) => void;
 };
 
-export default function TaskDialog({ open, onOpenChange, onSaved, task, customers, jobs, employees, taskTypes, defaultCustomerId = null, defaultJobId = null }: Props) {
+export default function TaskDialog({ open, onOpenChange, onSaved, task, customers, jobs, employees, taskTypes, defaultCustomerId = null, defaultJobId = null, currentEmployeeId = null, currentEmployeeRole = null, onLatestNoteChange }: Props) {
   return <Dialog open={open} onOpenChange={onOpenChange}>
-    {open ? <TaskDialogForm key={`${task?.id ?? "new"}-${defaultCustomerId ?? ""}-${defaultJobId ?? ""}`} onOpenChange={onOpenChange} onSaved={onSaved} task={task} customers={customers} jobs={jobs} employees={employees} taskTypes={taskTypes} defaultCustomerId={defaultCustomerId} defaultJobId={defaultJobId} /> : null}
+    {open ? <TaskDialogForm key={`${task?.id ?? "new"}-${defaultCustomerId ?? ""}-${defaultJobId ?? ""}`} onOpenChange={onOpenChange} onSaved={onSaved} task={task} customers={customers} jobs={jobs} employees={employees} taskTypes={taskTypes} defaultCustomerId={defaultCustomerId} defaultJobId={defaultJobId} currentEmployeeId={currentEmployeeId} currentEmployeeRole={currentEmployeeRole} onLatestNoteChange={onLatestNoteChange} /> : null}
   </Dialog>;
 }
 
@@ -30,9 +30,10 @@ function TaskDialogForm({ onOpenChange, onSaved, task, customers, jobs, employee
   const selectedDefaultJob = jobs.find((job) => job.id === (task?.job_id ?? defaultJobId));
   const [title, setTitle] = useState(task?.title ?? "");
   const initialDue = toLocalDueParts(task?.due_at, task?.due_date);
-  const [employeeId, setEmployeeId] = useState(task?.assigned_employee_id ?? "");
+  const [employeeId, setEmployeeId] = useState(task?.assigned_employee_id ?? currentEmployeeId ?? "");
   const [dueDate, setDueDate] = useState(initialDue.date);
   const [dueTime, setDueTime] = useState(initialDue.time);
+  const [snoozedUntil, setSnoozedUntil] = useState(toLocalDate(task?.snoozed_until));
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? "normal"); const [status, setStatus] = useState<TaskStatus>(task?.status ?? "open");
   const [taskTypeId, setTaskTypeId] = useState(task?.task_type_id ?? taskTypes[0]?.id ?? "");
   const [customerId, setCustomerId] = useState(task?.customer_id ?? selectedDefaultJob?.customer_id ?? defaultCustomerId ?? "");
@@ -54,6 +55,7 @@ function TaskDialogForm({ onOpenChange, onSaved, task, customers, jobs, employee
     if (jobId && customerId && selectedJob?.customer_id !== customerId) { setError("The selected job does not belong to the selected customer."); setSaving(false); return; }
     const values: TaskValues = { title, description: task?.description ?? null, assigned_employee_id: employeeId || null,
       due_at: dueDate ? new Date(`${dueDate}T${dueTime || "17:00"}`).toISOString() : null, priority, status, task_type_id: taskTypeId || null,
+      snoozed_until: status !== "completed" && status !== "cancelled" && snoozedUntil ? new Date(`${snoozedUntil}T00:00:00`).toISOString() : null,
       customer_id: customerId || selectedJob?.customer_id || null, job_id: jobId || null };
     try {
       const saved = task ? await updateTask(task.id, values) : await createTask(values);
@@ -75,6 +77,7 @@ function TaskDialogForm({ onOpenChange, onSaved, task, customers, jobs, employee
       <Field label="Category / type"><select value={taskTypeId} onChange={(e) => setTaskTypeId(e.target.value)} className={inputClass}><option value="">General</option>{taskTypes.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</select></Field></div>
       <div className="grid gap-4 sm:grid-cols-2"><Field label="Related customer (optional)"><select value={customerId} onChange={(e) => selectCustomer(e.target.value)} className={inputClass}><option value="">No customer</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.full_name}</option>)}</select></Field>
       <Field label="Related job (optional)"><select value={jobId} onChange={(e) => selectJob(e.target.value)} className={inputClass}><option value="">No job</option>{availableJobs.map((job) => <option key={job.id} value={job.id}>{formatJobDisplayName({ customerName: job.customer?.full_name, jobName: job.customer_name, qfNumber: job.qfloors_job_number })}</option>)}</select></Field></div>
+      {task && task.status !== "completed" && task.status !== "cancelled" ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3"><Field label="Snooze task until"><div className="flex flex-col gap-2 sm:flex-row"><Input type="date" value={snoozedUntil} min={todayKey()} onChange={(e) => setSnoozedUntil(e.target.value)} /><select value="" onChange={(e) => setSnoozedUntil(addDays(Number(e.target.value)))} className={inputClass}><option value="">Quick snooze…</option><option value="1">1 day</option><option value="3">3 days</option><option value="7">1 week</option><option value="14">2 weeks</option><option value="30">30 days</option></select>{snoozedUntil ? <Button type="button" variant="outline" onClick={() => setSnoozedUntil("")}>Wake now</Button> : null}</div></Field><p className="mt-2 text-xs text-amber-800">The task stays visible on its job, but remains out of general task lists until this date.{dueDate && snoozedUntil && dueDate < snoozedUntil ? " Its due date is earlier than the wake date; consider moving the due date." : ""}</p></div> : null}
       {task ? (
         <TaskNotesPanel
           taskId={task.id}
@@ -102,3 +105,6 @@ function toLocalDueParts(value?: string | null, fallbackDate?: string | null) {
   const local = new Date(date.getTime() - offset).toISOString();
   return { date: local.slice(0, 10), time: local.slice(11, 16) };
 }
+function toLocalDate(value?: string | null) { if (!value) return ""; const date = new Date(value); const offset = date.getTimezoneOffset() * 60000; return new Date(date.getTime() - offset).toISOString().slice(0, 10); }
+function todayKey() { return toLocalDate(new Date().toISOString()); }
+function addDays(days: number) { const date = new Date(); date.setDate(date.getDate() + days); return toLocalDate(date.toISOString()); }
