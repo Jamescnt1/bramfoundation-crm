@@ -43,6 +43,9 @@ export default function CommunicationSettingsForm({ initialData }: { initialData
         calendar_employee_notifications_enabled: settings.calendar_employee_notifications_enabled,
         calendar_installer_notifications_enabled: settings.calendar_installer_notifications_enabled,
         appointment_reminder_hours_before: settings.appointment_reminder_hours_before,
+        calendar_customer_reminder_hours_before: settings.calendar_customer_reminder_hours_before,
+        calendar_employee_reminder_hours_before: settings.calendar_employee_reminder_hours_before,
+        calendar_installer_reminder_hours_before: settings.calendar_installer_reminder_hours_before,
         calendar_customer_reminder_channel: settings.calendar_customer_reminder_channel,
         calendar_employee_reminder_channel: settings.calendar_employee_reminder_channel,
         calendar_installer_reminder_channel: settings.calendar_installer_reminder_channel,
@@ -125,7 +128,7 @@ export default function CommunicationSettingsForm({ initialData }: { initialData
         {activeSection === "installers" ? <SettingToggle title="Installer appointment communication" description="Allow notifications to eligible contacts on assigned installer crews." checked={settings.calendar_installer_notifications_enabled} onChange={(checked) => setSettings({ ...settings, calendar_installer_notifications_enabled: checked })} icon={<Users />} warning={audienceWarning(settings.calendar_installer_notifications_enabled, settings)} /> : null}
       </div>
       <div className="mt-5 grid gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:grid-cols-2">
-        <label className="grid gap-2 text-sm font-medium text-gray-700"><span>Hours before appointment</span><input type="number" min={1} max={720} step={1} list="appointment-reminder-presets" value={settings.appointment_reminder_hours_before} onChange={(event) => setSettings({ ...settings, appointment_reminder_hours_before: Number(event.target.value) })} className="h-10 rounded-lg border border-gray-300 bg-white px-3" /><span className="text-xs font-normal text-gray-500">Use 1 for one hour, 24 for one day, or any whole hour up to 30 days.</span><datalist id="appointment-reminder-presets"><option value="1" /><option value="2" /><option value="4" /><option value="12" /><option value="24" /><option value="48" /><option value="72" /><option value="168" /></datalist></label>
+        <ReminderHours value={activeSection === "customers" ? settings.calendar_customer_reminder_hours_before : activeSection === "employees" ? settings.calendar_employee_reminder_hours_before : settings.calendar_installer_reminder_hours_before} onChange={(value) => setSettings(activeSection === "customers" ? { ...settings, calendar_customer_reminder_hours_before: value } : activeSection === "employees" ? { ...settings, calendar_employee_reminder_hours_before: value } : { ...settings, calendar_installer_reminder_hours_before: value })} />
         {activeSection === "customers" ? <ReminderChannel label="Customer reminder channel" value={settings.calendar_customer_reminder_channel} onChange={(value) => setSettings({ ...settings, calendar_customer_reminder_channel: value })} /> : null}
         {activeSection === "employees" ? <ReminderChannel label="Employee reminder channel" value={settings.calendar_employee_reminder_channel} onChange={(value) => setSettings({ ...settings, calendar_employee_reminder_channel: value })} /> : null}
         {activeSection === "installers" ? <ReminderChannel label="Installer reminder channel" value={settings.calendar_installer_reminder_channel} onChange={(value) => setSettings({ ...settings, calendar_installer_reminder_channel: value })} /> : null}
@@ -173,6 +176,10 @@ function CompactToggle({ label, checked, onChange, disabled = false }: { label: 
 
 function ReminderChannel({ label, value, onChange }: { label: string; value: "email" | "sms"; onChange: (value: "email" | "sms") => void }) {
   return <label className="grid gap-2 text-sm font-medium text-gray-700"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value as "email" | "sms")} className="h-10 rounded-lg border border-gray-300 bg-white px-3"><option value="email">Email</option><option value="sms">Text message</option></select></label>;
+}
+
+function ReminderHours({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  return <label className="grid gap-2 text-sm font-medium text-gray-700"><span>Hours before appointment</span><input type="number" min={1} max={720} step={1} list="appointment-reminder-presets" value={value} onChange={(event) => onChange(Number(event.target.value))} className="h-10 rounded-lg border border-gray-300 bg-white px-3" /><span className="text-xs font-normal text-gray-500">Applies only to this audience. Use 1 for one hour, 24 for one day, or any whole hour up to 30 days.</span><datalist id="appointment-reminder-presets"><option value="1" /><option value="2" /><option value="4" /><option value="12" /><option value="24" /><option value="48" /><option value="72" /><option value="168" /></datalist></label>;
 }
 
 function ConnectionItem({ label, ready }: { label: string; ready: boolean }) { return <div className={`flex items-center gap-2 rounded-lg border p-3 text-sm ${ready ? "border-green-200 bg-green-50 text-green-800" : "border-gray-200 bg-gray-50 text-gray-600"}`}>{ready ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}<span>{label}</span></div>; }

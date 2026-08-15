@@ -139,7 +139,7 @@ export async function sendAppointmentNotification(input: {
 
 export async function processScheduledAppointmentReminders() {
   const admin = createAdminClient();
-  const { data: settings, error: settingsError } = await admin.from("communication_settings").select("email_notifications_enabled,sms_enabled,scheduled_communications_enabled,automated_communications_enabled,trial_mode,calendar_customer_notifications_enabled,calendar_employee_notifications_enabled,calendar_installer_notifications_enabled,appointment_reminder_hours_before,calendar_customer_reminder_channel,calendar_employee_reminder_channel,calendar_installer_reminder_channel").eq("singleton_key", true).single();
+  const { data: settings, error: settingsError } = await admin.from("communication_settings").select("email_notifications_enabled,sms_enabled,scheduled_communications_enabled,automated_communications_enabled,trial_mode,calendar_customer_notifications_enabled,calendar_employee_notifications_enabled,calendar_installer_notifications_enabled,calendar_customer_reminder_hours_before,calendar_employee_reminder_hours_before,calendar_installer_reminder_hours_before,calendar_customer_reminder_channel,calendar_employee_reminder_channel,calendar_installer_reminder_channel").eq("singleton_key", true).single();
   if (settingsError) throw new Error(settingsError.message);
   if (!settings.scheduled_communications_enabled || !settings.automated_communications_enabled) {
     return { appointments: 0, sent: 0, failed: 0, skipped: "Scheduled reminders or automated communications are paused." };
@@ -156,22 +156,21 @@ export async function processScheduledAppointmentReminders() {
       job_site_contact:customer_contacts!jobs_job_site_contact_id_fkey(id,first_name,last_name,mobile_phone,email))`).neq("status", "cancelled").gte("starts_at", windowStart).lt("starts_at", windowEnd).order("starts_at");
   if (appointmentError) throw new Error(appointmentError.message);
   const company = await getAutomationCompanySettings(admin);
-  const audiences: Array<{ audience: AppointmentNotificationAudience; channel: AppointmentNotificationChannel; enabled: boolean }> = [
-    { audience: "customer", channel: settings.calendar_customer_reminder_channel, enabled: settings.calendar_customer_notifications_enabled },
-    { audience: "employee", channel: settings.calendar_employee_reminder_channel, enabled: settings.calendar_employee_notifications_enabled },
-    { audience: "installer", channel: settings.calendar_installer_reminder_channel, enabled: settings.calendar_installer_notifications_enabled },
+  const audiences: Array<{ audience: AppointmentNotificationAudience; channel: AppointmentNotificationChannel; enabled: boolean; reminderHours: number }> = [
+    { audience: "customer", channel: settings.calendar_customer_reminder_channel, enabled: settings.calendar_customer_notifications_enabled, reminderHours: settings.calendar_customer_reminder_hours_before },
+    { audience: "employee", channel: settings.calendar_employee_reminder_channel, enabled: settings.calendar_employee_notifications_enabled, reminderHours: settings.calendar_employee_reminder_hours_before },
+    { audience: "installer", channel: settings.calendar_installer_reminder_channel, enabled: settings.calendar_installer_notifications_enabled, reminderHours: settings.calendar_installer_reminder_hours_before },
   ];
   let sent = 0;
   let failed = 0;
   for (const appointment of appointments ?? []) {
-    const reminderHours = typeof appointment.reminder_hours_before === "number" ? appointment.reminder_hours_before : settings.appointment_reminder_hours_before;
-    const sendAt = new Date(appointment.starts_at).getTime() - reminderHours * 60 * 60 * 1000;
-    if (sendAt > now || sendAt <= now - 20 * 60 * 1000) continue;
     const appointmentAudiences = [
       ...audiences.filter((item) => item.audience !== "customer"),
-      ...resolvedCustomerChannels(appointment, settings.calendar_customer_reminder_channel).map((channel) => ({ audience: "customer" as const, channel, enabled: settings.calendar_customer_notifications_enabled })),
+      ...resolvedCustomerChannels(appointment, settings.calendar_customer_reminder_channel).map((channel) => ({ audience: "customer" as const, channel, enabled: settings.calendar_customer_notifications_enabled, reminderHours: typeof appointment.reminder_hours_before === "number" ? appointment.reminder_hours_before : settings.calendar_customer_reminder_hours_before })),
     ];
     for (const item of appointmentAudiences) {
+      const sendAt = new Date(appointment.starts_at).getTime() - item.reminderHours * 60 * 60 * 1000;
+      if (sendAt > now || sendAt <= now - 20 * 60 * 1000) continue;
       if (!item.enabled || (item.channel === "email" ? !settings.email_notifications_enabled : !settings.sms_enabled)) continue;
       if (item.audience === "customer" && !customerAutomationEligible(appointment, "reminder")) continue;
       const result = await sendAutomatedAppointmentNotification(admin, appointment, company, item.audience, item.channel, settings.trial_mode, "reminder");
