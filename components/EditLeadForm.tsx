@@ -77,6 +77,7 @@ export default function EditLeadForm({
   const [jobSiteContactId, setJobSiteContactId] = useState(job.job_site_contact_id ?? "");
   const [hasSeparateSiteContact, setHasSeparateSiteContact] = useState(Boolean(job.job_site_contact_id));
   const [availableContacts, setAvailableContacts] = useState(contacts);
+  const parentCustomer = customers.find((item) => item.id === job.customer_id) ?? null;
 
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -84,6 +85,17 @@ export default function EditLeadForm({
 
   function rememberContact(contact: CustomerContact) {
     setAvailableContacts((current) => current.some((item) => item.id === contact.id) ? current.map((item) => item.id === contact.id ? contact : item) : [...current, contact]);
+  }
+
+  function copyCustomerDetailsToJob() {
+    const customer = parentCustomer;
+    if (!customer) return;
+    const willReplace = [projectCustomerName, projectPhone, address].some((value) => value.trim()) &&
+      (projectCustomerName !== customer.full_name || projectPhone !== (customer.phone ?? "") || address !== (customer.address ?? ""));
+    if (willReplace && !window.confirm("Replace the current job contact details with the customer/company name, phone, and address? The Job Name will not change.")) return;
+    setProjectCustomerName(customer.full_name);
+    setProjectPhone(customer.phone ?? "");
+    setAddress(customer.address ?? "");
   }
 
   async function handleSubmit(
@@ -228,6 +240,19 @@ export default function EditLeadForm({
         </div>
       )}
 
+      <section className="rounded-xl border border-slate-200 bg-slate-50/70 p-5 sm:p-6">
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Customer / Company</p>
+        <h2 className="mt-1 text-lg font-semibold text-gray-950">{parentCustomer?.full_name ?? job.customer?.full_name ?? "Customer / Company Information"}</h2>
+        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-600">
+          {parentCustomer?.phone ? <span>{parentCustomer.phone}</span> : null}
+          {parentCustomer?.address ? <span>{parentCustomer.address}</span> : null}
+        </div>
+        {job.customer_id ? <div className="mt-5 border-t border-slate-200 pt-5"><ContactPicker label="Company Contact" value={companyContactId} contacts={availableContacts} customers={customers} parentCustomerId={job.customer_id} restrictToParent disabled={isSaving} description="Project manager or employee at the parent customer/company." onChange={(id, created) => { if (created) rememberContact(created); setCompanyContactId(id); }} /></div> : null}
+      </section>
+
+      <section className="space-y-6 rounded-xl border border-blue-200 bg-blue-50/70 p-5 sm:p-6">
+        <div className="flex flex-col gap-3 border-b border-blue-200 pb-4 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-700">Job / Project</p><h2 className="mt-1 text-lg font-semibold text-gray-950">Job / Project Information</h2><p className="mt-1 text-sm text-gray-600">These fields belong to this individual job and do not change the customer/company record.</p></div><button type="button" onClick={copyCustomerDetailsToJob} disabled={isSaving || !parentCustomer} className="shrink-0 rounded-md border border-blue-300 bg-white px-3 py-2 text-xs font-semibold text-blue-800 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50">Copy customer details to job</button></div>
+
       {isConfiguredQfNumberRequired(status, stages) || qfNumber ? (
       <div>
         <label
@@ -298,22 +323,8 @@ export default function EditLeadForm({
       </div>
 
       {job.customer_id ? (
-        <div className="grid gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:grid-cols-2">
-          <ContactPicker
-            label="Company Contact"
-            value={companyContactId}
-            contacts={availableContacts}
-            customers={customers}
-            parentCustomerId={job.customer_id}
-            restrictToParent
-            disabled={isSaving}
-            description="Project manager or employee at the parent customer."
-            onChange={(id, created) => {
-              if (created) rememberContact(created);
-              setCompanyContactId(id);
-            }}
-          />
-          <div className="sm:col-span-2">
+        <div className="rounded-lg border border-blue-200 bg-white/80 p-4">
+          <div>
             <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm"><input type="checkbox" checked={hasSeparateSiteContact} onChange={(event) => { setHasSeparateSiteContact(event.target.checked); if (!event.target.checked) setJobSiteContactId(""); }} disabled={isSaving} className="mt-0.5 h-4 w-4 rounded border-gray-300"/><span><span className="block font-medium text-gray-900">Add a separate Job Site Contact</span><span className="mt-0.5 block text-gray-500">Only needed when field access or coordination is handled by someone different.</span></span></label>
             {hasSeparateSiteContact ? <div className="mt-3"><ContactPicker label="Job Site Contact" value={jobSiteContactId} contacts={availableContacts} customers={customers} parentCustomerId={job.customer_id} disabled={isSaving} description="Superintendent, site manager, access contact, or field coordinator." onChange={(id, created) => { if (created) rememberContact(created); setJobSiteContactId(id); }} /><div className="mt-2 flex flex-wrap gap-3">{companyContactId ? <button type="button" onClick={() => setJobSiteContactId(companyContactId)} className="text-xs font-medium text-blue-700">Same as Company Contact</button> : null}</div></div> : null}
           </div>
@@ -455,6 +466,8 @@ export default function EditLeadForm({
           className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 disabled:cursor-not-allowed disabled:bg-gray-100"
         />
       </div>
+
+      </section>
 
       <div className="flex flex-col gap-3 border-t border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row">

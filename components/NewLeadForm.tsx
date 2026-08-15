@@ -61,6 +61,18 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
     setAvailableContacts((current) => current.some((item) => item.id === contact.id) ? current.map((item) => item.id === contact.id ? contact : item) : [...current, contact]);
   }
 
+  function copyCustomerDetailsToJob() {
+    const name = customerMode === "new" ? newCustomerName : selectedCustomer?.full_name ?? copySource?.customer?.full_name ?? "";
+    const phone = customerMode === "new" ? newCustomerPhone : selectedCustomer?.phone ?? "";
+    const address = customerMode === "new" ? newCustomerAddress : selectedCustomer?.address ?? "";
+    const willReplace = [projectCustomerName, projectPhone, projectAddress].some((value) => value.trim()) &&
+      (projectCustomerName !== name || projectPhone !== phone || projectAddress !== address);
+    if (willReplace && !window.confirm("Replace the current job contact details with the customer/company name, phone, and address? The Job Name will not change.")) return;
+    setProjectCustomerName(name);
+    setProjectPhone(phone);
+    setProjectAddress(address);
+  }
+
   const selectedCustomer =
     customers.find((customer) => customer.id === customerId) ?? null;
 
@@ -202,8 +214,9 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
 
       {customerMode === "new" ? (
         <FormSection
-          title="New customer information"
+          title="Customer / Company Information"
           description="This information is saved on the customer record and can be reused for future jobs."
+          tone="company"
         >
           <Field label="Customer Name" htmlFor="newCustomerName" required>
             <input
@@ -253,9 +266,29 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
         </FormSection>
       ) : null}
 
+      {customerMode === "existing" && selectedCustomer ? (
+        <FormSection title="Customer / Company Contact" description="Choose the contact who belongs to the customer/company record." tone="company">
+          <ContactPicker
+            label="Company Contact"
+            value={companyContactId}
+            contacts={availableContacts}
+            customers={customers}
+            parentCustomerId={selectedCustomer.id}
+            restrictToParent
+            disabled={isSaving}
+            description="Optional company employee or project manager."
+            onChange={(id, created) => { if (created) rememberContact(created); setCompanyContactId(id); }}
+          />
+        </FormSection>
+      ) : customerMode === "new" ? (
+        <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">Company contacts can be assigned after the new customer is created. The customer information above will be saved immediately.</p>
+      ) : null}
+
       <FormSection
-        title={isCopy ? "Create Copied Job" : "Create New Job"}
+        title={isCopy ? "Create Copied Job / Project" : "Job / Project Information"}
         description={isCopy ? "Review the copied details, then enter a unique lead name. A QF# can be added now or when the lead advances." : "Enter the details for this new flooring opportunity. These fields belong to the job, not the customer record."}
+        tone="job"
+        action={<button type="button" onClick={copyCustomerDetailsToJob} disabled={isSaving || !(customerMode === "new" ? newCustomerName.trim() : selectedCustomer)} className="rounded-md border border-blue-300 bg-white px-3 py-2 text-xs font-semibold text-blue-800 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50">Copy customer details to job</button>}
       >
         <Field label="Project / Lead Name" htmlFor="projectName" required>
           <input
@@ -330,21 +363,7 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
         </label>
 
         {customerMode === "existing" && selectedCustomer ? (
-          <div className="grid gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:col-span-2 sm:grid-cols-2">
-            <ContactPicker
-              label="Company Contact"
-              value={companyContactId}
-              contacts={availableContacts}
-              customers={customers}
-              parentCustomerId={selectedCustomer.id}
-              restrictToParent
-              disabled={isSaving}
-              description="Optional company employee or project manager."
-              onChange={(id, created) => {
-                if (created) rememberContact(created);
-                setCompanyContactId(id);
-              }}
-            />
+          <div className="grid gap-4 rounded-lg border border-blue-200 bg-white/80 p-4 sm:col-span-2 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm">
                 <input type="checkbox" checked={hasSeparateSiteContact} onChange={(event) => { setHasSeparateSiteContact(event.target.checked); if (!event.target.checked) setJobSiteContactId(""); }} disabled={isSaving} className="mt-0.5 h-4 w-4 rounded border-gray-300" />
@@ -354,8 +373,8 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
             </div>
           </div>
         ) : customerMode === "new" ? (
-          <p className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500 sm:col-span-2">
-            Create the customer and job first, then assign the Company and optional Job Site contacts from Edit Job Info. The Project / Job Contact above is saved immediately.
+          <p className="rounded-lg border border-blue-200 bg-white/80 p-3 text-sm text-blue-800 sm:col-span-2">
+            Create the customer and job first, then assign an optional Job Site Contact from Edit Job Info. The Project / Job Contact above is saved immediately.
           </p>
         ) : null}
 
@@ -398,11 +417,10 @@ export default function NewLeadForm({ customers, jobs, leadSources, contacts, co
 const inputClass =
   "mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:bg-gray-100";
 
-function FormSection({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+function FormSection({ title, description, children, tone = "company", action }: { title: string; description: string; children: React.ReactNode; tone?: "company" | "job"; action?: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 sm:p-6">
-      <h2 className="text-lg font-semibold text-gray-950">{title}</h2>
-      <p className="mt-1 text-sm text-gray-500">{description}</p>
+    <section className={`rounded-xl border p-5 sm:p-6 ${tone === "job" ? "border-blue-200 bg-blue-50/70" : "border-slate-200 bg-slate-50/70"}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className={`text-[10px] font-bold uppercase tracking-[0.16em] ${tone === "job" ? "text-blue-700" : "text-slate-500"}`}>{tone === "job" ? "Job / Project" : "Customer / Company"}</p><h2 className="mt-1 text-lg font-semibold text-gray-950">{title}</h2><p className="mt-1 text-sm text-gray-600">{description}</p></div>{action ? <div className="shrink-0">{action}</div> : null}</div>
       <div className="mt-6 grid gap-6 sm:grid-cols-2">{children}</div>
     </section>
   );
