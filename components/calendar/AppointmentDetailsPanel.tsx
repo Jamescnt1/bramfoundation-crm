@@ -84,8 +84,8 @@ export default function AppointmentDetailsPanel({
               <div className="flex gap-3"><KeyRound className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="text-gray-500">Lock box</p><p className="mt-1 font-medium text-gray-900">{appointment.job.lock_box_code}</p></div></div>
             ) : null}
 
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Customer / job</p>
+            <div className={`rounded-lg border p-4 ${appointment.job ? "border-blue-200 bg-blue-50/70" : "border-slate-200 bg-slate-50/70"}`}>
+              <p className={`text-xs font-semibold uppercase tracking-wide ${appointment.job ? "text-blue-700" : "text-slate-500"}`}>{appointment.job ? "Job / Project" : "Standalone appointment"}</p>
               {appointment.job ? (
                 <>
                   <Link href={`/leads/${appointment.job.id}`} className="mt-2 block font-semibold text-gray-900 hover:underline">
@@ -96,7 +96,7 @@ export default function AppointmentDetailsPanel({
                   ) : null}
                   <div className="mt-3 flex gap-3 text-xs font-medium"><Link href={`/leads/${appointment.job.id}`} className="hover:underline">Open job</Link><Link href={`/customers`} className="hover:underline">Customers</Link></div>
                 </>
-              ) : <p className="mt-2 text-gray-500">No job linked</p>}
+              ) : <p className="mt-2 text-gray-600">This appointment is not connected to a customer job.</p>}
             </div>
 
             <div className="grid gap-3 rounded-lg border border-gray-200 p-4 text-xs">

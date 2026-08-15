@@ -181,7 +181,7 @@ export default function InstallationScheduleBand({
                       type="button"
                       onClick={() => onSelectAppointment(segment.appointment)}
                       style={{ backgroundColor, color }}
-                      className={`flex h-7 w-full min-w-0 items-center gap-1.5 rounded-md border border-black/10 px-2 text-left text-[11px] font-semibold shadow-sm transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1 ${
+                      className={`flex h-7 w-full min-w-0 items-center gap-1.5 rounded-md border border-blue-400 px-2 text-left text-[11px] font-semibold shadow-[inset_3px_0_0_rgba(219,234,254,0.95)] transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1 ${
                         selectedAppointmentId === segment.appointment.id
                           ? "ring-2 ring-gray-950 ring-offset-1"
                           : ""

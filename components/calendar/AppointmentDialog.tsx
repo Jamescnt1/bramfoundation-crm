@@ -534,7 +534,8 @@ export default function AppointmentDialog({
             </div>
 
             {jobs.length ? (
-              <div className="grid gap-2">
+              <section className={`grid gap-2 rounded-xl border p-3 ${jobId ? "border-blue-200 bg-blue-50/70" : "border-slate-200 bg-slate-50/70"}`}>
+                <p className={`text-[10px] font-bold uppercase tracking-[0.16em] ${jobId ? "text-blue-700" : "text-slate-500"}`}>{jobId ? "Job / Project" : "Standalone appointment"}</p>
                 <label htmlFor="appointment-job" className="text-sm font-medium text-gray-900">
                   Customer / job
                 </label>
@@ -572,7 +573,7 @@ export default function AppointmentDialog({
                 {jobId ? (() => {
                   if (!selectedJob) return null;
                   return (
-                    <dl className="grid gap-2 rounded-md border border-gray-200 bg-gray-50 p-3 text-xs sm:grid-cols-2">
+                    <dl className="grid gap-2 rounded-md border border-blue-200 bg-white/80 p-3 text-xs sm:grid-cols-2">
                       <div>
                         <dt className="font-medium text-gray-500">Company Contact</dt>
                         <dd className="mt-0.5 font-semibold text-gray-900">
@@ -591,7 +592,7 @@ export default function AppointmentDialog({
                     </dl>
                   );
                 })() : null}
-              </div>
+              </section>
             ) : null}
 
             {jobId ? <fieldset className="rounded-lg border border-blue-200 bg-blue-50/40 p-3">

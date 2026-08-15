@@ -54,6 +54,7 @@ export default function AppointmentCard({
   const assignment = appointment.appointment_type === "installation"
     ? appointment.installer_crew?.name ?? "Unassigned crew"
     : appointment.assigned_employee?.name ?? "Unassigned";
+  const jobLinked = Boolean(appointment.job_id || appointment.job);
 
   return (
     <AppointmentTooltip appointment={appointment} displayName={displayName}>
@@ -65,7 +66,7 @@ export default function AppointmentCard({
         }}
         style={{ backgroundColor, color }}
         aria-label={`${typeLabel}: ${badgeLabel}`}
-        className={`block w-full min-w-0 rounded-md border border-black/10 text-left shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-1 ${
+        className={`block w-full min-w-0 rounded-md border text-left shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-1 ${jobLinked ? "border-blue-400 shadow-[inset_3px_0_0_rgba(219,234,254,0.95)]" : "border-slate-300"} ${
           compact ? "px-2 py-1.5 text-[11px]" : "px-2.5 py-2 text-xs"
         } ${selected ? "ring-2 ring-black ring-offset-1" : ""} ${className}`}
       >
