@@ -311,7 +311,7 @@ export default function CalendarBoard({
   function handleSelectAppointment(appointment: CalendarAppointment) {
     const appointmentDate = new Date(appointment.starts_at);
     setSelectedDate(appointmentDate);
-    setAnchorDate(appointmentDate);
+    if (mode !== "installs") setAnchorDate(appointmentDate);
     setSelectedAppointment(appointment);
   }
 
