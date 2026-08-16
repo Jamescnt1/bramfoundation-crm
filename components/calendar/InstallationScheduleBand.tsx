@@ -46,6 +46,20 @@ function formatInstallLabel(appointment: CalendarAppointment) {
   return `${installer} - ${qf} - ${customer} - ${job}`;
 }
 
+function formatCompactInstallLabel(appointment: CalendarAppointment, dayCount: number) {
+  if (dayCount <= 7) return formatInstallLabel(appointment);
+  const customer = appointment.job?.customer?.full_name?.trim() || "Customer";
+  const job = appointment.job?.customer_name?.trim() || "Job";
+  if (dayCount <= 14) return `${customer} - ${job}`;
+  return appointment.job?.qfloors_job_number?.trim() ? `QF# ${appointment.job.qfloors_job_number}` : customer;
+}
+
+function formatDayHeading(day: Date, dayCount: number) {
+  if (dayCount <= 7) return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "numeric", day: "numeric" }).format(day);
+  if (dayCount <= 14) return new Intl.DateTimeFormat("en-US", { weekday: "narrow", month: "numeric", day: "numeric" }).format(day);
+  return new Intl.DateTimeFormat("en-US", { weekday: "narrow", day: "numeric" }).format(day);
+}
+
 function buildSegments(
   days: Date[],
   appointments: CalendarAppointment[],
@@ -104,6 +118,8 @@ export default function InstallationScheduleBand({
     const end = getInstallEnd(appointment);
     return start <= startOfDay(days[days.length - 1]) && end >= startOfDay(days[0]);
   }).length;
+  const density = days.length <= 7 ? "comfortable" : days.length <= 14 ? "compact" : "compressed";
+  const fitClass = days.length <= 7 ? "min-w-[720px]" : days.length <= 14 ? "min-w-[700px] lg:min-w-0" : "min-w-[840px] lg:min-w-0";
 
   return (
     <section className="bg-slate-50">
@@ -126,7 +142,7 @@ export default function InstallationScheduleBand({
       </div>
 
       <div className="overflow-x-auto">
-        <div style={{ minWidth: `${Math.max(720, days.length * 96)}px` }}>
+        <div className={`w-full ${fitClass}`} data-density={density}>
           <div
             className="grid divide-x divide-slate-200 border-b border-slate-300 bg-white/70"
             style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
@@ -134,15 +150,13 @@ export default function InstallationScheduleBand({
             {days.map((day) => (
               <div
                 key={formatDateKey(day)}
-                className={`px-2 py-2 text-center text-[10px] font-semibold text-slate-600 ${
+                className={`${days.length <= 7 ? "px-2 py-2 text-[10px]" : days.length <= 14 ? "px-0.5 py-2 text-[9px]" : "px-0 py-2 text-[8px]"} min-w-0 text-center font-semibold text-slate-600 ${
                   day.getDay() === 0 || day.getDay() === 6 ? "bg-slate-200/80" : ""
                 }`}
+                title={new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(day)}
               >
-                {new Intl.DateTimeFormat("en-US", {
-                  weekday: "short",
-                  month: "numeric",
-                  day: "numeric",
-                }).format(day)}
+                {days.length > 14 && day.getDate() === 1 ? <span className="block truncate font-bold text-blue-700">{new Intl.DateTimeFormat("en-US", { month: "short" }).format(day)}</span> : null}
+                <span className="block truncate">{formatDayHeading(day, days.length)}</span>
               </div>
             ))}
           </div>
@@ -181,17 +195,17 @@ export default function InstallationScheduleBand({
                       type="button"
                       onClick={() => onSelectAppointment(segment.appointment)}
                       style={{ backgroundColor, color }}
-                      className={`flex h-7 w-full min-w-0 items-center gap-1.5 rounded-md border border-blue-400 px-2 text-left text-[11px] font-semibold shadow-[inset_3px_0_0_rgba(219,234,254,0.95)] transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1 ${
+                      className={`flex h-7 w-full min-w-0 items-center rounded-md border border-blue-400 text-left font-semibold shadow-[inset_3px_0_0_rgba(219,234,254,0.95)] transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1 ${days.length <= 7 ? "gap-1.5 px-2 text-[11px]" : days.length <= 14 ? "gap-1 px-1 text-[10px]" : "gap-0.5 px-0.5 text-[9px]"} ${
                         selectedAppointmentId === segment.appointment.id
                           ? "ring-2 ring-gray-950 ring-offset-1"
                           : ""
                       }`}
                     >
-                      <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ${workOrderSent ? "text-green-700 ring-green-300" : "text-red-700 ring-red-300"}`} title={workOrderSent ? "Work order sent" : "Work order needs to be sent"}>
-                        <Hammer className="h-3.5 w-3.5 stroke-[3]" />
+                      <span className={`inline-flex shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ${days.length <= 14 ? "h-5 w-5" : "h-4 w-4"} ${workOrderSent ? "text-green-700 ring-green-300" : "text-red-700 ring-red-300"}`} title={workOrderSent ? "Work order sent" : "Work order needs to be sent"}>
+                        <Hammer className={`${days.length <= 14 ? "h-3.5 w-3.5" : "h-3 w-3"} stroke-[3]`} />
                       </span>
                       <span className="truncate">
-                        {formatInstallLabel(segment.appointment)}
+                        {formatCompactInstallLabel(segment.appointment, days.length)}
                       </span>
                     </button>
                   </AppointmentTooltip>
