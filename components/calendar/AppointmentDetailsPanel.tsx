@@ -25,13 +25,6 @@ type AppointmentDetailsPanelProps = {
   communication: CalendarCommunicationData;
 };
 
-function label(value: string | null | undefined) {
-  return (value ?? "Appointment")
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
 function formatDate(value: string | Date) {
   return formatDateTime(value, {
     weekday: "long",
@@ -72,7 +65,6 @@ export default function AppointmentDetailsPanel({
             <h2 className="mt-2 text-xl font-semibold text-gray-900">{formatAppointmentDisplayName({ title: appointment.title, appointmentType: appointment.appointment_type, appointmentTypeLabel: appointment.appointment_type_record?.name, customerName: appointment.job?.customer?.full_name, jobName: appointment.job?.customer_name })}</h2>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">{formatAppointmentType(appointment.appointment_type, appointment.appointment_type_record?.name)}</span>
-              <span className="rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600">{label(appointment.status)}</span>
               <div className="ml-auto flex items-center gap-1.5">
                 <Button type="button" size="xs" variant="outline" onClick={() => onEditAppointment?.(appointment)} aria-label="Edit appointment">
                   <Pencil /> Edit
