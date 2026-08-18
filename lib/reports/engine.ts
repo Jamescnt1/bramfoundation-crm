@@ -42,6 +42,17 @@ type StageRow = {
   contract_amount_required: boolean;
 };
 
+type JobStageTransitionRow = {
+  id: string;
+  job_id: string;
+  from_stage: string | null;
+  to_stage: string;
+  entered_at: string;
+  contract_amount: string | number | null;
+  source: string;
+  job: Relation<JobRow>;
+};
+
 type TaskRow = {
   id: string;
   assigned_employee_id: string | null;
@@ -187,11 +198,44 @@ async function getJobs(filters: ReportFilters, range: ParsedRange, dateColumn: "
 }
 
 function resolveStage(job: JobRow, context: Awaited<ReturnType<typeof getPipelineContext>>) {
-  const direct = context.stageBySlug.get(job.status);
+  return resolveStageStatus(job.status, context);
+}
+
+function resolveStageStatus(status: string, context: Awaited<ReturnType<typeof getPipelineContext>>) {
+  const direct = context.stageBySlug.get(status);
   if (direct) return direct;
-  const alias = context.aliasMap.get(job.status.toLowerCase());
+  const alias = context.aliasMap.get(status.toLowerCase());
   if (alias) return context.stageBySlug.get(alias);
-  return context.stages.find((stage) => stage.label.toLowerCase() === job.status.toLowerCase());
+  return context.stages.find((stage) => stage.label.toLowerCase() === status.toLowerCase());
+}
+
+async function getJobStageTransitions(filters: ReportFilters, range: ParsedRange) {
+  const supabase = await createClient();
+  let query = supabase
+    .from("job_stage_transitions")
+    .select(`
+      id, job_id, from_stage, to_stage, entered_at, contract_amount, source,
+      job:jobs!job_stage_transitions_job_id_fkey!inner(
+        id, customer_id, customer_name, status, salesperson, assigned_employee_id,
+        lead_source, contract_amount, billed_at, qfloors_job_number, address,
+        created_at, updated_at, archived_at,
+        customer:customers!jobs_customer_id_fkey(id, full_name)
+      )
+    `)
+    .is("job.archived_at", null)
+    .gte("entered_at", range.fromIso)
+    .lte("entered_at", range.toIso)
+    .order("entered_at", { ascending: true })
+    .limit(RESULT_LIMIT);
+  if (filters.salesperson) query = query.eq("job.salesperson", filters.salesperson);
+  if (filters.leadSource) query = query.eq("job.lead_source", filters.leadSource);
+  if (filters.customerId) query = query.eq("job.customer_id", filters.customerId);
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as unknown as JobStageTransitionRow[]).map((transition) => ({
+    ...transition,
+    job: first(transition.job),
+  })).filter((transition): transition is JobStageTransitionRow & { job: JobRow } => Boolean(transition.job));
 }
 
 async function buildExecutiveReport(filters: ReportFilters, range: ParsedRange): Promise<ReportResult> {
@@ -663,37 +707,61 @@ function appointmentHasOccurred(appointment: AppointmentRow) {
 }
 
 async function buildOperationalDollarsReport(filters: ReportFilters, range: ParsedRange): Promise<ReportResult> {
-  const [jobs, context] = await Promise.all([getJobs(filters, range, "updated_at"), getPipelineContext()]);
+  const [transitions, context] = await Promise.all([
+    getJobStageTransitions(filters, range),
+    getPipelineContext(),
+  ]);
   const approvedOrder = context.stageBySlug.get("approved")?.sort_order ?? 4;
   const reportingStages = context.stages.filter((stage) => stage.sort_order >= approvedOrder && stage.slug !== "lost");
-  const sold = jobs.filter((job) => {
-    const stage = resolveStage(job, context);
-    return stage && stage.sort_order >= approvedOrder && stage.slug !== "lost";
-  });
-  const completed = jobs.filter((job) => resolveStage(job, context)?.slug === "complete");
-  const billed = jobs.filter((job) => job.billed_at && job.billed_at >= range.fromIso && job.billed_at <= range.toIso);
+  const eventByJobAndStage = new Map<string, {
+    job: JobRow;
+    stage: StageRow;
+    contractAmount: number;
+    enteredAt: string;
+  }>();
+
+  for (const transition of transitions) {
+    const stage = resolveStageStatus(transition.to_stage, context);
+    if (!stage || stage.sort_order < approvedOrder || stage.slug === "lost") continue;
+    const key = `${stage.slug}:${transition.job_id}`;
+    if (!eventByJobAndStage.has(key)) {
+      eventByJobAndStage.set(key, {
+        job: transition.job,
+        stage,
+        contractAmount: positiveAmount(transition.contract_amount),
+        enteredAt: transition.entered_at,
+      });
+    }
+  }
+
+  const events = [...eventByJobAndStage.values()];
+  const billedStage = context.stageBySlug.get("billed")
+    ?? context.stages.find((stage) => stage.label.trim().toLowerCase() === "billed");
+  const sold = events.filter((event) => event.stage.slug === "approved");
+  const completed = events.filter((event) => event.stage.slug === "complete");
+  const billed = events.filter((event) => event.stage.slug === billedStage?.slug);
   const rows = reportingStages
     .filter((stage) => !filters.pipelineStage || stage.slug === filters.pipelineStage)
     .map((stage) => {
-      const stageJobs = jobs.filter((job) => resolveStage(job, context)?.slug === stage.slug);
-      const total = sum(stageJobs.map(amount));
+      const stageEvents = events.filter((event) => event.stage.slug === stage.slug);
+      const total = sum(stageEvents.map((event) => event.contractAmount));
       return {
         stage: stage.label,
-        jobCount: stageJobs.length,
+        jobCount: stageEvents.length,
         total: currency(total),
-        average: currency(stageJobs.length ? total / stageJobs.length : 0),
+        average: currency(stageEvents.length ? total / stageEvents.length : 0),
       };
     });
-  const missing = sold.filter((job) => !amount(job)).length;
+  const missing = sold.filter((event) => !event.contractAmount).length;
   return {
     id: "operational-dollars",
     title: "Operational Dollars",
     description: "The original Contract Amount report, integrated into the Reports Center.",
     rangeLabel: range.label,
     metrics: [
-      metric("Sold Jobs", currency(sum(sold.map(amount))), `${sold.length} jobs`, "positive"),
-      metric("Completed Installs", currency(sum(completed.map(amount))), `${completed.length} jobs`),
-      metric("Billed Jobs", currency(sum(billed.map(amount))), `${billed.length} jobs`),
+      metric("Sold Jobs", currency(sum(sold.map((event) => event.contractAmount))), `${sold.length} jobs`, "positive"),
+      metric("Completed Installs", currency(sum(completed.map((event) => event.contractAmount))), `${completed.length} jobs`),
+      metric("Billed Jobs", currency(sum(billed.map((event) => event.contractAmount))), `${billed.length} jobs`),
       metric("Missing Contract Amount", number(missing), "Legacy sold jobs", missing ? "warning" : "default"),
     ],
     columns: [
@@ -705,8 +773,9 @@ async function buildOperationalDollarsReport(filters: ReportFilters, range: Pars
     rows,
     chart: chart("Contract value by stage", rows.map((row) => ({ label: row.stage, value: moneyNumber(row.total), formattedValue: row.total }))),
     notes: [
-      "Compatibility preserved: Sold is Approved or later excluding Lost; Completed is the Complete stage; Billed requires billed_at; only positive Contract Amount values are totaled.",
-      "The selected range cohorts current Sold and Completed rows by jobs.updated_at. Billed uses billed_at. A future stage-transition ledger can provide true historical milestone dates.",
+      "Each stage is an independent bucket: a job that enters Approved, Complete, and Billed during the selected range contributes to all three.",
+      "A job counts once per stage in the selected range. Stage totals use the Contract Amount recorded when the job entered that stage; Billed uses billed_at.",
+      ...dataLimitNote(transitions.length),
     ],
   };
 }
@@ -819,7 +888,11 @@ function customerName(job: JobRow) {
 }
 
 function amount(job: JobRow) {
-  const value = Number(job.contract_amount ?? 0);
+  return positiveAmount(job.contract_amount);
+}
+
+function positiveAmount(input: string | number | null | undefined) {
+  const value = Number(input ?? 0);
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
