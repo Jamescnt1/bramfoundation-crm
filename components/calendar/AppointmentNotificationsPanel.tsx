@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BellRing, Send } from "lucide-react";
+import { BellRing, ChevronDown, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { sendAppointmentNotificationAction } from "@/app/actions/appointment-notifications";
 import type { CalendarAppointment } from "@/components/calendar/types";
@@ -17,6 +17,7 @@ export default function AppointmentNotificationsPanel({ appointment, communicati
   const [channel, setChannel] = useState<AppointmentNotificationChannel>("sms");
   const [kind, setKind] = useState<AppointmentNotificationKind>("confirmation");
   const [sending, setSending] = useState(false);
+  const [open, setOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const history = communication.deliveriesByAppointment[appointment.id] ?? [];
@@ -31,8 +32,13 @@ export default function AppointmentNotificationsPanel({ appointment, communicati
     setSending(false);
   }
 
-  return <section className="border-t border-gray-200 p-5">
-    <div className="flex items-start gap-2"><BellRing className="mt-0.5 h-4 w-4 text-blue-700"/><div><h3 className="font-semibold text-gray-900">Appointment notifications</h3><p className="mt-1 text-xs leading-5 text-gray-500">Send a confirmation or reminder now. Automatic customer notices are {appointment.customer_notifications_enabled ? "enabled for this appointment when job and global controls allow them" : "off for this appointment"}.</p></div></div>
+  return <section className="border-t border-gray-200">
+    <button type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} className="flex w-full items-start gap-2 p-5 text-left hover:bg-gray-50">
+      <BellRing className="mt-0.5 h-4 w-4 shrink-0 text-blue-700"/>
+      <span className="min-w-0 flex-1"><span className="block font-semibold text-gray-900">Appointment notifications</span><span className="mt-1 block text-xs leading-5 text-gray-500">Send confirmations or reminders · Automatic notices {appointment.customer_notifications_enabled ? "on" : "off"}</span></span>
+      <ChevronDown className={`mt-0.5 h-4 w-4 shrink-0 text-gray-500 transition-transform ${open ? "rotate-180" : ""}`} />
+    </button>
+    {open ? <div className="border-t border-gray-100 px-5 pb-5">
     {audiences.length ? <div className="mt-4 grid gap-3">
       <div className="grid grid-cols-2 gap-2">
         <label className="grid gap-1 text-xs font-medium text-gray-600">Recipient<select value={audience} onChange={(event) => setAudience(event.target.value as AppointmentNotificationAudience)} className="h-9 rounded-md border border-gray-300 bg-white px-2 text-sm">{audiences.map((item) => <option key={item} value={item}>{audienceLabel(item)}</option>)}</select></label>
@@ -47,6 +53,7 @@ export default function AppointmentNotificationsPanel({ appointment, communicati
       <Button type="button" size="sm" onClick={() => void send()} disabled={sending || !communication.controls[audience] || (channel === "sms" ? !communication.controls.sms : !communication.controls.email)}><Send/>{sending ? "Sending..." : `Send ${kind}`}</Button>
     </div> : <p className="mt-3 rounded-md border border-dashed p-3 text-xs text-gray-500">Assign a job, employee, or installer crew to notify someone about this appointment.</p>}
     <div className="mt-5"><h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Notification history</h4><div className="mt-2 space-y-2">{history.length ? history.slice(0, 8).map((delivery) => <HistoryItem key={delivery.id} delivery={delivery}/>) : <p className="text-xs text-gray-500">No notifications sent for this appointment.</p>}</div></div>
+    </div> : null}
   </section>;
 }
 

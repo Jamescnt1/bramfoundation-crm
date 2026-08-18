@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, KeyRound, MapPin, Paperclip, UserRound } from "lucide-react";
+import { CalendarDays, KeyRound, MapPin, Pencil, Trash2, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isQfNumberRequired } from "@/components/pipeline/constants";
 import type { CalendarAppointment } from "@/components/calendar/types";
@@ -70,16 +70,24 @@ export default function AppointmentDetailsPanel({
           <div className="border-b border-gray-200 p-5">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Event details</p>
             <h2 className="mt-2 text-xl font-semibold text-gray-900">{formatAppointmentDisplayName({ title: appointment.title, appointmentType: appointment.appointment_type, appointmentTypeLabel: appointment.appointment_type_record?.name, customerName: appointment.job?.customer?.full_name, jobName: appointment.job?.customer_name })}</h2>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">{formatAppointmentType(appointment.appointment_type, appointment.appointment_type_record?.name)}</span>
               <span className="rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600">{label(appointment.status)}</span>
+              <div className="ml-auto flex items-center gap-1.5">
+                <Button type="button" size="xs" variant="outline" onClick={() => onEditAppointment?.(appointment)} aria-label="Edit appointment">
+                  <Pencil /> Edit
+                </Button>
+                <Button type="button" size="xs" variant="destructive" onClick={() => onDeleteAppointment?.(appointment)} aria-label="Delete appointment">
+                  <Trash2 /> Delete
+                </Button>
+              </div>
             </div>
           </div>
 
           <div className="space-y-5 p-5 text-sm">
             <div className="flex gap-3"><CalendarDays className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="font-medium text-gray-900">{formatDate(appointment.starts_at)}{appointment.appointment_type === "installation" && appointment.ends_at ? ` – ${formatDate(appointment.ends_at)}` : ""}</p><p className="mt-1 text-gray-500">{appointment.all_day ? "All Day · 7:00 AM–3:00 PM" : `${formatAppointmentTime(appointment.starts_at)}${appointment.ends_at ? ` – ${formatAppointmentTime(appointment.ends_at)}` : ""}`}{appointment.recurrence_series_id ? " · Recurring" : ""}</p></div></div>
             <div className="flex gap-3"><UserRound className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="text-gray-500">{appointment.appointment_type === "installation" ? "Install crew" : "Assigned employee"}</p><p className="mt-1 font-medium text-gray-900">{appointment.appointment_type === "installation" ? installerCrew?.name ?? appointment.installer_crew?.name ?? "Unassigned crew" : employee?.name ?? "Unassigned"}</p></div></div>
-            <div className="flex gap-3"><MapPin className="mt-2 h-4 w-4 text-gray-400" /><div><p className="text-gray-500">Location</p>{appointment.location || appointment.job?.address ? <AddressLink value={appointment.location || appointment.job?.address} className="mt-1 font-medium text-gray-900" /> : <p className="mt-1 text-gray-500">No location provided</p>}</div></div>
+            <div className="flex gap-3"><MapPin className="mt-3 h-4 w-4 text-blue-700" /><div className="min-w-0 flex-1"><p className="font-medium text-gray-700">Location</p>{appointment.location || appointment.job?.address ? <AddressLink value={appointment.location || appointment.job?.address} className="mt-1 min-h-11 w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 font-semibold text-blue-900 shadow-sm hover:border-blue-400 hover:bg-blue-100" /> : <p className="mt-1 text-gray-500">No location provided</p>}</div></div>
             {appointment.job?.lock_box_code ? (
               <div className="flex gap-3"><KeyRound className="mt-0.5 h-4 w-4 text-gray-400" /><div><p className="text-gray-500">Lock box</p><p className="mt-1 font-medium text-gray-900">{appointment.job.lock_box_code}</p></div></div>
             ) : null}
@@ -119,15 +127,6 @@ export default function AppointmentDetailsPanel({
 
           <AppointmentNotificationsPanel key={appointment.id} appointment={appointment} communication={communication} />
 
-          <div className="grid gap-2 border-t border-gray-200 p-5">
-            <Button type="button" variant="outline" onClick={() => onEditAppointment?.(appointment)}>Edit appointment</Button>
-            <Button type="button" variant="destructive" onClick={() => onDeleteAppointment?.(appointment)}>Delete appointment</Button>
-          </div>
-
-          <div className="border-t border-gray-200 bg-gray-50 p-5">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-400"><Paperclip className="h-4 w-4" />Future workspace</div>
-            <p className="mt-2 text-xs leading-5 text-gray-500">Attachments, comments, and activity history will appear here.</p>
-          </div>
         </>
       )}
     </aside>
