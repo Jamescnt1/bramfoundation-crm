@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   archiveCustomerContactAction,
 } from "@/app/actions/customer-contacts";
 import ContactFormDialog from "@/components/contacts/ContactFormDialog";
 import type { Customer } from "@/components/customers/types";
 import { formatJobDisplayName } from "@/lib/job-display";
+import type { Job } from "@/lib/services/jobs";
+import { getPipelineStage } from "@/components/pipeline/constants";
 import {
   formatContactName,
   type CustomerContact,
@@ -90,18 +92,7 @@ export default function CustomerContactsManager({
                 <PhoneLink value={contact.office_phone} label={`${formatContactName(contact)} office`} showIcon className="text-gray-700" />
                 <EmailLink value={contact.email} label={formatContactName(contact)} showIcon className="text-gray-700" />
               </div>
-              {contact.jobs?.length ? (
-                <div className="mt-3 border-t border-gray-100 pt-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Related jobs</p>
-                  <div className="mt-1 space-y-1">
-                    {contact.jobs.slice(0, 4).map((job) => (
-                      <Link key={job.id} href={`/leads/${job.id}`} className="block truncate text-sm font-medium text-gray-700 hover:underline">
-                        {formatJobDisplayName({ customerName: job.customer?.full_name, jobName: job.customer_name, qfNumber: job.qfloors_job_number })}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
+              {contact.jobs?.length ? <ContactJobs jobs={contact.jobs} /> : null}
             </article>
           ))}
         </div>
@@ -124,4 +115,75 @@ export default function CustomerContactsManager({
       />
     </section>
   );
+}
+
+const COLLAPSED_JOB_COUNT = 4;
+
+function ContactJobs({ jobs }: { jobs: Job[] }) {
+  const [showAllCurrent, setShowAllCurrent] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const currentJobs = jobs.filter((job) => !isHistoryJob(job));
+  const historyJobs = jobs.filter(isHistoryJob);
+  const visibleCurrentJobs = showAllCurrent ? currentJobs : currentJobs.slice(0, COLLAPSED_JOB_COUNT);
+  const hiddenCurrentCount = Math.max(0, currentJobs.length - COLLAPSED_JOB_COUNT);
+
+  return (
+    <div className="mt-3 border-t border-gray-100 pt-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+        Current jobs · {currentJobs.length}
+      </p>
+      {currentJobs.length ? (
+        <div className={`mt-1 space-y-1 ${showAllCurrent ? "max-h-64 overflow-y-auto pr-1" : ""}`}>
+          {visibleCurrentJobs.map((job) => <ContactJobLink key={job.id} job={job} />)}
+        </div>
+      ) : <p className="mt-1 text-xs text-gray-500">No current jobs.</p>}
+      {hiddenCurrentCount ? (
+        <button
+          type="button"
+          onClick={() => setShowAllCurrent((current) => !current)}
+          aria-expanded={showAllCurrent}
+          className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
+        >
+          {showAllCurrent ? "Show fewer" : `Show ${hiddenCurrentCount} more`}
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAllCurrent ? "rotate-180" : ""}`} />
+        </button>
+      ) : null}
+
+      {historyJobs.length ? (
+        <div className="mt-3 border-t border-gray-100 pt-2">
+          <button
+            type="button"
+            onClick={() => setShowHistory((current) => !current)}
+            aria-expanded={showHistory}
+            className="flex w-full items-center justify-between gap-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 hover:text-gray-800"
+          >
+            <span>Job history · {historyJobs.length}</span>
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showHistory ? "rotate-180" : ""}`} />
+          </button>
+          {showHistory ? (
+            <div className="mt-2 max-h-64 space-y-1 overflow-y-auto pr-1">
+              {historyJobs.map((job) => <ContactJobLink key={job.id} job={job} />)}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ContactJobLink({ job }: { job: Job }) {
+  return (
+    <Link href={`/leads/${job.id}`} className="block truncate text-sm font-medium text-gray-700 hover:underline">
+      {formatJobDisplayName({ customerName: job.customer?.full_name, jobName: job.customer_name, qfNumber: job.qfloors_job_number })}
+    </Link>
+  );
+}
+
+function isHistoryJob(job: Job) {
+  const normalizedStatus = job.status.trim().toLowerCase().replaceAll("_", " ");
+  const legacyStage = getPipelineStage(job.status);
+  return Boolean(job.billed_at)
+    || legacyStage === "Complete"
+    || legacyStage === "Lost"
+    || ["completed", "closed", "billed", "billed jobs"].includes(normalizedStatus);
 }
