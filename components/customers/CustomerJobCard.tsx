@@ -12,9 +12,9 @@ export default function CustomerJobCard({
   return (
     <Link
       href={`/leads/${job.id}`}
-      className="block rounded-xl border border-gray-200 bg-white p-5 transition hover:border-gray-300 hover:shadow-sm"
+      className="block rounded-xl border border-gray-200 bg-white p-3.5 transition hover:border-gray-300 hover:shadow-sm"
     >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-gray-900">
@@ -26,13 +26,13 @@ export default function CustomerJobCard({
             </span>
           </div>
 
-          <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <dt className="font-medium text-gray-500">
                 QF#
               </dt>
 
-              <dd className={`mt-1 ${isQfNumberRequired(job.status) && !job.qfloors_job_number?.trim() ? "font-semibold text-red-700" : "text-gray-900"}`}>
+              <dd className={`${isQfNumberRequired(job.status) && !job.qfloors_job_number?.trim() ? "font-semibold text-red-700" : "text-gray-900"}`}>
                 {job.qfloors_job_number ?? (isQfNumberRequired(job.status) ? "Required" : "Not assigned")}
               </dd>
             </div>
@@ -42,7 +42,7 @@ export default function CustomerJobCard({
                 Lead Source
               </dt>
 
-              <dd className="mt-1 text-gray-900">
+              <dd className="text-gray-900">
                 {job.lead_source ?? "Not provided"}
               </dd>
             </div>
@@ -52,7 +52,7 @@ export default function CustomerJobCard({
                 Project Address
               </dt>
 
-              <dd className="mt-1 text-gray-900">
+              <dd className="text-gray-900">
                 {job.address ?? "Not provided"}
               </dd>
             </div>

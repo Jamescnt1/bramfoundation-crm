@@ -33,8 +33,8 @@ export default function CustomerDetails({
   currentEmployee,
 }: CustomerDetailsProps) {
   return (
-    <div className="space-y-8">
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
+    <div className="space-y-4">
+      <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm md:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-sm font-medium text-gray-500">
@@ -54,7 +54,7 @@ export default function CustomerDetails({
           </Link>
         </div>
 
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <p className="text-sm font-medium text-gray-500">
               Phone
@@ -94,12 +94,12 @@ export default function CustomerDetails({
           </div>
         </div>
 
-        <div className="mt-8 border-t border-gray-200 pt-6">
+        <div className="mt-4 border-t border-gray-200 pt-3">
           <p className="text-sm font-medium text-gray-500">
             Notes
           </p>
 
-          <p className="mt-2 whitespace-pre-wrap text-gray-700">
+          <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">
             {customer.notes ?? "No customer notes have been added."}
           </p>
         </div>
@@ -112,7 +112,7 @@ export default function CustomerDetails({
         canArchive={canArchiveContacts}
       />
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
+      <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm md:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">
@@ -135,7 +135,7 @@ export default function CustomerDetails({
         </div>
 
         {jobs.length === 0 ? (
-          <div className="mt-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
+          <div className="mt-4 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-5 text-center">
             <h3 className="font-medium text-gray-900">
               No linked jobs yet
             </h3>
@@ -146,7 +146,7 @@ export default function CustomerDetails({
             </p>
           </div>
         ) : (
-          <div className="mt-6 space-y-4">
+          <div className="mt-4 space-y-2">
             {jobs.map((job) => (
               <CustomerJobCard
                 key={job.id}
@@ -157,7 +157,7 @@ export default function CustomerDetails({
         )}
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
+      <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm md:p-5">
         <TaskManager compact initialTasks={tasks} customers={[customer]} jobs={jobs} employees={employees} taskTypes={taskTypes} currentEmployeeId={currentEmployee.id} currentEmployeeRole={currentEmployee.role} fixedCustomerId={customer.id} />
       </section>
     </div>

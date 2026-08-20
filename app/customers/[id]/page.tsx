@@ -93,7 +93,7 @@ export default async function CustomerPage({
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6 md:p-8">
+    <main className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="mx-auto max-w-7xl">
         <Link
           href="/customers"
@@ -102,7 +102,7 @@ export default async function CustomerPage({
           ← Back to customers
         </Link>
 
-        <div className="mt-6">
+        <div className="mt-4">
           <CustomerDetails
             customer={customer}
             jobs={jobs}

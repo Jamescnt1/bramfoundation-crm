@@ -56,14 +56,14 @@ export default function CustomerContactsManager({
   }
 
   return (
-    <section id="contacts" className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
+    <section id="contacts" className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm md:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Contacts</h2>
           <p className="mt-1 text-sm text-gray-500">{contacts.filter((contact) => contact.active).length} active {contacts.filter((contact) => contact.active).length === 1 ? "contact" : "contacts"} at {customer.full_name}.</p>
         </div>
         {canManage ? (
-          <button type="button" onClick={openCreate} className="inline-flex w-fit items-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">
+          <button type="button" onClick={openCreate} className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-black px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800">
             <Plus className="h-4 w-4" /> New Contact
           </button>
         ) : null}
@@ -71,9 +71,9 @@ export default function CustomerContactsManager({
 
       {error ? <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
       {contacts.length ? (
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
+        <div className="mt-3 grid gap-2 lg:grid-cols-2">
           {contacts.map((contact) => (
-            <article key={contact.id} className="rounded-lg border border-gray-200 p-4">
+            <article key={contact.id} className="rounded-lg border border-gray-200 p-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -87,7 +87,7 @@ export default function CustomerContactsManager({
                   {canArchive ? <button type="button" onClick={() => void archive(contact)} className="rounded-md p-2 text-red-600 hover:bg-red-50" aria-label="Archive contact"><Trash2 className="h-4 w-4" /></button> : null}
                 </div>
               </div>
-              <div className="mt-3 space-y-1.5 text-sm">
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm">
                 <PhoneLink value={contact.mobile_phone} label={formatContactName(contact)} showIcon className="text-gray-700" />
                 <PhoneLink value={contact.office_phone} label={`${formatContactName(contact)} office`} showIcon className="text-gray-700" />
                 <EmailLink value={contact.email} label={formatContactName(contact)} showIcon className="text-gray-700" />
@@ -128,7 +128,7 @@ function ContactJobs({ jobs }: { jobs: Job[] }) {
   const hiddenCurrentCount = Math.max(0, currentJobs.length - COLLAPSED_JOB_COUNT);
 
   return (
-    <div className="mt-3 border-t border-gray-100 pt-3">
+    <div className="mt-2 border-t border-gray-100 pt-2">
       <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
         Current jobs · {currentJobs.length}
       </p>
@@ -150,7 +150,7 @@ function ContactJobs({ jobs }: { jobs: Job[] }) {
       ) : null}
 
       {historyJobs.length ? (
-        <div className="mt-3 border-t border-gray-100 pt-2">
+        <div className="mt-2 border-t border-gray-100 pt-2">
           <button
             type="button"
             onClick={() => setShowHistory((current) => !current)}
