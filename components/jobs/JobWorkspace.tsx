@@ -543,7 +543,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
         ) : null}
       </div>
 
-      <AppointmentDialog open={appointmentOpen} onOpenChange={(open) => { setAppointmentOpen(open); if (!open) setAppointmentBeingEdited(null); }} appointment={appointmentBeingEdited} defaultDate={new Date()} defaultJobId={job.id} defaultAppointmentType={appointmentType} employees={employees} installerCrews={installerCrews} jobs={[job]} appointmentTypes={appointmentTypes} productionScopes={materialScopes.map((scope) => ({ id: scope.id, job_id: scope.job_id, label: scope.description || scope.category.name, abbreviation: scope.category.abbreviation }))} defaultMaterialScopeIds={scheduledMaterialScopeIds} appointmentScopeIds={scheduledMaterialScopeIds} currentEmployeeId={currentEmployee?.id ?? null} />
+      <AppointmentDialog open={appointmentOpen} onOpenChange={(open) => { setAppointmentOpen(open); if (!open) setAppointmentBeingEdited(null); }} appointment={appointmentBeingEdited} defaultDate={new Date()} defaultJobId={job.id} defaultAppointmentType={appointmentType} employees={employees} installerCrews={installerCrews} jobs={[job]} appointmentTypes={appointmentTypes} productionScopes={materialScopes.map((scope) => ({ id: scope.id, job_id: scope.job_id, label: scope.description || scope.category.name, abbreviation: scope.category.abbreviation, material_status: scope.material_status, eta_date: scope.eta_date, ordering_required: scope.ordering_required }))} defaultMaterialScopeIds={scheduledMaterialScopeIds} appointmentScopeIds={scheduledMaterialScopeIds} currentEmployeeId={currentEmployee?.id ?? null} />
       {pendingStatus ? (
         <JobRequirementsDialog
           open

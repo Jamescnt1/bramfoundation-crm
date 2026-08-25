@@ -78,6 +78,27 @@ export async function updateMaterialScopeStatusAction(values: {
   refresh(values.jobId);
 }
 
+export async function updateMaterialScopeEtaAction(values: {
+  jobId: string;
+  scopeId: string;
+  etaDate: string;
+}) {
+  await requirePermission("pipeline.manage");
+  const employee = await requireEmployee();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(values.etaDate)) throw new Error("Enter a valid updated material ETA.");
+  const { data, error } = await createAdminClient()
+    .from("job_material_scopes")
+    .update({ eta_date: values.etaDate, updated_by: employee.id })
+    .eq("id", values.scopeId)
+    .eq("job_id", values.jobId)
+    .in("material_status", ["ordered", "partially_received", "ready"])
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Material scope not found.");
+  refresh(values.jobId);
+}
+
 export async function linkMaterialScopeAppointmentAction(values: {
   jobId: string;
   scopeId: string;

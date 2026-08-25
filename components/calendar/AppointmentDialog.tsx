@@ -42,7 +42,7 @@ type AppointmentDialogProps = {
   defaultJobId?: string | null;
   defaultAppointmentType?: AppointmentType;
   appointmentTypes: AppointmentTypeDefinition[];
-  productionScopes?: { id: string; job_id: string; label: string; abbreviation: string }[];
+  productionScopes?: { id: string; job_id: string; label: string; abbreviation: string; material_status?: string; eta_date?: string | null; ordering_required?: boolean }[];
   defaultMaterialScopeIds?: string[];
   appointmentScopeIds?: string[];
   currentEmployeeId?: string | null;
@@ -176,6 +176,9 @@ export default function AppointmentDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(
     null,
   );
+  const selectedProductionScopes = productionScopes.filter((scope) => materialScopeIds.includes(scope.id));
+  const schedulingBeforeReady = selectedProductionScopes.some((scope) => scope.ordering_required && scope.material_status !== "ready" && scope.material_status !== "excluded");
+  const schedulingBeforeEta = selectedProductionScopes.some((scope) => scope.eta_date && date < scope.eta_date);
 
   /* Form state is intentionally reset whenever a create/edit dialog opens. */
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -680,6 +683,8 @@ export default function AppointmentDialog({
                 </div>
               </fieldset>
             ) : null}
+
+            {appointmentType === "installation" && (schedulingBeforeReady || schedulingBeforeEta) ? <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"><p className="font-semibold">Review early installation scheduling</p><p className="mt-0.5">{schedulingBeforeEta ? "The installation starts before the current material ETA. " : ""}{schedulingBeforeReady ? "Material is not marked ready. " : ""}You can still save this date; incomplete production milestones will remain visible.</p></div> : null}
 
             {appointmentType === "installation" ? (
               <div className="grid gap-4 sm:grid-cols-2">
