@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CalendarPlus, CheckSquare, CirclePause, Copy, MoreHorizontal, Pencil, Play, UserRound } from "lucide-react";
+import { CalendarPlus, CheckSquare, CirclePause, Copy, MoreHorizontal, Pencil, Play, Printer, UserRound } from "lucide-react";
 import AttachmentManager from "@/components/attachments/AttachmentManager";
 import type { JobAttachment } from "@/components/attachments/types";
 import AppointmentCard from "@/components/calendar/AppointmentCard";
@@ -44,6 +44,7 @@ import CustomerSmsPanel from "@/components/sms/CustomerSmsPanel";
 import JobCommunicationPreferences from "@/components/jobs/JobCommunicationPreferences";
 import ExternalCommunicationHistory from "@/components/jobs/ExternalCommunicationHistory";
 import type { JobSmsDelivery, JobSmsRecipient } from "@/components/sms/types";
+import PrintJobDetailsDialog from "@/components/jobs/PrintJobDetailsDialog";
 
 type Props = {
   activeTab: JobWorkspaceTab;
@@ -124,6 +125,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
   const [statusError, setStatusError] = useState("");
   const [pendingStatus, setPendingStatus] = useState<PipelineStage | null>(null);
   const [holdDialogOpen, setHoldDialogOpen] = useState(false);
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
   const [onHold, setOnHold] = useState(job.on_hold);
   const [holdReason, setHoldReason] = useState(job.hold_reason);
   const [holdUntil, setHoldUntil] = useState(job.hold_until);
@@ -316,6 +318,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
               <DropdownMenuContent align="end">
                 {customer ? <DropdownMenuItem onClick={() => window.location.assign(`/customers/${customer.id}`)}><UserRound /> Open Customer</DropdownMenuItem> : null}
                 <DropdownMenuItem onClick={() => window.location.assign(`/leads/${job.id}/copy`)}><Copy /> Copy Job</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setPrintDialogOpen(true)}><Printer /> Print Job Details</DropdownMenuItem>
                 {canChangeStatus ? onHold ? <DropdownMenuItem onClick={async () => { try { await releaseJobHoldAction(job.id); setOnHold(false); setHoldReason(null); setHoldUntil(null); setHoldNote(null); router.refresh(); } catch (error) { setStatusError(error instanceof Error ? error.message : "Unable to return job to the pipeline."); } }}><Play /> Return to Active Pipeline</DropdownMenuItem> : <DropdownMenuItem onClick={() => setHoldDialogOpen(true)}><CirclePause /> Place On Hold</DropdownMenuItem> : null}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -330,6 +333,7 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
         </dl>
       </header>
       <JobHoldDialog open={holdDialogOpen} jobId={job.id} currentReason={holdReason} currentUntil={holdUntil} currentNote={holdNote} onOpenChange={setHoldDialogOpen} onSaved={(values) => { setOnHold(true); setHoldReason(values.reason); setHoldUntil(values.until); setHoldNote(values.note); router.refresh(); }} />
+      <PrintJobDetailsDialog jobId={job.id} open={printDialogOpen} onOpenChange={setPrintDialogOpen} />
 
       <nav className="job-workspace-tabs sticky top-0 z-20 mt-3 flex gap-1 overflow-x-auto overflow-y-hidden rounded-t-lg border border-blue-700 border-b-0 bg-blue-600 px-2 pt-2 shadow-sm" role="tablist" aria-label="Job workspace sections">
         {nav.map(([id, label]) => (
