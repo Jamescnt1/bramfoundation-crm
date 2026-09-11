@@ -14,6 +14,9 @@ const columns = `id, job_id, customer_id, title, description, assigned_to,
  customers(id, full_name), jobs(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name)),
  employees!job_tasks_assigned_employee_id_fkey(id, name), task_types(id, name, active, sort_order)`;
 
+const taskNoteBatchSize = 100;
+const taskNoteBatchConcurrency = 4;
+
 export async function getTasks(filters?: { jobId?: string; customerId?: string }) {
   const now = new Date().toISOString();
   let query = supabase
@@ -33,12 +36,7 @@ export async function getTasks(filters?: { jobId?: string; customerId?: string }
   const tasks = (data ?? []).map(normalizeTask) as UniversalTask[];
   if (!tasks.length) return tasks;
 
-  const { data: notes, error: notesError } = await supabase
-    .from("task_latest_notes")
-    .select("id, task_id, author_employee_id, body, source, created_at, updated_at, author_name")
-    .in("task_id", tasks.map((task) => task.id))
-    .order("created_at", { ascending: false });
-  if (notesError) throw new Error(notesError.message);
+  const notes = await getLatestTaskNotes(tasks.map((task) => task.id));
 
   const latestByTask = new Map<string, UniversalTask["latest_note"]>();
   for (const rawNote of notes ?? []) {
@@ -61,6 +59,32 @@ export async function getTasks(filters?: { jobId?: string; customerId?: string }
     ...task,
     latest_note: latestByTask.get(task.id) ?? null,
   }));
+}
+
+async function getLatestTaskNotes(taskIds: string[]) {
+  const batches: string[][] = [];
+  for (let index = 0; index < taskIds.length; index += taskNoteBatchSize) {
+    batches.push(taskIds.slice(index, index + taskNoteBatchSize));
+  }
+
+  const notes = [];
+  for (let index = 0; index < batches.length; index += taskNoteBatchConcurrency) {
+    const results = await Promise.all(
+      batches.slice(index, index + taskNoteBatchConcurrency).map((batch) =>
+        supabase
+          .from("task_latest_notes")
+          .select("id, task_id, author_employee_id, body, source, created_at, updated_at, author_name")
+          .in("task_id", batch),
+      ),
+    );
+
+    for (const result of results) {
+      if (result.error) throw new Error(result.error.message);
+      notes.push(...(result.data ?? []));
+    }
+  }
+
+  return notes;
 }
 
 export async function getTaskTypes(activeOnly = true): Promise<TaskType[]> {
