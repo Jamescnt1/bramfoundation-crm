@@ -316,8 +316,8 @@ export default function JobWorkspace({ activeTab, job, customer, assignedEmploye
             <DropdownMenu>
               <DropdownMenuTrigger className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50" aria-label="More job actions"><MoreHorizontal className="h-4 w-4" /></DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {customer ? <DropdownMenuItem onClick={() => window.location.assign(`/customers/${customer.id}`)}><UserRound /> Open Customer</DropdownMenuItem> : null}
-                <DropdownMenuItem onClick={() => window.location.assign(`/leads/${job.id}/copy`)}><Copy /> Copy Job</DropdownMenuItem>
+                {customer ? <DropdownMenuItem onClick={() => router.push(`/customers/${customer.id}`)}><UserRound /> Open Customer</DropdownMenuItem> : null}
+                <DropdownMenuItem onClick={() => router.push(`/leads/${job.id}/copy`)}><Copy /> Copy Job</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setPrintDialogOpen(true)}><Printer /> Print Job Details</DropdownMenuItem>
                 {canChangeStatus ? onHold ? <DropdownMenuItem onClick={async () => { try { await releaseJobHoldAction(job.id); setOnHold(false); setHoldReason(null); setHoldUntil(null); setHoldNote(null); router.refresh(); } catch (error) { setStatusError(error instanceof Error ? error.message : "Unable to return job to the pipeline."); } }}><Play /> Return to Active Pipeline</DropdownMenuItem> : <DropdownMenuItem onClick={() => setHoldDialogOpen(true)}><CirclePause /> Place On Hold</DropdownMenuItem> : null}
               </DropdownMenuContent>

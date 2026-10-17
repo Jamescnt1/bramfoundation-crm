@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import {
   BarChart3,
   Building2,
@@ -8,6 +8,7 @@ import {
   CheckSquare,
   ContactRound,
   LayoutDashboard,
+  LoaderCircle,
   Settings,
   UsersRound,
   Workflow,
@@ -98,12 +99,18 @@ export function NavigationLinks({
             }`}
           >
             <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-            {item.name}
+            <span className="min-w-0 flex-1">{item.name}</span>
+            <NavigationPending />
           </Link>
         );
       })}
     </nav>
   );
+}
+
+function NavigationPending() {
+  const { pending } = useLinkStatus();
+  return pending ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-label="Loading" /> : null;
 }
 
 export default function AppSidebar({ employee }: { employee: Employee | null }) {

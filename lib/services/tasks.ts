@@ -62,6 +62,17 @@ export async function getTasks(filters?: { jobId?: string; customerId?: string }
 }
 
 async function getLatestTaskNotes(taskIds: string[]) {
+  const { data, error } = await supabase.rpc("get_latest_task_notes_for_tasks", {
+    task_ids: taskIds,
+  });
+  if (!error) return data ?? [];
+
+  // Keep Tasks usable during a rolling deployment where application code may
+  // reach an environment shortly before the matching migration is available.
+  if (error.code !== "PGRST202" && error.code !== "42883") {
+    throw new Error(error.message);
+  }
+
   const batches: string[][] = [];
   for (let index = 0; index < taskIds.length; index += taskNoteBatchSize) {
     batches.push(taskIds.slice(index, index + taskNoteBatchSize));

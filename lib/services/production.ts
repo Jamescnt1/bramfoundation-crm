@@ -7,6 +7,8 @@ import type {
 } from "@/components/production/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+const productionQueryBatchSize = 100;
+
 export async function getMaterialCategories(): Promise<MaterialCategory[]> {
   const { data, error } = await createAdminClient()
     .from("material_categories")
@@ -19,56 +21,65 @@ export async function getMaterialCategories(): Promise<MaterialCategory[]> {
 }
 
 export async function getJobMaterialScopes(jobId: string): Promise<MaterialScope[]> {
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("job_material_scopes")
-    .select(`id, job_id, material_category_id, description, ordering_required,
-      installation_required, work_order_required, scope_kind, job_walk_required,
-      completion_check_method, completion_check_status, completion_contact_name,
-      completion_contact_method, completion_check_notes, completion_checked_at, completion_checked_by,
-      material_status, eta_date,
-      ordered_at, ready_at, issue_note, excluded_reason, sort_order,
-      category:material_categories!job_material_scopes_material_category_id_fkey (
-        id, name, abbreviation, color_key, ordering_required,
-        installation_required, work_order_required, active, sort_order
-      )`)
-    .eq("job_id", jobId)
-    .order("sort_order")
-    .order("created_at");
-  if (error) throw new Error(error.message);
+  return getMaterialScopesForJobs([jobId]);
+}
 
-  const scopes = (data ?? []).map((scope) => ({
-    ...scope,
-    category: Array.isArray(scope.category) ? scope.category[0] : scope.category,
-    appointments: [],
-  })) as MaterialScope[];
+async function getMaterialScopesForJobs(jobIds: string[]): Promise<MaterialScope[]> {
+  if (!jobIds.length) return [];
+  const admin = createAdminClient();
+  const scopes: MaterialScope[] = [];
+  for (const jobIdBatch of batches(jobIds, productionQueryBatchSize)) {
+    const { data, error } = await admin
+      .from("job_material_scopes")
+      .select(`id, job_id, material_category_id, description, ordering_required,
+        installation_required, work_order_required, scope_kind, job_walk_required,
+        completion_check_method, completion_check_status, completion_contact_name,
+        completion_contact_method, completion_check_notes, completion_checked_at, completion_checked_by,
+        material_status, eta_date,
+        ordered_at, ready_at, issue_note, excluded_reason, sort_order,
+        category:material_categories!job_material_scopes_material_category_id_fkey (
+          id, name, abbreviation, color_key, ordering_required,
+          installation_required, work_order_required, active, sort_order
+        )`)
+      .in("job_id", jobIdBatch)
+      .order("sort_order")
+      .order("created_at");
+    if (error) throw new Error(error.message);
+    scopes.push(...((data ?? []).map((scope) => ({
+      ...scope,
+      category: Array.isArray(scope.category) ? scope.category[0] : scope.category,
+      appointments: [],
+    })) as MaterialScope[]));
+  }
   if (!scopes.length) return scopes;
 
-  const { data: links, error: linkError } = await admin
-    .from("job_material_scope_appointments")
-    .select(`material_scope_id, appointment:appointments!job_material_scope_appointments_appointment_id_fkey (
-      id, appointment_type, starts_at, ends_at, status, installation_scope, work_order_status,
-      installer:installer_crews!appointments_installer_crew_id_fkey (name)
-    )`)
-    .in("material_scope_id", scopes.map((scope) => scope.id));
-  if (linkError) throw new Error(linkError.message);
-
   const byScope = new Map<string, MaterialScope["appointments"]>();
-  for (const link of links ?? []) {
-    const raw = Array.isArray(link.appointment) ? link.appointment[0] : link.appointment;
-    if (!raw) continue;
-    const installer = Array.isArray(raw.installer) ? raw.installer[0] : raw.installer;
-    const appointment = {
-      id: raw.id,
-      appointment_type: raw.appointment_type,
-      starts_at: raw.starts_at,
-      ends_at: raw.ends_at,
-      status: raw.status,
-      installation_scope: raw.installation_scope,
-      work_order_status: raw.work_order_status,
-      installer_name: installer?.name ?? null,
-    } as MaterialScope["appointments"][number];
-    byScope.set(link.material_scope_id, [...(byScope.get(link.material_scope_id) ?? []), appointment]);
+  for (const scopeIdBatch of batches(scopes.map((scope) => scope.id), productionQueryBatchSize)) {
+    const { data: links, error: linkError } = await admin
+      .from("job_material_scope_appointments")
+      .select(`material_scope_id, appointment:appointments!job_material_scope_appointments_appointment_id_fkey (
+        id, appointment_type, starts_at, ends_at, status, installation_scope, work_order_status,
+        installer:installer_crews!appointments_installer_crew_id_fkey (name)
+      )`)
+      .in("material_scope_id", scopeIdBatch);
+    if (linkError) throw new Error(linkError.message);
+
+    for (const link of links ?? []) {
+      const raw = Array.isArray(link.appointment) ? link.appointment[0] : link.appointment;
+      if (!raw) continue;
+      const installer = Array.isArray(raw.installer) ? raw.installer[0] : raw.installer;
+      const appointment = {
+        id: raw.id,
+        appointment_type: raw.appointment_type,
+        starts_at: raw.starts_at,
+        ends_at: raw.ends_at,
+        status: raw.status,
+        installation_scope: raw.installation_scope,
+        work_order_status: raw.work_order_status,
+        installer_name: installer?.name ?? null,
+      } as MaterialScope["appointments"][number];
+      byScope.set(link.material_scope_id, [...(byScope.get(link.material_scope_id) ?? []), appointment]);
+    }
   }
   return scopes.map((scope) => ({ ...scope, appointments: byScope.get(scope.id) ?? [] }));
 }
@@ -142,11 +153,25 @@ export function summarizeProduction(jobId: string, scopes: MaterialScope[]): Pro
 }
 
 export async function getProductionSummaries(jobIds: string[]): Promise<Record<string, ProductionSummary>> {
-  const entries = await Promise.all(jobIds.map(async (jobId) => {
-    const scopes = await getJobMaterialScopes(jobId);
-    return [jobId, summarizeProduction(jobId, scopes)] as const;
-  }));
+  if (!jobIds.length) return {};
+  const scopes = await getMaterialScopesForJobs(jobIds);
+  const scopesByJob = new Map<string, MaterialScope[]>();
+  for (const scope of scopes) {
+    scopesByJob.set(scope.job_id, [...(scopesByJob.get(scope.job_id) ?? []), scope]);
+  }
+  const entries = jobIds.map((jobId) => [
+    jobId,
+    summarizeProduction(jobId, scopesByJob.get(jobId) ?? []),
+  ] as const);
   return Object.fromEntries(entries);
+}
+
+function batches<T>(items: T[], size: number) {
+  const result: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    result.push(items.slice(index, index + size));
+  }
+  return result;
 }
 
 export type ProductionScopeOption = {
