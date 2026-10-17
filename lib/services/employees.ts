@@ -29,14 +29,15 @@ export type Employee = {
 
 export const getCurrentEmployee = cache(async (): Promise<Employee | null> => {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const userId = typeof claimsData?.claims?.sub === "string" ? claimsData.claims.sub : null;
 
-  if (!user) return null;
+  if (!userId) return null;
 
   const { data, error } = await supabase
     .from("employees")
     .select("id, auth_user_id, name, email, username, phone, role, active, avatar_url, color, default_calendar_view, remember_last_calendar_view, last_calendar_view, pipeline_card_size, pipeline_sort_order, pipeline_hold_view, pipeline_history_view, job_title, bio, created_at, updated_at")
-    .eq("auth_user_id", user.id)
+    .eq("auth_user_id", userId)
     .maybeSingle();
 
   if (error) throw new Error(error.message);

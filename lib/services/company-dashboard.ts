@@ -158,23 +158,25 @@ export async function getCompanyDashboardData(
   currentEmployee: Pick<Employee, "id" | "name">,
 ): Promise<CompanyDashboardData> {
   const supabase = await createClient();
-  const ruleSettings = await getCompanyDashboardRuleSettings();
-  const enabledRules = enabledRuleMap(ruleSettings);
   const now = new Date();
-  const { data: companySettings, error: companySettingsError } = await supabase
-    .from("company_settings")
-    .select("timezone")
-    .eq("singleton_key", true)
-    .maybeSingle();
-  if (companySettingsError) throw new Error(companySettingsError.message);
-  const companyTimeZone = companySettings?.timezone || DEFAULT_COMPANY_TIME_ZONE;
-  const todayBounds = dayBoundsInTimeZone(now, companyTimeZone);
-  const todayStart = todayBounds.start;
-  const tomorrowStart = todayBounds.end;
-  const todayKey = todayBounds.dateKey;
+  const earliestAppointment = addDays(now, -31).toISOString();
 
-  const [employeesResult, jobsResult, tasksResult, appointmentsResult, activitiesResult, stages] =
-    await Promise.all([
+  const [
+    ruleSettings,
+    companySettingsResult,
+    employeesResult,
+    jobsResult,
+    tasksResult,
+    appointmentsResult,
+    activitiesResult,
+    stages,
+  ] = await Promise.all([
+      getCompanyDashboardRuleSettings(),
+      supabase
+        .from("company_settings")
+        .select("timezone")
+        .eq("singleton_key", true)
+        .maybeSingle(),
       supabase
         .from("employees")
         .select("id, name, role, color")
@@ -190,11 +192,12 @@ export async function getCompanyDashboardData(
         .select("id, title, assigned_employee_id, assigned_to, due_at, due_date, overdue_grace_days, completed, status, created_at")
         .lte("available_at", now.toISOString())
         .or(`snoozed_until.is.null,snoozed_until.lte.${now.toISOString()}`)
+        .not("status", "in", "(completed,cancelled)")
         .order("created_at", { ascending: false }),
       supabase
         .from("appointments")
         .select("id, job_id, title, appointment_type, status, starts_at, assigned_employee_id, installer_crew_id, assigned_employee:employees!appointments_assigned_employee_id_fkey(id, name), installer_crew:installer_crews!appointments_installer_crew_id_fkey(id, name), job:jobs!appointments_job_id_fkey(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name))")
-        .gte("starts_at", addDays(todayStart, -30).toISOString())
+        .gte("starts_at", earliestAppointment)
         .order("starts_at"),
       supabase
         .from("job_activities")
@@ -205,12 +208,20 @@ export async function getCompanyDashboardData(
     ]);
 
   const error =
+    companySettingsResult.error ??
     employeesResult.error ??
     jobsResult.error ??
     tasksResult.error ??
     appointmentsResult.error ??
     activitiesResult.error;
   if (error) throw new Error(error.message);
+
+  const enabledRules = enabledRuleMap(ruleSettings);
+  const companyTimeZone = companySettingsResult.data?.timezone || DEFAULT_COMPANY_TIME_ZONE;
+  const todayBounds = dayBoundsInTimeZone(now, companyTimeZone);
+  const todayStart = todayBounds.start;
+  const tomorrowStart = todayBounds.end;
+  const todayKey = todayBounds.dateKey;
 
   const employees = (employeesResult.data ?? []) as DashboardEmployee[];
   const jobs = (jobsResult.data ?? []).map((job) => ({

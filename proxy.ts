@@ -20,7 +20,12 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims;
+  const userId = typeof claims?.sub === "string" ? claims.sub : null;
+  const userMetadata = claims?.user_metadata && typeof claims.user_metadata === "object"
+    ? claims.user_metadata as Record<string, unknown>
+    : null;
   const isLogin = request.nextUrl.pathname === "/login";
   const isChangePassword = request.nextUrl.pathname === "/change-password";
   const isForgotPassword = request.nextUrl.pathname === "/forgot-password";
@@ -49,18 +54,18 @@ export async function proxy(request: NextRequest) {
     isCronEndpoint ||
     isLegalPage;
 
-  if (!user && !isPublicRoute) {
+  if (!userId && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(url);
   }
 
-  if (user && !isLoginApi && !isCustomerEmailWebhook && !isTwilioWebhook && !isCronEndpoint && !isLegalPage) {
+  if (userId && !isLoginApi && !isCustomerEmailWebhook && !isTwilioWebhook && !isCronEndpoint && !isLegalPage) {
     const { data: employee } = await supabase
       .from("employees")
       .select("active")
-      .eq("auth_user_id", user.id)
+      .eq("auth_user_id", userId)
       .maybeSingle();
 
     if (!employee?.active) {
@@ -70,14 +75,14 @@ export async function proxy(request: NextRequest) {
   }
 
   if (
-    user?.user_metadata?.must_change_password === true &&
+    userMetadata?.must_change_password === true &&
     !isChangePassword &&
     !isResetPassword
   ) {
     return NextResponse.redirect(new URL("/change-password", request.url));
   }
 
-  if (user && isLogin) {
+  if (userId && isLogin) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

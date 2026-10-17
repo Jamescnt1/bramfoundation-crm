@@ -76,13 +76,14 @@ export async function getEmployeeWorkspace(
   const appointmentWindowEnd = new Date(now);
   appointmentWindowEnd.setDate(appointmentWindowEnd.getDate() + 14);
 
-  const [tasksResult, jobsResult] = await Promise.all([
+  const [tasksResult, jobsResult, appointmentsResult] = await Promise.all([
     supabase
       .from("job_tasks")
       .select("id, job_id, customer_id, title, due_at, due_date, priority, status, completed, task_type_id, task_types(id, name), jobs(id, customer_name, qfloors_job_number, customer:customers!jobs_customer_id_fkey(id, full_name)), customers(id, full_name)")
       .lte("available_at", now.toISOString())
       .or(`snoozed_until.is.null,snoozed_until.lte.${now.toISOString()}`)
       .or(`assigned_employee_id.eq.${employee.id},assigned_to.eq.${escapeFilterValue(employee.name)}`)
+      .not("status", "in", "(completed,cancelled)")
       .order("completed", { ascending: true })
       .order("due_date", { ascending: true, nullsFirst: false }),
     supabase
@@ -92,20 +93,20 @@ export async function getEmployeeWorkspace(
       .eq("on_hold", false)
       .or(`assigned_employee_id.eq.${employee.id},salesperson.eq.${escapeFilterValue(employee.name)}`)
       .order("updated_at", { ascending: false }),
+    supabase
+      .from("appointments")
+      .select(workspaceAppointmentColumns)
+      .eq("assigned_employee_id", employee.id)
+      .neq("appointment_type", "installation")
+      .gte("starts_at", now.toISOString())
+      .lte("starts_at", appointmentWindowEnd.toISOString())
+      .order("starts_at"),
   ]);
 
   const error = tasksResult.error ?? jobsResult.error;
   if (error) throw new Error(error.message);
 
   const jobIds = (jobsResult.data ?? []).map((job) => job.id);
-  const appointmentsQuery = supabase
-    .from("appointments")
-    .select(workspaceAppointmentColumns)
-    .eq("assigned_employee_id", employee.id)
-    .neq("appointment_type", "installation")
-    .gte("starts_at", now.toISOString())
-    .lte("starts_at", appointmentWindowEnd.toISOString())
-    .order("starts_at");
   const installationsQuery = jobIds.length
     ? supabase
         .from("appointments")
@@ -116,10 +117,7 @@ export async function getEmployeeWorkspace(
         .lte("starts_at", appointmentWindowEnd.toISOString())
         .order("starts_at")
     : null;
-  const [appointmentsResult, installationsResult] = await Promise.all([
-    appointmentsQuery,
-    installationsQuery,
-  ]);
+  const installationsResult = await installationsQuery;
   if (appointmentsResult.error) throw new Error(appointmentsResult.error.message);
   if (installationsResult?.error) throw new Error(installationsResult.error.message);
 
