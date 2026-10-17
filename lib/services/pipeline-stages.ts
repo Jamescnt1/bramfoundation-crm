@@ -32,14 +32,43 @@ export type PipelineStageValues = Omit<
   "id" | "job_count"
 >;
 
+type PipelineStageJobCount = {
+  stage_slug: string;
+  job_count: number | string;
+};
+
 const stageColumns = "id, slug, label, color_key, sort_order, active, terminal, lead_queue, qf_number_required, contract_amount_required, system_required, behavior";
 
 export async function getPipelineStages(options?: { includeArchived?: boolean }): Promise<PipelineStageConfig[]> {
   const supabase = createAdminClient();
   let query = supabase.from("pipeline_stages").select(stageColumns).order("sort_order").order("label");
   if (!options?.includeArchived) query = query.eq("active", true);
-  const { data, error } = await query;
+  const [stagesResult, countsResult] = await Promise.all([
+    query,
+    supabase.rpc("get_pipeline_stage_job_counts"),
+  ]);
+  const { data, error } = stagesResult;
   if (error) throw new Error(error.message);
+
+  if (!countsResult.error) {
+    const counts = new Map(
+      ((countsResult.data ?? []) as PipelineStageJobCount[]).map((row) => [
+        row.stage_slug,
+        Number(row.job_count),
+      ]),
+    );
+    return (data ?? []).map((stage) => ({
+      ...stage,
+      job_count: counts.get(stage.slug) ?? 0,
+    })) as PipelineStageConfig[];
+  }
+
+  // Keep the application available if code reaches a deployment before the
+  // matching migration. The optimized RPC is used as soon as it exists.
+  if (!["PGRST202", "42883"].includes(countsResult.error.code ?? "")) {
+    throw new Error(countsResult.error.message);
+  }
+
   return Promise.all((data ?? []).map(async (stage) => ({
     ...stage,
     job_count: await countJobsForStage(stage.slug, stage.label),
