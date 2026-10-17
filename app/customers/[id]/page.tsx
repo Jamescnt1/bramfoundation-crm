@@ -7,12 +7,11 @@ import {
   getJobsByCustomerId,
   type Job,
 } from "@/lib/services/jobs";
-import { getActiveEmployees, requireEmployee } from "@/lib/services/employees";
+import { getActiveEmployees, getGrantedPermissions, requireEmployee } from "@/lib/services/employees";
 import { getTasks, getTaskTypes } from "@/lib/services/tasks";
 import type { Employee } from "@/lib/services/employees";
 import type { TaskType, UniversalTask } from "@/components/tasks/types";
-import { getCustomerContacts, getContactJobs, type CustomerContact } from "@/lib/services/customer-contacts";
-import { hasPermission } from "@/lib/services/employees";
+import { getCustomerContacts, type CustomerContact } from "@/lib/services/customer-contacts";
 
 export const dynamic = "force-dynamic";
 
@@ -38,21 +37,32 @@ export default async function CustomerPage({
   let errorMessage = "";
 
   try {
-    [customer, jobs, tasks, employees, taskTypes, contacts, canManageContacts, canArchiveContacts, currentEmployee] = await Promise.all([
+    const [loadedCustomer, loadedJobs, loadedTasks, loadedEmployees, loadedTaskTypes, loadedContacts, grantedPermissions, loadedCurrentEmployee] = await Promise.all([
       getCustomerById(id),
       getJobsByCustomerId(id),
       getTasks({ customerId: id }),
       getActiveEmployees(),
       getTaskTypes(),
       getCustomerContacts(id),
-      hasPermission("customers.manage"),
-      hasPermission("delete_customers"),
+      getGrantedPermissions(["customers.manage", "delete_customers"]),
       requireEmployee(),
     ]);
-    contacts = await Promise.all(contacts.map(async (contact) => ({
+    customer = loadedCustomer;
+    jobs = loadedJobs;
+    tasks = loadedTasks;
+    employees = loadedEmployees;
+    taskTypes = loadedTaskTypes;
+    contacts = loadedContacts.map((contact) => ({
       ...contact,
-      jobs: await getContactJobs(contact.id),
-    })));
+      jobs: loadedJobs.filter((job) =>
+        job.company_contact_id === contact.id ||
+        job.project_contact_id === contact.id ||
+        job.job_site_contact_id === contact.id
+      ),
+    }));
+    canManageContacts = grantedPermissions.has("customers.manage");
+    canArchiveContacts = grantedPermissions.has("delete_customers");
+    currentEmployee = loadedCurrentEmployee;
   } catch (error) {
     errorMessage =
       error instanceof Error ? error.message : "";

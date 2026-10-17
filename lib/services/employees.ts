@@ -72,6 +72,27 @@ export async function hasPermission(permission: PermissionKey) {
   return Boolean(data);
 }
 
+export async function getGrantedPermissions(
+  permissions: readonly PermissionKey[],
+): Promise<Set<PermissionKey>> {
+  if (permissions.length === 0) return new Set();
+
+  const employee = await getCurrentEmployee();
+  if (!employee || !employee.active) return new Set();
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("role_permissions")
+    .select("permission_key")
+    .eq("role_key", employee.role)
+    .in("permission_key", [...permissions]);
+
+  if (error) throw new Error(error.message);
+  return new Set(
+    (data ?? []).map((row) => row.permission_key as PermissionKey),
+  );
+}
+
 export async function requirePermission(permission: PermissionKey) {
   const employee = await requireEmployee();
   const supabase = await createClient();

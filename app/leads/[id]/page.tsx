@@ -10,7 +10,8 @@ import type { Customer } from "@/components/customers/types";
 import type { TaskType, UniversalTask } from "@/components/tasks/types";
 import { getAppointmentsByJobId } from "@/lib/services/appointments";
 import { getCustomerById } from "@/lib/services/customers";
-import { getActiveEmployees, hasPermission, requireEmployee, type Employee } from "@/lib/services/employees";
+import { getActiveEmployees, getGrantedPermissions, requireEmployee, type Employee } from "@/lib/services/employees";
+import type { PermissionKey } from "@/lib/auth/roles";
 import { getJobActivities, getJobById, type JobActivity } from "@/lib/services/jobs";
 import { getTasks, getTaskTypes } from "@/lib/services/tasks";
 import { getPipelineStages } from "@/lib/services/pipeline-stages";
@@ -56,6 +57,11 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
   const activeTab = tabs.includes(requestedTab as JobWorkspaceTab) && (requestedTab !== "layouts" || LAYOUTS_BETA_ENABLED)
     ? (requestedTab as JobWorkspaceTab)
     : "overview";
+  const requestedPermissions: PermissionKey[] = ["pipeline.manage"];
+  if (activeTab === "notes") requestedPermissions.push("job_notes.view", "job_notes.create", "job_notes.edit", "job_notes.delete");
+  if (activeTab === "files" || activeTab === "photos" || activeTab === "communications") requestedPermissions.push("attachments.manage", "attachments.archive");
+  if (activeTab === "layouts") requestedPermissions.push("layouts.manage", "layouts.archive");
+  if (activeTab === "communications") requestedPermissions.push("customer_email.send", "communications.send");
 
   let job;
   try {
@@ -69,7 +75,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
     employeesResult,
     installerCrewsResult,
     customerResult,
-    statusPermissionResult,
+    permissionsResult,
     stagesResult,
     appointmentTypesResult,
     globalMaterialCategoriesResult,
@@ -77,7 +83,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
     safe(getActiveEmployees(), []),
     safe(getActiveInstallerCrews(), []),
     safe<Customer | null>(job.customer_id ? getCustomerById(job.customer_id) : Promise.resolve(null), null),
-    safe(hasPermission("pipeline.manage"), false),
+    safe(getGrantedPermissions(requestedPermissions), new Set<PermissionKey>()),
     safe(getPipelineStages(), []),
     safe<AppointmentTypeDefinition[]>(getAppointmentTypes(), []),
     safe<MaterialCategory[]>(getMaterialCategories(), []),
@@ -108,6 +114,9 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
   let materialScopesResult = emptyResult<MaterialScope[]>([]);
   let materialCategoriesResult = globalMaterialCategoriesResult;
 
+  const grantedPermissions = permissionsResult.value;
+  const statusPermissionResult = emptyResult(grantedPermissions.has("pipeline.manage"));
+
   if (activeTab === "overview") {
     [activitiesResult, tasksResult, appointmentsResult, materialScopesResult] = await Promise.all([
       safe(getJobActivities(job.id), []),
@@ -118,14 +127,14 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
   } else if (activeTab === "timeline") {
     activitiesResult = await safe(getJobActivities(job.id), []);
   } else if (activeTab === "notes") {
-    [notesResult, currentEmployeeResult, notesViewResult, notesCreateResult, notesEditResult, notesDeleteResult] = await Promise.all([
+    [notesResult, currentEmployeeResult] = await Promise.all([
       safe(getJobNotes(job.id), []),
       safe(requireEmployee(), null),
-      safe(hasPermission("job_notes.view"), false),
-      safe(hasPermission("job_notes.create"), false),
-      safe(hasPermission("job_notes.edit"), false),
-      safe(hasPermission("job_notes.delete"), false),
     ]);
+    notesViewResult = emptyResult(grantedPermissions.has("job_notes.view"));
+    notesCreateResult = emptyResult(grantedPermissions.has("job_notes.create"));
+    notesEditResult = emptyResult(grantedPermissions.has("job_notes.edit"));
+    notesDeleteResult = emptyResult(grantedPermissions.has("job_notes.delete"));
   } else if (activeTab === "tasks") {
     [tasksResult, taskTypesResult] = await Promise.all([
       safe(getTasks({ jobId: job.id }), []),
@@ -140,41 +149,33 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
       ]);
     } else appointmentsResult = await safe(getAppointmentsByJobId(job.id), []);
   } else if (activeTab === "files" || activeTab === "photos") {
-    [attachmentsResult, manageAttachmentsResult, archiveAttachmentsResult] = await Promise.all([
-      safe(getJobAttachments(job.id), []),
-      safe(hasPermission("attachments.manage"), false),
-      safe(hasPermission("attachments.archive"), false),
-    ]);
+    attachmentsResult = await safe(getJobAttachments(job.id), []);
+    manageAttachmentsResult = emptyResult(grantedPermissions.has("attachments.manage"));
+    archiveAttachmentsResult = emptyResult(grantedPermissions.has("attachments.archive"));
   } else if (activeTab === "layouts") {
-    [layoutsResult, layoutManagePermissionResult, layoutArchivePermissionResult] = await Promise.all([
-      safe(getJobLayouts(job.id), []),
-      safe(hasPermission("layouts.manage"), false),
-      safe(hasPermission("layouts.archive"), false),
-    ]);
+    layoutsResult = await safe(getJobLayouts(job.id), []);
+    layoutManagePermissionResult = emptyResult(grantedPermissions.has("layouts.manage"));
+    layoutArchivePermissionResult = emptyResult(grantedPermissions.has("layouts.archive"));
   } else if (activeTab === "communications") {
     [
       attachmentsResult,
-      manageAttachmentsResult,
-      archiveAttachmentsResult,
       conversationResult,
       currentEmployeeResult,
       emailsResult,
       templatesResult,
-      emailSendPermissionResult,
       smsResult,
-      smsSendPermissionResult,
     ] = await Promise.all([
       safe(getJobAttachments(job.id), []),
-      safe(hasPermission("attachments.manage"), false),
-      safe(hasPermission("attachments.archive"), false),
       safe(getJobConversation(job.id), null),
       safe(requireEmployee(), null),
       safe(getJobCustomerEmails(job.id), []),
       safe(getActiveEmailTemplates(), []),
-      safe(hasPermission("customer_email.send"), false),
       safe(getJobCustomerSms(job.id), []),
-      safe(hasPermission("communications.send"), false),
     ]);
+    manageAttachmentsResult = emptyResult(grantedPermissions.has("attachments.manage"));
+    archiveAttachmentsResult = emptyResult(grantedPermissions.has("attachments.archive"));
+    emailSendPermissionResult = emptyResult(grantedPermissions.has("customer_email.send"));
+    smsSendPermissionResult = emptyResult(grantedPermissions.has("communications.send"));
   }
 
   const employees = employeesResult.value;
