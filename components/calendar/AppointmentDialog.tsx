@@ -448,7 +448,7 @@ export default function AppointmentDialog({
 
     try {
       if (appointment) {
-        await saveAppointmentAction({
+        const result = await saveAppointmentAction({
           mode: "update",
           appointmentId: appointment.id,
           values: appointmentValues,
@@ -456,6 +456,7 @@ export default function AppointmentDialog({
           materialScopeIds,
           installationScope,
         });
+        if (!result.ok) throw new Error(result.error);
       } else {
         const recurrenceValue = recurrence === "none" ? null : {
           frequency: recurrence === "biweekly" ? "weekly" as const : recurrence,
@@ -463,12 +464,13 @@ export default function AppointmentDialog({
           endsOn: recurrenceEndsOn,
         };
         if (recurrenceValue && !recurrenceEndsOn) throw new Error("Choose when the recurring appointment ends.");
-        await saveAppointmentAction({
+        const result = await saveAppointmentAction({
           mode: "create",
           values: { ...appointmentValues, recurrence: recurrenceValue },
           materialScopeIds,
           installationScope,
         });
+        if (!result.ok) throw new Error(result.error);
       }
 
       onOpenChange(false);
@@ -845,7 +847,8 @@ export default function AppointmentDialog({
                     if (!copyEmployeeId) return;
                     setIsSaving(true); setErrorMessage(null); setCopyMessage("");
                     try {
-                      await copyAppointmentToEmployeeAction(appointment.id, copyEmployeeId, copyScope);
+                      const result = await copyAppointmentToEmployeeAction(appointment.id, copyEmployeeId, copyScope);
+                      if (!result.ok) throw new Error(result.error);
                       const employee = employees.find((item) => item.id === copyEmployeeId);
                       setCopyMessage(`Copied to ${employee?.name ?? "employee"}.`);
                       setCopyEmployeeId("");

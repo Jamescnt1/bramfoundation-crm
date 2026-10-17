@@ -11,7 +11,7 @@ import {
   type AppointmentValues,
   type CreateAppointmentValues,
 } from "@/lib/services/appointments";
-import { requireEmployee } from "@/lib/services/employees";
+import { getCurrentEmployee } from "@/lib/services/employees";
 
 type SaveAppointmentInput =
   | {
@@ -30,37 +30,54 @@ type SaveAppointmentInput =
     };
 
 export async function saveAppointmentAction(input: SaveAppointmentInput) {
-  await requireEmployee();
-  validateAppointmentInput(input);
-
-  let appointmentIds: string[];
-  if (input.mode === "update") {
-    await updateAppointment(
-      input.appointmentId,
-      input.values,
-      input.updateScope,
-    );
-    appointmentIds = [input.appointmentId];
-  } else {
-    const created = await createAppointment(input.values);
-    appointmentIds = created.map((appointment) => appointment.id);
-  }
-
-  if (["installation", "job_walk"].includes(input.values.appointment_type)) {
-    await linkAppointmentsToMaterialScopes(
-      appointmentIds,
-      input.materialScopeIds,
-    );
-    if (input.values.appointment_type === "installation") {
-      await updateLinkedProductionScopeDescription(
-        input.materialScopeIds,
-        input.installationScope,
-      );
+  try {
+    const employee = await getCurrentEmployee();
+    if (!employee?.active) {
+      return { ok: false as const, error: "Your session has expired. Refresh the page and sign in again." };
     }
-  }
+    validateAppointmentInput(input);
 
-  revalidateAppointmentPaths(input.values.job_id);
-  return { appointmentIds };
+    let appointmentIds: string[];
+    if (input.mode === "update") {
+      await updateAppointment(
+        input.appointmentId,
+        input.values,
+        input.updateScope,
+      );
+      appointmentIds = [input.appointmentId];
+    } else {
+      const created = await createAppointment(input.values);
+      appointmentIds = created.map((appointment) => appointment.id);
+    }
+
+    if (["installation", "job_walk"].includes(input.values.appointment_type)) {
+      await linkAppointmentsToMaterialScopes(
+        appointmentIds,
+        input.materialScopeIds,
+      );
+      if (input.values.appointment_type === "installation") {
+        await updateLinkedProductionScopeDescription(
+          input.materialScopeIds,
+          input.installationScope,
+        );
+      }
+    }
+
+    revalidateAppointmentPaths(input.values.job_id);
+    return { ok: true as const, appointmentIds };
+  } catch (error) {
+    console.error("Appointment save failed", {
+      mode: input.mode,
+      appointmentType: input.values.appointment_type,
+      hasJob: Boolean(input.values.job_id),
+      materialScopeCount: input.materialScopeIds.length,
+      error,
+    });
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Unable to save the appointment.",
+    };
+  }
 }
 
 export async function copyAppointmentToEmployeeAction(
@@ -68,17 +85,28 @@ export async function copyAppointmentToEmployeeAction(
   employeeId: string,
   scope: "occurrence" | "series" = "occurrence",
 ) {
-  await requireEmployee();
-  if (!isUuid(appointmentId) || !isUuid(employeeId)) {
-    throw new Error("The appointment or employee selection is invalid.");
+  try {
+    const employee = await getCurrentEmployee();
+    if (!employee?.active) {
+      return { ok: false as const, error: "Your session has expired. Refresh the page and sign in again." };
+    }
+    if (!isUuid(appointmentId) || !isUuid(employeeId)) {
+      throw new Error("The appointment or employee selection is invalid.");
+    }
+    await copyAppointmentToEmployee(
+      appointmentId,
+      employeeId,
+      scope,
+    );
+    revalidatePath("/calendar");
+    return { ok: true as const };
+  } catch (error) {
+    console.error("Appointment copy failed", { appointmentId, employeeId, scope, error });
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Unable to copy the appointment.",
+    };
   }
-  const copies = await copyAppointmentToEmployee(
-    appointmentId,
-    employeeId,
-    scope,
-  );
-  revalidatePath("/calendar");
-  return copies;
 }
 
 function revalidateAppointmentPaths(jobId: string | null) {
