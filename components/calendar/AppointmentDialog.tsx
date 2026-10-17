@@ -16,13 +16,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
-  copyAppointmentToEmployee,
-  createAppointment,
-  linkAppointmentsToMaterialScopes,
-  updateLinkedProductionScopeDescription,
-  updateAppointment,
   type AppointmentUpdateScope,
 } from "@/lib/services/appointments";
+import {
+  copyAppointmentToEmployeeAction,
+  saveAppointmentAction,
+} from "@/app/calendar/actions";
 import type { Employee } from "@/lib/services/employees";
 import type { Job } from "@/lib/services/jobs";
 import type { InstallerCrew } from "@/lib/services/installer-crews";
@@ -449,17 +448,14 @@ export default function AppointmentDialog({
 
     try {
       if (appointment) {
-        await updateAppointment(
-          appointment.id,
-          appointmentValues,
+        await saveAppointmentAction({
+          mode: "update",
+          appointmentId: appointment.id,
+          values: appointmentValues,
           updateScope,
-        );
-        if (["installation", "job_walk"].includes(appointmentType)) {
-          await linkAppointmentsToMaterialScopes([appointment.id], materialScopeIds);
-          if (appointmentType === "installation") {
-            await updateLinkedProductionScopeDescription(materialScopeIds, installationScope);
-          }
-        }
+          materialScopeIds,
+          installationScope,
+        });
       } else {
         const recurrenceValue = recurrence === "none" ? null : {
           frequency: recurrence === "biweekly" ? "weekly" as const : recurrence,
@@ -467,13 +463,12 @@ export default function AppointmentDialog({
           endsOn: recurrenceEndsOn,
         };
         if (recurrenceValue && !recurrenceEndsOn) throw new Error("Choose when the recurring appointment ends.");
-        const created = await createAppointment({ ...appointmentValues, recurrence: recurrenceValue });
-        if (["installation", "job_walk"].includes(appointmentType)) {
-          await linkAppointmentsToMaterialScopes(created.map((item) => item.id), materialScopeIds);
-          if (appointmentType === "installation") {
-            await updateLinkedProductionScopeDescription(materialScopeIds, installationScope);
-          }
-        }
+        await saveAppointmentAction({
+          mode: "create",
+          values: { ...appointmentValues, recurrence: recurrenceValue },
+          materialScopeIds,
+          installationScope,
+        });
       }
 
       onOpenChange(false);
@@ -850,7 +845,7 @@ export default function AppointmentDialog({
                     if (!copyEmployeeId) return;
                     setIsSaving(true); setErrorMessage(null); setCopyMessage("");
                     try {
-                      await copyAppointmentToEmployee(appointment.id, copyEmployeeId, copyScope);
+                      await copyAppointmentToEmployeeAction(appointment.id, copyEmployeeId, copyScope);
                       const employee = employees.find((item) => item.id === copyEmployeeId);
                       setCopyMessage(`Copied to ${employee?.name ?? "employee"}.`);
                       setCopyEmployeeId("");
