@@ -17,7 +17,13 @@ const columns = `id, job_id, customer_id, title, description, assigned_to,
 const taskNoteBatchSize = 100;
 const taskNoteBatchConcurrency = 4;
 
-export async function getTasks(filters?: { jobId?: string; customerId?: string }) {
+export async function getTasks(filters?: {
+  jobId?: string;
+  customerId?: string;
+  activeOnly?: boolean;
+  historyOnly?: boolean;
+  taskId?: string;
+}) {
   const now = new Date().toISOString();
   let query = supabase
     .from("job_tasks")
@@ -31,6 +37,9 @@ export async function getTasks(filters?: { jobId?: string; customerId?: string }
     query = query.or(`snoozed_until.is.null,snoozed_until.lte.${now}`);
     if (filters?.customerId) query = query.eq("customer_id", filters.customerId);
   }
+  if (filters?.taskId) query = query.eq("id", filters.taskId);
+  if (filters?.activeOnly) query = query.not("status", "in", "(completed,cancelled)");
+  if (filters?.historyOnly) query = query.in("status", ["completed", "cancelled"]);
   const { data, error } = await query;
   if (error) throw new Error(error.message);
   const tasks = (data ?? []).map(normalizeTask) as UniversalTask[];

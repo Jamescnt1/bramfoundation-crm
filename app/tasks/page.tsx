@@ -31,9 +31,22 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   let errorMessage = "";
 
   try {
-    [tasks, customers, jobs, employees, taskTypes] = await Promise.all([
-      getTasks(), getCustomers(), getJobs(), getActiveEmployees(), getTaskTypes(),
+    const [activeTasks, selectedTasks, loadedCustomers, loadedJobs, loadedEmployees, loadedTaskTypes] = await Promise.all([
+      getTasks({ activeOnly: true }),
+      initialTaskId ? getTasks({ taskId: initialTaskId }) : Promise.resolve([]),
+      getCustomers(),
+      getJobs(),
+      getActiveEmployees(),
+      getTaskTypes(),
     ]);
+    tasks = [...activeTasks];
+    for (const task of selectedTasks) {
+      if (!tasks.some((item) => item.id === task.id)) tasks.push(task);
+    }
+    customers = loadedCustomers;
+    jobs = loadedJobs;
+    employees = loadedEmployees;
+    taskTypes = loadedTaskTypes;
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Unexpected error";
   }

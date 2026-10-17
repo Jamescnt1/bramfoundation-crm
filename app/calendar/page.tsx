@@ -54,22 +54,36 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   let communication: CalendarCommunicationData = { controls: { customer: false, employee: false, installer: false, email: false, sms: false }, deliveriesByAppointment: {} };
 
   try {
-    [appointments, employees, jobs, installerCrews, appointmentTypes] = await Promise.all([
+    const [loadedAppointments, loadedEmployees, loadedJobs, loadedInstallerCrews, loadedAppointmentTypes, loadedProductionScopes, loadedScopeLinks, loadedCommunication] = await Promise.all([
       getAppointmentsForCalendar(),
       getActiveEmployees(),
       getJobs(),
       getActiveInstallerCrews(),
       getAppointmentTypes(),
+      getProductionScopeOptions(),
+      getAppointmentProductionScopeLinks(),
+      getCalendarCommunicationData().catch(() => null),
     ]);
-    [productionScopes, appointmentScopeLinks] = await Promise.all([
-      getProductionScopeOptions(jobs.map((job) => job.id)),
-      getAppointmentProductionScopeLinks(appointments.map((appointment) => appointment.id)),
-    ]);
-    try {
-      communication = await getCalendarCommunicationData(appointments.map((appointment) => appointment.id));
-    } catch {
-      // Calendar access is broader than communication-history access. Keep the
-      // calendar usable when notification permissions or setup are unavailable.
+    appointments = loadedAppointments;
+    employees = loadedEmployees;
+    jobs = loadedJobs;
+    installerCrews = loadedInstallerCrews;
+    appointmentTypes = loadedAppointmentTypes;
+
+    const jobIds = new Set(jobs.map((job) => job.id));
+    productionScopes = loadedProductionScopes.filter((scope) => jobIds.has(scope.job_id));
+    const appointmentIds = new Set(appointments.map((appointment) => appointment.id));
+    appointmentScopeLinks = Object.fromEntries(
+      Object.entries(loadedScopeLinks).filter(([appointmentId]) => appointmentIds.has(appointmentId)),
+    );
+    if (loadedCommunication) {
+      communication = {
+        controls: loadedCommunication.controls,
+        deliveriesByAppointment: Object.fromEntries(
+          Object.entries(loadedCommunication.deliveriesByAppointment)
+            .filter(([appointmentId]) => appointmentIds.has(appointmentId)),
+        ),
+      };
     }
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Unable to load calendar.";

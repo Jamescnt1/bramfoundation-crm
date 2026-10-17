@@ -53,6 +53,8 @@ export default function TaskManager({
   const [dialogOpen, setDialogOpen] = useState(Boolean(initialTask) || initialNewTask);
   const [editing, setEditing] = useState<UniversalTask | null>(initialTask);
   const [error, setError] = useState("");
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
   const [viewOptions, setViewOptions] = useState<TaskViewOptionsValue>(defaultTaskViewOptions);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -154,6 +156,31 @@ export default function TaskManager({
     resetVisible();
   }
 
+  async function applyViewOptions(next: TaskViewOptionsValue) {
+    setViewOptions(next);
+    resetVisible();
+    const needsHistory = ["all", "completed", "cancelled"].includes(next.status);
+    if (!needsHistory || historyLoaded || historyLoading) return;
+
+    setHistoryLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/tasks/history", { cache: "no-store" });
+      const result = await response.json() as { tasks?: UniversalTask[]; error?: string };
+      if (!response.ok) throw new Error(result.error || "Unable to load task history.");
+      setTasks((current) => {
+        const byId = new Map(current.map((task) => [task.id, task]));
+        for (const task of result.tasks ?? []) byId.set(task.id, task);
+        return [...byId.values()];
+      });
+      setHistoryLoaded(true);
+    } catch (caught) {
+      setError(message(caught));
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
   return (
     <section className={compact ? "" : "mt-8"}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -202,6 +229,7 @@ export default function TaskManager({
       ) : null}
 
       {error ? <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
+      {historyLoading ? <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">Loading completed task history…</div> : null}
 
       {visibleTasks.length ? (
         <div className="mt-4 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -261,10 +289,7 @@ export default function TaskManager({
           employees={employees}
           taskTypes={taskTypes}
           onOpenChange={setViewOptionsOpen}
-          onApply={(next) => {
-            setViewOptions(next);
-            resetVisible();
-          }}
+          onApply={(next) => void applyViewOptions(next)}
         />
       ) : null}
     </section>

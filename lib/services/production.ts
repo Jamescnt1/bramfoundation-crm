@@ -181,15 +181,16 @@ export type ProductionScopeOption = {
   abbreviation: string;
 };
 
-export async function getProductionScopeOptions(jobIds: string[]): Promise<ProductionScopeOption[]> {
-  if (!jobIds.length) return [];
-  const { data, error } = await createAdminClient()
+export async function getProductionScopeOptions(jobIds?: string[]): Promise<ProductionScopeOption[]> {
+  if (jobIds && !jobIds.length) return [];
+  let query = createAdminClient()
     .from("job_material_scopes")
     .select(`id, job_id, description,
       category:material_categories!job_material_scopes_material_category_id_fkey (name, abbreviation)`)
-    .in("job_id", jobIds)
     .order("sort_order")
     .order("created_at");
+  if (jobIds) query = query.in("job_id", jobIds);
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
   return (data ?? []).map((scope) => {
     const category = Array.isArray(scope.category) ? scope.category[0] : scope.category;
@@ -202,12 +203,13 @@ export async function getProductionScopeOptions(jobIds: string[]): Promise<Produ
   });
 }
 
-export async function getAppointmentProductionScopeLinks(appointmentIds: string[]): Promise<Record<string, string[]>> {
-  if (!appointmentIds.length) return {};
-  const { data, error } = await createAdminClient()
+export async function getAppointmentProductionScopeLinks(appointmentIds?: string[]): Promise<Record<string, string[]>> {
+  if (appointmentIds && !appointmentIds.length) return {};
+  let query = createAdminClient()
     .from("job_material_scope_appointments")
-    .select("appointment_id, material_scope_id")
-    .in("appointment_id", appointmentIds);
+    .select("appointment_id, material_scope_id");
+  if (appointmentIds) query = query.in("appointment_id", appointmentIds);
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
   const links: Record<string, string[]> = {};
   for (const item of data ?? []) links[item.appointment_id] = [...(links[item.appointment_id] ?? []), item.material_scope_id];

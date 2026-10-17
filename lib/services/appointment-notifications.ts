@@ -17,14 +17,20 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const historyColumns = "id,appointment_id,direction,recipient_type,recipient_address,sender_address,body,subject,channel,status,failure_reason,provider_error_code,created_at";
 
-export async function getCalendarCommunicationData(appointmentIds: string[]): Promise<CalendarCommunicationData> {
+export async function getCalendarCommunicationData(appointmentIds?: string[]): Promise<CalendarCommunicationData> {
   await requirePermission("communications.view");
   const admin = createAdminClient();
+  let deliveryQuery = admin
+    .from("communication_deliveries")
+    .select(historyColumns)
+    .not("appointment_id", "is", null)
+    .order("created_at", { ascending: false });
+  if (appointmentIds) deliveryQuery = deliveryQuery.in("appointment_id", appointmentIds);
   const [settingsResult, deliveryResult] = await Promise.all([
     admin.from("communication_settings").select("email_notifications_enabled,sms_enabled,calendar_customer_notifications_enabled,calendar_employee_notifications_enabled,calendar_installer_notifications_enabled").eq("singleton_key", true).single(),
-    appointmentIds.length
-      ? admin.from("communication_deliveries").select(historyColumns).in("appointment_id", appointmentIds).order("created_at", { ascending: false })
-      : Promise.resolve({ data: [], error: null }),
+    appointmentIds?.length === 0
+      ? Promise.resolve({ data: [], error: null })
+      : deliveryQuery,
   ]);
   if (settingsResult.error) throw new Error(settingsResult.error.message);
   if (deliveryResult.error) throw new Error(deliveryResult.error.message);
