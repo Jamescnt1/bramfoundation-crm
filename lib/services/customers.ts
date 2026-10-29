@@ -9,6 +9,8 @@ export type CustomerValues = {
   notes: string | null;
   automated_communications_enabled?: boolean;
   preferred_communication_channel?: "none" | "email" | "sms" | "both";
+  lead_followups_enabled?: boolean;
+  estimate_followups_enabled?: boolean;
 };
 
 export async function getCustomers() {

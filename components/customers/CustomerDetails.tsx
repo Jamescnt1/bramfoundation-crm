@@ -8,6 +8,7 @@ import TaskManager from "@/components/tasks/TaskManager";
 import CustomerContactsManager from "@/components/contacts/CustomerContactsManager";
 import type { CustomerContact } from "@/lib/services/customer-contacts";
 import { AddressLink, EmailLink, PhoneLink } from "@/components/contact/ActionableContactLinks";
+import CustomerFollowUpPreferences from "@/components/customers/CustomerFollowUpPreferences";
 
 type CustomerDetailsProps = {
   customer: Customer;
@@ -103,6 +104,13 @@ export default function CustomerDetails({
             {customer.notes ?? "No customer notes have been added."}
           </p>
         </div>
+
+        <CustomerFollowUpPreferences
+          customerId={customer.id}
+          initialLeadFollowupsEnabled={customer.lead_followups_enabled ?? true}
+          initialEstimateFollowupsEnabled={customer.estimate_followups_enabled ?? true}
+          canManage={canManageContacts}
+        />
       </section>
 
       <CustomerContactsManager

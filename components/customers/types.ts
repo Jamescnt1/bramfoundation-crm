@@ -9,6 +9,8 @@ export type Customer = {
   notes: string | null;
   automated_communications_enabled: boolean;
   preferred_communication_channel: "none" | "email" | "sms" | "both";
+  lead_followups_enabled: boolean;
+  estimate_followups_enabled: boolean;
 
   created_at?: string | null;
   updated_at?: string | null;
